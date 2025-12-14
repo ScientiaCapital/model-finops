@@ -105,3 +105,4 @@ cython_debug/
 artifacts/
 .worktrees/
 CLAUDE.md
+LICENSE.md
