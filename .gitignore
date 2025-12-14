@@ -104,3 +104,4 @@ cython_debug/
 .venv312/
 artifacts/
 .worktrees/
+CLAUDE.md
