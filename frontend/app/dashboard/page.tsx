@@ -219,20 +219,20 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Tokens"
-          value={stats?.total_tokens.toLocaleString() || '0'}
+          value={stats ? (stats.overall.total_tokens_in + stats.overall.total_tokens_out).toLocaleString() : '0'}
           description="Tokens processed"
           icon={Database}
         />
         <MetricsCard
-          title="Avg Response Time"
-          value={stats ? `${stats.avg_response_time_ms.toFixed(0)}ms` : '0ms'}
-          description="Average latency"
+          title="Avg Cost/Request"
+          value={stats ? `$${stats.overall.avg_cost_per_request.toFixed(6)}` : '$0.00'}
+          description="Average cost per request"
           icon={TrendingUp}
         />
         <MetricsCard
           title="Cache Entries"
           value={cacheStats?.total_entries.toLocaleString() || '0'}
-          description={`${cacheStats?.storage_used_mb.toFixed(2) || 0} MB used`}
+          description={`${cacheStats ? (cacheStats.cache_size_bytes / (1024 * 1024)).toFixed(2) : '0'} MB used`}
           icon={Database}
         />
         <MetricsCard
@@ -252,12 +252,12 @@ export default function DashboardPage() {
         {stats && stats.by_provider.length > 0 && (
           <>
             <ProviderChart
-              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.count]))}
+              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.request_count]))}
               title="Requests by Provider"
               type="requests"
             />
             <ProviderChart
-              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.cost]))}
+              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.total_cost]))}
               title="Cost by Provider"
               type="cost"
             />

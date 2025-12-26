@@ -8,8 +8,8 @@ export interface Stats {
     total_tokens_out: number
     avg_cost_per_request: number
   }
-  by_provider: Array<{ provider: string; count: number; cost: number }>
-  by_complexity: Array<{ complexity: string; count: number; cost: number }>
+  by_provider: Array<{ provider: string; request_count: number; total_cost: number; avg_cost: number }>
+  by_complexity: Array<{ complexity: string; request_count: number; total_cost: number; avg_cost: number }>
   recent_requests: Array<{ timestamp: string; provider: string; cost: number }>
 }
 
