@@ -1,12 +1,145 @@
 """
-Async ExperimentTracker - A/B Testing Framework with Supabase
+Async ExperimentTracker - A/B Testing Framework with Supabase.
 
-Manages A/B test experiments for routing strategy comparison:
-- Deterministic user assignment (control vs test group)
-- Result recording and aggregation
-- Progress tracking toward sample size goals
-- Statistical readiness detection
-- Multi-tenant support via RLS
+This module provides a complete A/B testing framework for comparing routing
+strategies in the AI Cost Optimizer. It enables data-driven decisions about
+which routing strategy (complexity, learning, hybrid) performs best.
+
+Architecture Overview
+=====================
+
+The A/B testing system consists of two main components:
+
+1. **AsyncExperimentTracker** (this module):
+   - Creates and manages experiments
+   - Assigns users to control/test groups (deterministic)
+   - Records routing decision outcomes
+   - Aggregates results for analysis
+
+2. **StatisticalAnalyzer** (statistical_analyzer.py):
+   - Performs chi-square tests for categorical outcomes
+   - Performs t-tests for continuous metrics (latency, cost, quality)
+   - Calculates statistical significance (p-values)
+   - Estimates effect sizes (Cohen's d)
+
+Key Concepts
+============
+
+**Deterministic User Assignment**:
+    Users are assigned to control or test groups using SHA256 hashing:
+    ```python
+    hash = SHA256(f"{experiment_id}:{user_id}")
+    group = "control" if int(hash, 16) % 2 == 0 else "test"
+    ```
+    This ensures the same user always gets the same assignment for a given
+    experiment, which is critical for valid A/B testing.
+
+**Sample Size Requirements**:
+    For statistical significance, each group needs minimum 30 samples.
+    The framework tracks progress toward this goal.
+
+**Metrics Collected**:
+    - latency_ms: API response time
+    - cost_usd: API cost in dollars
+    - quality_score: User-rated quality (0.0-1.0)
+    - provider: Which AI provider was used
+    - model: Which model was used
+
+Usage Example
+=============
+
+```python
+from app.experiments import AsyncExperimentTracker, StatisticalAnalyzer
+
+# Initialize tracker
+tracker = AsyncExperimentTracker(user_id="user-123")
+
+# Create an experiment
+experiment = await tracker.create_experiment(
+    name="Hybrid vs Complexity Strategy",
+    control_strategy="complexity",
+    test_strategy="hybrid",
+    description="Testing if hybrid routing reduces costs"
+)
+
+# For each request, assign user and record result
+group = tracker.assign_user(experiment["id"], user_id)
+strategy = experiment["control_strategy"] if group == "control" else experiment["test_strategy"]
+
+# ... execute routing with assigned strategy ...
+
+# Record the outcome
+await tracker.record_result(
+    experiment_id=experiment["id"],
+    user_id=user_id,
+    strategy_assigned=group,
+    latency_ms=150.0,
+    cost_usd=0.002,
+    quality_score=0.9,
+    provider="gemini",
+    model="gemini-1.5-flash"
+)
+
+# Check progress
+progress = await tracker.get_experiment_progress(experiment["id"])
+print(f"Collected {progress['total_results']} results")
+
+# When ready, analyze results
+analyzer = StatisticalAnalyzer()
+summary = await tracker.get_experiment_summary(experiment["id"])
+results = analyzer.compare_strategies(summary["control"], summary["test"])
+
+if results["is_significant"]:
+    print(f"Winner: {results['recommended_strategy']}")
+```
+
+Database Schema
+===============
+
+**experiments table**:
+    - id: SERIAL PRIMARY KEY
+    - name: TEXT UNIQUE NOT NULL
+    - description: TEXT
+    - control_strategy: TEXT NOT NULL
+    - test_strategy: TEXT NOT NULL
+    - status: TEXT ('active', 'paused', 'completed')
+    - created_by: TEXT (user_id for RLS)
+    - created_at: TIMESTAMP
+    - completed_at: TIMESTAMP
+
+**experiment_results table**:
+    - id: SERIAL PRIMARY KEY
+    - experiment_id: INTEGER (FK to experiments)
+    - user_id: TEXT NOT NULL
+    - assigned_strategy: TEXT NOT NULL
+    - timestamp: TIMESTAMP
+    - latency_ms: FLOAT
+    - cost_usd: FLOAT
+    - quality_score: FLOAT (0.0-1.0)
+    - provider: TEXT
+    - model: TEXT
+
+Best Practices
+==============
+
+1. **Run experiments long enough**: Need minimum 30 samples per group
+   for statistical validity.
+
+2. **One change at a time**: Only compare two strategies per experiment
+   to isolate the impact.
+
+3. **Monitor for bias**: Check that control/test groups have similar
+   distributions of prompt types.
+
+4. **Document results**: Use experiment descriptions to record learnings.
+
+5. **Clean up**: Complete experiments when done to prevent data pollution.
+
+See Also
+========
+- app/experiments/statistical_analyzer.py: Statistical significance testing
+- app/routing/engine.py: RoutingEngine that integrates with experiments
+- docs/EXPERIMENTS.md: Full documentation on running A/B tests
 """
 
 import hashlib

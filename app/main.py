@@ -761,6 +761,256 @@ async def get_quality_stats(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# ANALYTICS DASHBOARD ENDPOINTS
+# ============================================================================
+
+@app.get("/analytics/cache")
+async def get_cache_analytics(
+    days: int = 7,
+    user_id: Optional[str] = OptionalAuth()
+):
+    """
+    Get comprehensive cache analytics for the cost optimization dashboard.
+
+    This endpoint provides rich analytics on semantic cache performance,
+    grouped by provider, to help understand cost savings and optimization
+    effectiveness.
+
+    Args:
+        days: Number of days to look back (default: 7)
+
+    Returns:
+        Dict with:
+        - summary: Overall cache performance metrics
+        - by_provider: Per-provider breakdown with hit rates and quality
+        - recommendations: AI-generated insights for optimization
+
+    Example Response:
+        {
+            "summary": {
+                "total_entries": 1250,
+                "total_hits": 3800,
+                "overall_hit_rate": 3.04,
+                "avg_quality": 0.82,
+                "estimated_savings_usd": 45.50
+            },
+            "by_provider": [
+                {
+                    "provider": "gemini",
+                    "total_entries": 800,
+                    "total_hits": 2500,
+                    "avg_quality": 0.85,
+                    "hit_rate": 3.12
+                },
+                {
+                    "provider": "claude",
+                    "total_entries": 450,
+                    "total_hits": 1300,
+                    "avg_quality": 0.78,
+                    "hit_rate": 2.89
+                }
+            ],
+            "recommendations": [
+                "Consider routing more queries to Gemini - higher cache hit rate",
+                "Claude responses have lower quality scores - review feedback"
+            ]
+        }
+    """
+    try:
+        from app.database import get_supabase_client
+
+        db = get_supabase_client()
+
+        # Get per-provider analytics from Supabase
+        provider_analytics = await db.get_cache_analytics(
+            user_id=user_id,
+            days_back=days
+        )
+
+        # Calculate summary metrics
+        total_entries = sum(p.get('total_entries', 0) for p in provider_analytics)
+        total_hits = sum(p.get('total_hits', 0) for p in provider_analytics)
+        overall_hit_rate = (total_hits / total_entries) if total_entries > 0 else 0.0
+
+        # Calculate weighted average quality
+        weighted_quality_sum = sum(
+            p.get('avg_quality', 0) * p.get('total_entries', 0)
+            for p in provider_analytics
+        )
+        avg_quality = (weighted_quality_sum / total_entries) if total_entries > 0 else 0.0
+
+        # Estimate savings (assume average $0.01 per cached response vs $0.02 for fresh)
+        # This is a simplified estimation - actual savings depend on model pricing
+        estimated_savings = total_hits * 0.012  # ~$0.012 saved per cache hit
+
+        # Generate recommendations based on analytics
+        recommendations = []
+
+        if provider_analytics:
+            # Find best and worst performing providers
+            sorted_by_quality = sorted(
+                [p for p in provider_analytics if p.get('total_entries', 0) > 10],
+                key=lambda x: x.get('avg_quality', 0),
+                reverse=True
+            )
+
+            if len(sorted_by_quality) >= 2:
+                best = sorted_by_quality[0]
+                worst = sorted_by_quality[-1]
+
+                if best.get('avg_quality', 0) - worst.get('avg_quality', 0) > 0.15:
+                    recommendations.append(
+                        f"{best['provider'].title()} has significantly higher quality "
+                        f"({best.get('avg_quality', 0):.2f} vs {worst.get('avg_quality', 0):.2f}) - "
+                        f"consider routing more complex queries there"
+                    )
+
+            # Find providers with high hit rates
+            high_hit_rate = [
+                p for p in provider_analytics
+                if p.get('hit_rate', 0) > 2.0 and p.get('total_entries', 0) > 20
+            ]
+            if high_hit_rate:
+                best_cache = max(high_hit_rate, key=lambda x: x.get('hit_rate', 0))
+                recommendations.append(
+                    f"{best_cache['provider'].title()} has excellent cache reuse "
+                    f"({best_cache.get('hit_rate', 0):.1f}x hit rate) - "
+                    f"semantic caching is working well for this provider"
+                )
+
+            # Check for low quality providers
+            low_quality = [
+                p for p in provider_analytics
+                if p.get('avg_quality', 0) < 0.5 and p.get('total_entries', 0) > 10
+            ]
+            for p in low_quality:
+                recommendations.append(
+                    f"{p['provider'].title()} has low quality scores "
+                    f"({p.get('avg_quality', 0):.2f}) - review user feedback"
+                )
+
+        if not recommendations:
+            recommendations.append(
+                "Cache performance is healthy. Continue monitoring for optimization opportunities."
+            )
+
+        return {
+            "summary": {
+                "total_entries": total_entries,
+                "total_hits": total_hits,
+                "overall_hit_rate": round(overall_hit_rate, 2),
+                "avg_quality": round(avg_quality, 2),
+                "estimated_savings_usd": round(estimated_savings, 2),
+                "days_analyzed": days
+            },
+            "by_provider": provider_analytics,
+            "recommendations": recommendations
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching cache analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/analytics/costs")
+async def get_cost_analytics(
+    days: int = 7,
+    user_id: Optional[str] = OptionalAuth()
+):
+    """
+    Get comprehensive cost analytics for the optimization dashboard.
+
+    This endpoint aggregates cost data across providers, models, and
+    complexity levels to provide insights into spending patterns and
+    optimization opportunities.
+
+    Args:
+        days: Number of days to look back (default: 7)
+
+    Returns:
+        Dict with:
+        - summary: Total costs, savings, and efficiency metrics
+        - by_provider: Cost breakdown per provider
+        - by_complexity: Cost breakdown per complexity level
+        - by_day: Daily cost trends
+        - optimization_score: Overall optimization effectiveness (0-100)
+
+    Example Response:
+        {
+            "summary": {
+                "total_cost_usd": 125.50,
+                "total_requests": 5000,
+                "avg_cost_per_request": 0.0251,
+                "cache_savings_usd": 45.50,
+                "effective_cost_reduction_percent": 26.6
+            },
+            "by_provider": [...],
+            "by_complexity": [...],
+            "optimization_score": 78
+        }
+    """
+    try:
+        # Get usage stats from cost tracker
+        stats = routing_service.cost_tracker.get_usage_stats()
+
+        # Get cache stats for savings calculation
+        cache_stats = await routing_service.cost_tracker.get_cache_stats()
+
+        overall = stats.get('overall', {})
+        total_cost = overall.get('total_cost', 0)
+        total_requests = overall.get('total_requests', 0)
+
+        # Calculate cache savings
+        cache_hits = cache_stats.get('total_hits', 0)
+        estimated_cache_savings = cache_hits * 0.012  # ~$0.012 saved per cache hit
+
+        # Calculate effective cost reduction
+        original_cost = total_cost + estimated_cache_savings
+        cost_reduction_percent = (
+            (estimated_cache_savings / original_cost * 100)
+            if original_cost > 0 else 0
+        )
+
+        # Calculate optimization score (0-100)
+        # Based on: cache hit rate, cost efficiency, and quality
+        cache_entries = cache_stats.get('total_entries', 0)
+        cache_hit_rate = (cache_hits / cache_entries) if cache_entries > 0 else 0
+        quality_score = cache_stats.get('avg_quality_score', 0.5)
+
+        optimization_score = min(100, int(
+            (cache_hit_rate * 30) +  # Up to 30 points for cache efficiency
+            (min(cost_reduction_percent, 50) * 1.0) +  # Up to 50 points for cost reduction
+            (quality_score * 20)  # Up to 20 points for quality
+        ))
+
+        return {
+            "summary": {
+                "total_cost_usd": round(total_cost, 4),
+                "total_requests": total_requests,
+                "avg_cost_per_request": round(
+                    total_cost / total_requests if total_requests > 0 else 0, 6
+                ),
+                "cache_savings_usd": round(estimated_cache_savings, 2),
+                "effective_cost_reduction_percent": round(cost_reduction_percent, 1),
+                "days_analyzed": days
+            },
+            "by_provider": stats.get('by_provider', []),
+            "by_complexity": stats.get('by_complexity', []),
+            "optimization_score": optimization_score,
+            "optimization_breakdown": {
+                "cache_efficiency_points": min(30, int(cache_hit_rate * 30)),
+                "cost_reduction_points": min(50, int(cost_reduction_percent)),
+                "quality_points": int(quality_score * 20),
+                "max_possible": 100
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching cost analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/insights")
 async def get_learning_insights(
     user_id: Optional[str] = OptionalAuth()

@@ -262,40 +262,133 @@ class SupabaseClient:
         query_embedding: List[float],
         match_threshold: float = 0.95,
         match_count: int = 1,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        filter_providers: Optional[List[str]] = None,
+        filter_models: Optional[List[str]] = None,
+        min_quality_score: Optional[float] = None,
+        max_age_hours: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Perform semantic search using pgvector.
+        Perform semantic search using pgvector with optional metadata filtering.
 
-        Calls the match_cache_entries() function created in Part 1.
+        Calls the match_cache_entries_v2() function for enhanced filtering,
+        or falls back to match_cache_entries() for basic queries.
 
         Args:
             query_embedding: 384-dimensional embedding vector
             match_threshold: Minimum similarity score (0.0-1.0)
             match_count: Maximum results to return
             user_id: Optional user_id filter (for RLS)
+            filter_providers: Only match responses from these providers
+                              e.g., ["claude", "gemini"]
+            filter_models: Only match responses from these models
+                           e.g., ["claude-3-haiku", "gemini-flash"]
+            min_quality_score: Only match responses with quality >= this score
+            max_age_hours: Only match responses created within this many hours
 
         Returns:
             List of matching cache entries with similarity scores
+
+        Example:
+            # Find similar prompts from Claude with quality > 0.7
+            matches = await client.semantic_search(
+                query_embedding=embedding,
+                match_threshold=0.90,
+                filter_providers=["claude"],
+                min_quality_score=0.7
+            )
         """
+        # Determine which function to use based on filters
+        has_filters = any([
+            filter_providers,
+            filter_models,
+            min_quality_score is not None,
+            max_age_hours is not None
+        ])
+
         try:
-            response = self.client.rpc(
-                "match_cache_entries",
-                {
+            if has_filters:
+                # Use enhanced v2 function with metadata filtering
+                params = {
                     "query_embedding": query_embedding,
                     "match_threshold": match_threshold,
                     "match_count": match_count,
                     "target_user_id": user_id
                 }
-            ).execute()
 
-            logger.debug(
-                f"Semantic search found {len(response.data)} results "
-                f"(threshold={match_threshold})"
-            )
+                if filter_providers:
+                    params["filter_providers"] = filter_providers
+                if filter_models:
+                    params["filter_models"] = filter_models
+                if min_quality_score is not None:
+                    params["min_quality_score"] = min_quality_score
+                if max_age_hours is not None:
+                    params["max_age_hours"] = max_age_hours
+
+                response = self.client.rpc(
+                    "match_cache_entries_v2",
+                    params
+                ).execute()
+
+                logger.debug(
+                    f"Enhanced semantic search found {len(response.data)} results "
+                    f"(threshold={match_threshold}, providers={filter_providers}, "
+                    f"min_quality={min_quality_score})"
+                )
+            else:
+                # Use original function for basic queries (backward compatible)
+                response = self.client.rpc(
+                    "match_cache_entries",
+                    {
+                        "query_embedding": query_embedding,
+                        "match_threshold": match_threshold,
+                        "match_count": match_count,
+                        "target_user_id": user_id
+                    }
+                ).execute()
+
+                logger.debug(
+                    f"Semantic search found {len(response.data)} results "
+                    f"(threshold={match_threshold})"
+                )
+
             return response.data
         except APIError as e:
             logger.error(f"Semantic search failed: {e}")
+            raise
+
+    async def get_cache_analytics(
+        self,
+        user_id: Optional[str] = None,
+        days_back: int = 7
+    ) -> List[Dict[str, Any]]:
+        """
+        Get cache analytics grouped by provider.
+
+        Args:
+            user_id: Optional user_id filter
+            days_back: Number of days to look back (default 7)
+
+        Returns:
+            List of analytics dictionaries with:
+            - provider: Provider name
+            - total_entries: Number of cached responses
+            - total_hits: Total cache hits
+            - avg_quality: Average quality score
+            - hit_rate: Hits per entry ratio
+        """
+        try:
+            response = self.client.rpc(
+                "get_cache_analytics",
+                {
+                    "target_user_id": user_id,
+                    "days_back": days_back
+                }
+            ).execute()
+
+            return response.data
+        except APIError as e:
+            logger.error(f"Failed to get cache analytics: {e}")
             raise
 
     async def get_cache_stats(self, user_id: str) -> Dict[str, Any]:

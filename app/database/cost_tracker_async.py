@@ -364,6 +364,100 @@ class AsyncCostTracker:
 
         logger.debug(f"Cache hit recorded: {cache_key[:16]}... (hits={new_hits})")
 
+    async def batch_store_in_cache(
+        self,
+        entries: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Batch store multiple responses in cache with embeddings.
+
+        This is more efficient than calling store_in_cache() multiple times
+        because it generates embeddings in a single batch operation and
+        performs a single database upsert.
+
+        Args:
+            entries: List of cache entry dictionaries, each containing:
+                - prompt: User prompt
+                - max_tokens: Maximum response tokens
+                - response: LLM response text
+                - provider: Provider name
+                - model: Model identifier
+                - complexity: Complexity classification
+                - tokens_in: Input token count
+                - tokens_out: Output token count
+                - cost: Total cost in USD
+
+        Returns:
+            List of inserted cache entries
+
+        Example:
+            entries = [
+                {"prompt": "What is Python?", "max_tokens": 100, ...},
+                {"prompt": "Explain React hooks", "max_tokens": 200, ...},
+            ]
+            results = await tracker.batch_store_in_cache(entries)
+        """
+        import hashlib
+
+        if not entries:
+            return []
+
+        # Step 1: Normalize all prompts
+        normalized_prompts = [
+            self._normalize_prompt(e["prompt"]) for e in entries
+        ]
+
+        # Step 2: Batch generate embeddings (much more efficient!)
+        logger.info(f"Generating {len(entries)} embeddings in batch...")
+        embeddings = self.embeddings.generate_embeddings(normalized_prompts)
+
+        # Step 3: Prepare cache data
+        now = datetime.now().isoformat()
+        cache_data = []
+
+        for i, entry in enumerate(entries):
+            normalized_prompt = normalized_prompts[i]
+            embedding = embeddings[i]
+
+            # Generate cache key
+            cache_input = f"{normalized_prompt}|{entry['max_tokens']}"
+            cache_key = hashlib.sha256(cache_input.encode()).hexdigest()
+
+            cache_data.append({
+                "cache_key": cache_key,
+                "prompt_normalized": normalized_prompt,
+                "max_tokens": entry["max_tokens"],
+                "response": entry["response"],
+                "provider": entry["provider"],
+                "model": entry["model"],
+                "complexity": entry["complexity"],
+                "tokens_in": entry["tokens_in"],
+                "tokens_out": entry["tokens_out"],
+                "cost": entry["cost"],
+                "created_at": now,
+                "last_accessed": now,
+                "hit_count": 0,
+                "embedding": embedding,
+                "user_id": self.user_id,
+                "upvotes": 0,
+                "downvotes": 0,
+                "invalidated": 0
+            })
+
+        # Step 4: Batch upsert to database
+        use_admin = self.user_id is None
+
+        result = await self.db.upsert(
+            "response_cache",
+            cache_data,
+            on_conflict="cache_key",
+            use_admin=use_admin
+        )
+
+        logger.info(f"Batch stored {len(cache_data)} cache entries")
+
+        return result
+
     async def get_cache_stats(self) -> Dict[str, Any]:
         """
         Get cache statistics using Supabase function.
