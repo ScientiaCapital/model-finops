@@ -150,6 +150,118 @@ class OpenRouterUsageService:
                 )
 
 
+class ElevenLabsUsageService:
+    """Fetch usage from ElevenLabs subscription API.
+
+    Docs: https://elevenlabs.io/docs/api-reference/user/subscription/get
+    """
+
+    BASE_URL = "https://api.elevenlabs.io/v1"
+
+    def __init__(self, api_key: str, account_label: str = "default"):
+        self.api_key = api_key
+        self.account_label = account_label
+
+    async def get_subscription(self) -> ProviderBalance:
+        """Get subscription info with character usage."""
+        url = f"{self.BASE_URL}/user/subscription"
+        headers = {"xi-api-key": self.api_key}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+
+                # Calculate usage from character limits
+                char_limit = data.get("character_limit", 0)
+                char_used = data.get("character_count", 0)
+                char_remaining = char_limit - char_used
+
+                # ElevenLabs charges ~$0.30 per 1000 characters on Pro
+                estimated_cost = (char_used / 1000) * 0.30
+
+                return ProviderBalance(
+                    provider="elevenlabs",
+                    account_label=self.account_label,
+                    balance_usd=0.0,  # Credit-based, not balance
+                    usage_usd=estimated_cost,
+                    limit_usd=None
+                )
+            except httpx.HTTPError:
+                return ProviderBalance(
+                    provider="elevenlabs",
+                    account_label=self.account_label,
+                    balance_usd=0.0
+                )
+
+    async def get_usage(self) -> list[UsageRecord]:
+        """Get character usage as a usage record."""
+        url = f"{self.BASE_URL}/user/subscription"
+        headers = {"xi-api-key": self.api_key}
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+
+                char_used = data.get("character_count", 0)
+                char_limit = data.get("character_limit", 0)
+
+                return [UsageRecord(
+                    provider="elevenlabs",
+                    account_label=self.account_label,
+                    date=datetime.now().strftime("%Y-%m-%d"),
+                    total_tokens=char_used,  # Using tokens field for characters
+                    cost_usd=(char_used / 1000) * 0.30,
+                    request_count=0
+                )]
+            except httpx.HTTPError:
+                return []
+
+
+class DeepgramUsageService:
+    """Fetch balance from Deepgram billing API.
+
+    Docs: https://developers.deepgram.com/sdks-tools/sdks/python-sdk/billing/
+    """
+
+    BASE_URL = "https://api.deepgram.com/v1"
+
+    def __init__(self, api_key: str, account_label: str = "default"):
+        self.api_key = api_key
+        self.account_label = account_label
+
+    async def get_balances(self, project_id: str = None) -> ProviderBalance:
+        """Get credit balance from Deepgram."""
+        # Note: Requires project_id - would need to list projects first
+        # For now, return a placeholder indicating the API is available
+        return ProviderBalance(
+            provider="deepgram",
+            account_label=self.account_label,
+            balance_usd=0.0,  # Would need project_id to fetch
+            usage_usd=0.0,
+            limit_usd=None
+        )
+
+
+class GroqUsageService:
+    """Groq usage tracking - no billing API available yet.
+
+    Note: There's a feature request for billing API:
+    https://community.groq.com/t/add-api-endpoint-to-fetch-billing-and-usage-data/378
+    """
+
+    def __init__(self, api_key: str, account_label: str = "default"):
+        self.api_key = api_key
+        self.account_label = account_label
+
+    async def get_usage(self) -> list[UsageRecord]:
+        """Groq doesn't have a billing API - return empty."""
+        return []
+
+
 class MultiAccountUsageService:
     """Aggregate usage across multiple accounts per provider.
 
@@ -162,10 +274,16 @@ class MultiAccountUsageService:
         OPENROUTER_API_KEY_WORK - Work OpenRouter key
         OPENROUTER_API_KEY_PERSONAL - Personal key
 
-        Same pattern for: GOOGLE_API_KEY, CEREBRAS_API_KEY
+        Same pattern for all providers:
+        - GOOGLE_API_KEY, CEREBRAS_API_KEY
+        - ELEVENLABS_API_KEY, DEEPGRAM_API_KEY
+        - GROQ_API_KEY, CARTESIA_API_KEY, ASSEMBLYAI_API_KEY
     """
 
-    PROVIDERS = ["anthropic", "openrouter", "google", "cerebras"]
+    PROVIDERS = [
+        "anthropic", "openrouter", "google", "cerebras",
+        "elevenlabs", "deepgram", "groq", "cartesia", "assemblyai"
+    ]
     ACCOUNT_LABELS = ["default", "work", "personal"]
 
     def __init__(self):
@@ -200,7 +318,12 @@ class MultiAccountUsageService:
             "openrouter": "OPENROUTER",
             "google": "GOOGLE",
             "cerebras": "CEREBRAS",
-            "gemini": "GOOGLE"
+            "gemini": "GOOGLE",
+            "elevenlabs": "ELEVENLABS",
+            "deepgram": "DEEPGRAM",
+            "groq": "GROQ",
+            "cartesia": "CARTESIA",
+            "assemblyai": "ASSEMBLYAI"
         }
         return prefixes.get(provider, provider.upper())
 
@@ -212,6 +335,12 @@ class MultiAccountUsageService:
         for label, api_key in self.accounts.get("openrouter", {}).items():
             service = OpenRouterUsageService(api_key, label)
             balance = await service.get_credits()
+            balances.append(balance)
+
+        # ElevenLabs usage (character-based)
+        for label, api_key in self.accounts.get("elevenlabs", {}).items():
+            service = ElevenLabsUsageService(api_key, label)
+            balance = await service.get_subscription()
             balances.append(balance)
 
         return balances
@@ -229,6 +358,12 @@ class MultiAccountUsageService:
         for label, api_key in self.accounts.get("anthropic", {}).items():
             service = AnthropicUsageService(api_key, label)
             account_records = await service.get_usage_report(start_date, end_date)
+            records.extend(account_records)
+
+        # ElevenLabs usage (character count)
+        for label, api_key in self.accounts.get("elevenlabs", {}).items():
+            service = ElevenLabsUsageService(api_key, label)
+            account_records = await service.get_usage()
             records.extend(account_records)
 
         return records
