@@ -227,6 +227,7 @@ class CompleteRequest(BaseModel):
     prompt: str = Field(..., min_length=1, description="User prompt")
     max_tokens: Optional[int] = Field(1000, ge=1, le=4000, description="Maximum response tokens")
     auto_route: bool = Field(False, description="Enable intelligent routing (hybrid strategy)")
+    provider: Optional[str] = Field(None, description="Force specific provider (cerebras, openrouter, groq, together)")
     tokenizer_id: Optional[str] = Field(None, description="Optional HF repo id for tokenization metrics (e.g., 'UW/OLMo2-8B-SuperBPE-t180k')")
     user_id: Optional[str] = Field(None, description="User ID for A/B testing experiments")
 
@@ -367,7 +368,8 @@ async def complete_prompt(
         result = await routing_service.route_and_complete(
             prompt=request.prompt,
             auto_route=request.auto_route,
-            max_tokens=request.max_tokens
+            max_tokens=request.max_tokens,
+            provider_override=request.provider
         )
 
         # 4. Record experiment result if in experiment

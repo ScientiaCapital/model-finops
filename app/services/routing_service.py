@@ -55,7 +55,8 @@ class RoutingService:
         prompt: str,
         auto_route: bool,
         max_tokens: int,
-        similarity_threshold: float = 0.95
+        similarity_threshold: float = 0.95,
+        provider_override: Optional[str] = None
     ) -> Dict[str, Any]:
         """Route prompt and execute completion with semantic cache check.
 
@@ -64,6 +65,7 @@ class RoutingService:
             auto_route: If True, use intelligent hybrid routing
             max_tokens: Maximum response tokens
             similarity_threshold: Minimum similarity for semantic cache match (0.0-1.0)
+            provider_override: Force specific provider (skip routing)
 
         Returns:
             Dict with response, provider, model, cost, and metadata
@@ -129,17 +131,44 @@ class RoutingService:
         # Generate unique request_id BEFORE routing for FK cascade
         request_id = str(uuid.uuid4())
 
-        # Get routing decision from engine
-        context = RoutingContext(prompt=prompt)
-        decision = self.engine.route(prompt=prompt, auto_route=auto_route, context=context, request_id=request_id)
+        # Check for provider override (skip routing if specified)
+        if provider_override:
+            if provider_override not in self.providers:
+                available = list(self.providers.keys())
+                raise ValueError(f"Provider '{provider_override}' not available. Available: {available}")
 
-        # Execute with selected provider
-        provider = self.providers[decision.provider]
+            provider_name = provider_override
+            provider = self.providers[provider_name]
+            # Get model name from provider
+            model_name = getattr(provider, 'MODEL', 'unknown')
+            strategy_used = "override"
+            confidence = "high"
+            logger.info(f"Provider override: using {provider_name}/{model_name}")
+        else:
+            # Get routing decision from engine
+            context = RoutingContext(prompt=prompt)
+            decision = self.engine.route(prompt=prompt, auto_route=auto_route, context=context, request_id=request_id)
+
+            # Check if routed provider is available
+            if decision.provider not in self.providers:
+                # Fallback to first available provider
+                fallback = list(self.providers.keys())[0]
+                logger.warning(f"Routed provider '{decision.provider}' not available, falling back to '{fallback}'")
+                provider_name = fallback
+                provider = self.providers[fallback]
+                model_name = getattr(provider, 'MODEL', 'unknown')
+            else:
+                provider_name = decision.provider
+                provider = self.providers[decision.provider]
+                model_name = decision.model
+
+            strategy_used = decision.strategy.value if hasattr(decision.strategy, 'value') else str(decision.strategy)
+            confidence = decision.confidence.value if hasattr(decision.confidence, 'value') else str(decision.confidence)
 
         # Call provider's complete() method - returns (text, input_tokens, output_tokens, cost)
-        if decision.provider == "openrouter":
+        if provider_name == "openrouter":
             response_text, tokens_in, tokens_out, cost = await provider.complete(
-                model=decision.model,
+                model=model_name,
                 prompt=prompt,
                 max_tokens=max_tokens
             )
@@ -154,8 +183,8 @@ class RoutingService:
             prompt=prompt,
             max_tokens=max_tokens,
             response=response_text,
-            provider=decision.provider,
-            model=decision.model,
+            provider=provider_name,
+            model=model_name,
             complexity="unknown",  # Will be set by engine in future
             tokens_in=tokens_in,
             tokens_out=tokens_out,
@@ -166,8 +195,8 @@ class RoutingService:
         await self.cost_tracker.log_request(
             prompt=prompt,
             complexity="unknown",
-            provider=decision.provider,
-            model=decision.model,
+            provider=provider_name,
+            model=model_name,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost=cost
@@ -179,17 +208,19 @@ class RoutingService:
         normalized = " ".join(prompt.split())
         cache_key = hashlib.sha256(f"{normalized}|{max_tokens}".encode()).hexdigest()
 
-        # request_id already generated before routing (line 104)
-        # Removed duplicate generation here
+        # Build routing metadata
+        routing_metadata = {}
+        if not provider_override and 'decision' in locals():
+            routing_metadata = getattr(decision, 'metadata', {})
 
         return {
             "request_id": request_id,
             "response": response_text,
-            "provider": decision.provider,
-            "model": decision.model,
-            "strategy_used": decision.strategy_used,
-            "confidence": decision.confidence,
-            "complexity_metadata": decision.metadata,
+            "provider": provider_name,
+            "model": model_name,
+            "strategy_used": strategy_used,
+            "confidence": confidence,
+            "complexity_metadata": routing_metadata,
             "tokens_in": tokens_in,
             "tokens_out": tokens_out,
             "cost": cost,
@@ -198,7 +229,7 @@ class RoutingService:
             "original_cost": None,
             "savings": 0.0,
             "cache_key": cache_key,
-            "routing_metadata": decision.metadata
+            "routing_metadata": routing_metadata
         }
 
     def get_recommendation(self, prompt: str) -> Dict[str, Any]:
