@@ -1,4 +1,4 @@
-"""LLM provider implementations for Gemini, Claude, and OpenRouter."""
+"""LLM provider implementations for Gemini, Claude, Cerebras, Groq, Together AI, and OpenRouter."""
 import os
 from typing import Tuple
 import httpx
@@ -277,6 +277,160 @@ class CerebrasProvider:
         return input_cost + output_cost
 
 
+class GroqProvider:
+    """Groq provider - ultra-fast LPU inference."""
+
+    BASE_URL = "https://api.groq.com/openai/v1"
+    MODEL = "llama-3.3-70b-versatile"  # Default model
+
+    # Pricing per 1M tokens (as of Dec 2024)
+    MODEL_PRICING = {
+        "llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
+        "llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
+        "llama-3.2-90b-vision-preview": {"input": 0.90, "output": 0.90},
+        "mixtral-8x7b-32768": {"input": 0.24, "output": 0.24},
+        "gemma2-9b-it": {"input": 0.20, "output": 0.20},
+    }
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+        """
+        Send completion request to Groq.
+
+        Returns:
+            Tuple of (response_text, input_tokens, output_tokens, cost)
+        """
+        url = f"{self.BASE_URL}/chat/completions"
+        model = model or self.MODEL
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                # Extract response text
+                text = data["choices"][0]["message"]["content"]
+
+                # Extract token usage
+                usage = data["usage"]
+                input_tokens = usage["prompt_tokens"]
+                output_tokens = usage["completion_tokens"]
+
+                # Calculate cost
+                cost = self.calculate_cost(model, input_tokens, output_tokens)
+
+                return text, input_tokens, output_tokens, cost
+
+            except httpx.HTTPError as e:
+                raise ProviderError(f"Groq API error: {str(e)}")
+
+    def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost based on model and token usage."""
+        pricing = self.MODEL_PRICING.get(model, {"input": 0.59, "output": 0.79})
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        return input_cost + output_cost
+
+
+class TogetherAIProvider:
+    """Together AI provider - run fine-tuned models (Unsloth, custom LoRAs)."""
+
+    BASE_URL = "https://api.together.xyz/v1"
+    MODEL = "meta-llama/Llama-3.2-3B-Instruct-Turbo"  # Default fast model
+
+    # Pricing per 1M tokens
+    MODEL_PRICING = {
+        # Llama 3.2 models
+        "meta-llama/Llama-3.2-3B-Instruct-Turbo": {"input": 0.06, "output": 0.06},
+        "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo": {"input": 0.18, "output": 0.18},
+        "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo": {"input": 0.88, "output": 0.88},
+        # Llama 3.1 models
+        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo": {"input": 0.18, "output": 0.18},
+        "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {"input": 0.88, "output": 0.88},
+        "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo": {"input": 3.50, "output": 3.50},
+        # Mixtral/Mistral
+        "mistralai/Mixtral-8x7B-Instruct-v0.1": {"input": 0.60, "output": 0.60},
+        "mistralai/Mistral-7B-Instruct-v0.3": {"input": 0.20, "output": 0.20},
+        # Fine-tuned models (custom - charged at base rate)
+        "custom": {"input": 0.20, "output": 0.20},
+    }
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+        """
+        Send completion request to Together AI.
+
+        Args:
+            prompt: User prompt
+            max_tokens: Maximum response tokens
+            model: Model ID (can be fine-tuned model endpoint)
+
+        Returns:
+            Tuple of (response_text, input_tokens, output_tokens, cost)
+        """
+        url = f"{self.BASE_URL}/chat/completions"
+        model = model or self.MODEL
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                # Extract response text
+                text = data["choices"][0]["message"]["content"]
+
+                # Extract token usage
+                usage = data["usage"]
+                input_tokens = usage["prompt_tokens"]
+                output_tokens = usage["completion_tokens"]
+
+                # Calculate cost
+                cost = self.calculate_cost(model, input_tokens, output_tokens)
+
+                return text, input_tokens, output_tokens, cost
+
+            except httpx.HTTPError as e:
+                raise ProviderError(f"Together AI API error: {str(e)}")
+
+    def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost based on model and token usage."""
+        # Check if it's a known model, otherwise use custom pricing
+        pricing = self.MODEL_PRICING.get(model, self.MODEL_PRICING["custom"])
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        return input_cost + output_cost
+
+
 def init_providers() -> dict:
     """
     Initialize available providers based on environment variables.
@@ -296,6 +450,13 @@ def init_providers() -> dict:
     # Ultra-fast providers
     if api_key := os.getenv("CEREBRAS_API_KEY"):
         providers["cerebras"] = CerebrasProvider(api_key)
+
+    if api_key := os.getenv("GROQ_API_KEY"):
+        providers["groq"] = GroqProvider(api_key)
+
+    # Fine-tuned model hosting (Unsloth, custom LoRAs)
+    if api_key := os.getenv("TOGETHER_API_KEY"):
+        providers["together"] = TogetherAIProvider(api_key)
 
     # Fallback aggregator
     if api_key := os.getenv("OPENROUTER_API_KEY"):
