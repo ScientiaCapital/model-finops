@@ -63,6 +63,7 @@ export default function DashboardPage() {
   })
 
   const fetchData = useCallback(async () => {
+    console.log('[Dashboard] Refresh button clicked - fetching data...')
     try {
       setLoading(true)
       setError(null)
@@ -75,13 +76,15 @@ export default function DashboardPage() {
         getBudgetStatus().catch(() => null),
       ])
 
+      console.log('[Dashboard] Data fetched:', { statsData, cacheData, healthData })
       setStats(statsData)
       setCacheStats(cacheData)
       setRoutingMetrics(routingData)
       setHealth(healthData)
       setBudgetStatus(budgetData)
       setLastUpdated(new Date())
-    } catch {
+    } catch (err) {
+      console.error('[Dashboard] Fetch error:', err)
       setError('Failed to fetch data. Is the API server running?')
     } finally {
       setLoading(false)
@@ -138,9 +141,9 @@ export default function DashboardPage() {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
           )}
-          <Button onClick={fetchData} variant="outline" size="sm">
+          <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
