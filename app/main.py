@@ -1094,6 +1094,52 @@ async def get_learning_insights(
 
 
 # ============================================================================
+# PROVIDER USAGE TRACKING (Work vs Personal Accounts)
+# ============================================================================
+
+@app.get("/analytics/provider-usage")
+async def get_provider_usage(
+    days: int = 30,
+    user_id: Optional[str] = Depends(OptionalAuth())
+):
+    """
+    Get usage data from all configured provider accounts.
+
+    Supports multiple accounts per provider (work vs personal):
+    - ANTHROPIC_API_KEY_WORK / ANTHROPIC_API_KEY_PERSONAL
+    - OPENROUTER_API_KEY_WORK / OPENROUTER_API_KEY_PERSONAL
+
+    Returns:
+        - configured_accounts: Which providers/accounts are set up
+        - balances: Current credit balances (OpenRouter)
+        - usage_history: Historical usage from provider billing APIs
+        - errors: Any API errors encountered
+
+    Example Response:
+        {
+            "configured_accounts": {
+                "anthropic": ["default", "work"],
+                "openrouter": ["default", "personal"]
+            },
+            "balances": [
+                {"provider": "openrouter", "account_label": "default", "balance_usd": 5.50}
+            ],
+            "usage_history": [
+                {"provider": "anthropic", "account_label": "work", "date": "2024-12-25", "cost_usd": 12.50}
+            ]
+        }
+    """
+    from app.services.provider_usage import get_all_provider_usage
+
+    try:
+        result = await get_all_provider_usage(days=days)
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching provider usage: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # ADMIN ENDPOINTS
 # ============================================================================
 
