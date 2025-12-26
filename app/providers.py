@@ -142,9 +142,11 @@ class OpenRouterProvider:
     """OpenRouter provider for fallback and alternative models."""
 
     BASE_URL = "https://openrouter.ai/api/v1"
+    MODEL = "openai/gpt-3.5-turbo"  # Default model (cheap and reliable)
 
     # Model-specific pricing (per 1M tokens)
     MODEL_PRICING = {
+        "meta-llama/llama-3.1-8b-instruct:free": {"input": 0.0, "output": 0.0},
         "google/gemini-flash-1.5": {"input": 0.075, "output": 0.30},
         "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
         "anthropic/claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
