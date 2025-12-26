@@ -53,8 +53,11 @@ export default function DashboardPage() {
       // Update stats when new metric arrives
       setStats((prev) => prev ? {
         ...prev,
-        total_requests: prev.total_requests + 1,
-        total_cost_cents: prev.total_cost_cents + (metric.cost_usd * 100),
+        overall: {
+          ...prev.overall,
+          total_requests: prev.overall.total_requests + 1,
+          total_cost: prev.overall.total_cost + metric.cost_usd,
+        },
       } : prev)
     },
   })
@@ -175,35 +178,37 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Cost"
-          value={stats ? `$${(stats.total_cost_cents / 100).toFixed(2)}` : '$0.00'}
+          value={stats ? `$${stats.overall.total_cost.toFixed(4)}` : '$0.00'}
           description="All time spending"
           icon={DollarSign}
         />
         <MetricsCard
           title="Total Requests"
-          value={stats?.total_requests.toLocaleString() || '0'}
+          value={stats?.overall.total_requests.toLocaleString() || '0'}
           description="API calls processed"
           icon={Activity}
         />
         <MetricsCard
           title="Cache Hit Rate"
-          value={cacheStats ? `${(cacheStats.hit_rate * 100).toFixed(1)}%` : '0%'}
+          value={cacheStats && cacheStats.total_entries > 0
+            ? `${((cacheStats.total_hits / cacheStats.total_entries) * 100).toFixed(1)}%`
+            : '0%'}
           description={`${cacheStats?.total_hits.toLocaleString() || 0} cache hits`}
           icon={Zap}
           badge={
-            cacheStats && cacheStats.hit_rate > 0.7
+            cacheStats && cacheStats.total_entries > 0 && (cacheStats.total_hits / cacheStats.total_entries) > 0.7
               ? { text: 'Excellent', variant: 'success' }
-              : cacheStats && cacheStats.hit_rate > 0.4
+              : cacheStats && cacheStats.total_entries > 0 && (cacheStats.total_hits / cacheStats.total_entries) > 0.4
               ? { text: 'Good', variant: 'warning' }
               : { text: 'Low', variant: 'destructive' }
           }
         />
         <MetricsCard
-          title="Routing Accuracy"
+          title="Cost Savings"
           value={
             routingMetrics
-              ? `${(routingMetrics.accuracy_rate * 100).toFixed(1)}%`
-              : 'N/A'
+              ? `${routingMetrics.cost_savings.percent_saved.toFixed(1)}%`
+              : '0%'
           }
           description={`${routingMetrics?.total_decisions.toLocaleString() || 0} decisions`}
           icon={Brain}
@@ -244,15 +249,15 @@ export default function DashboardPage() {
 
       {/* Charts and Budget */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stats && (
+        {stats && stats.by_provider.length > 0 && (
           <>
             <ProviderChart
-              data={stats.requests_by_provider}
+              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.count]))}
               title="Requests by Provider"
               type="requests"
             />
             <ProviderChart
-              data={stats.cost_by_provider}
+              data={Object.fromEntries(stats.by_provider.map(p => [p.provider, p.cost]))}
               title="Cost by Provider"
               type="cost"
             />

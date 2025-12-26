@@ -1,30 +1,39 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export interface Stats {
-  total_requests: number
-  total_cost_cents: number
-  total_tokens: number
-  cache_hits: number
-  cache_misses: number
-  avg_response_time_ms: number
-  requests_by_provider: Record<string, number>
-  cost_by_provider: Record<string, number>
+  overall: {
+    total_requests: number
+    total_cost: number
+    total_tokens_in: number
+    total_tokens_out: number
+    avg_cost_per_request: number
+  }
+  by_provider: Array<{ provider: string; count: number; cost: number }>
+  by_complexity: Array<{ complexity: string; count: number; cost: number }>
+  recent_requests: Array<{ timestamp: string; provider: string; cost: number }>
 }
 
 export interface CacheStats {
   total_entries: number
   total_hits: number
-  hit_rate: number
   avg_quality_score: number
-  storage_used_mb: number
+  cache_size_bytes: number
 }
 
 export interface RoutingMetrics {
   total_decisions: number
-  avg_confidence: number
-  accuracy_rate: number
-  decisions_by_provider: Record<string, number>
-  avg_complexity_by_provider: Record<string, number>
+  strategy_performance: Record<string, unknown>
+  confidence_distribution: { high: number; medium: number; low: number }
+  provider_usage: Record<string, number>
+  cost_savings: {
+    total_saved: number
+    percent_saved: number
+    intelligent_cost: number
+    baseline_cost: number
+    period_days: number
+  }
+  period_days: number
+  timestamp: string
 }
 
 export interface HealthStatus {
