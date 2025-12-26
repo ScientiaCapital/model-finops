@@ -1,5 +1,19 @@
 # CLAUDE.md - AI Cost Optimizer
 
+## Start Day Protocol
+
+When user says "start day":
+1. Read CLAUDE.md, TASK.md, PLANNING.md
+2. `git status` + `git log --oneline -5`
+3. List blockers and next 3 priorities
+
+**Quick Command:**
+```
+Load: workflow-enforcer + project-context-skill + planning-prompts
+```
+
+---
+
 ## 1. Project Status & Overview
 
 **Current Status**: Supabase Migration Complete! 🚀✨
@@ -745,3 +759,124 @@ The supabase-py library uses gotrue-py which requires httpx 0.27+ for the `proxy
 ### 🔑 Credentials Reference
 - **Docker Hub Username**: `tmk74`
 - **RunPod API Key**: In `.env` file
+
+---
+
+## 14. Session Progress - 2025-12-26 🎉
+
+### ✅ Full Monetization Implementation Complete!
+
+Today marks the completion of the entire Phase 1 & Phase 2 monetization system, transforming this from a technical demo into a revenue-ready SaaS product.
+
+### Phase 1: API Key Management System ✅
+1. **Database Schema** - `supabase/migrations/20241226000007_api_keys.sql`
+   - `api_keys` table with SHA-256 hashing, rate limits, permissions
+   - `api_key_usage` table for detailed per-request logging
+   - RLS policies for multi-tenant security
+   - Functions: `validate_api_key()`, `check_rate_limit()`
+
+2. **Pydantic Models** - `app/models/api_keys.py`
+   - CreateAPIKeyRequest/Response, APIKeyInfo, APIKeyUsageStats
+   - RevokeAPIKeyRequest/Response, RotateAPIKeyRequest/Response
+
+3. **Service Layer** - `app/services/api_key_service.py`
+   - Generates `sk-xxx` format keys with SHA-256 storage
+   - CRUD operations: create, list, revoke, rotate
+   - Rate limit checking and usage recording
+
+4. **Authentication Middleware** - `app/middleware/api_key_auth.py`
+   - Validates `X-API-Key` header on protected paths
+   - Lazy-loads services via `request.app.state`
+   - Rate limit enforcement before request processing
+   - Automatic usage recording after response
+
+5. **REST Endpoints** - `app/routers/api_keys.py`
+   - POST/GET `/api-keys` - Create and list keys
+   - GET `/api-keys/{id}` - Key details
+   - GET `/api-keys/{id}/usage` - Usage statistics
+   - POST `/api-keys/{id}/revoke` and `/api-keys/{id}/rotate`
+
+### Phase 2: Stripe Billing Integration ✅
+1. **Database Schema** - `migrations/supabase_stripe_billing.sql`
+   - `customers`, `subscriptions`, `usage_records`, `billing_events`, `invoices`
+   - `subscription_tier` ENUM: free, pro, business, enterprise
+   - `get_tier_limits()` function returning token limits per tier
+
+2. **Stripe Client Wrapper** - `app/billing/stripe_client.py`
+   - Async wrapper for Stripe API
+   - Customer, subscription, checkout, portal management
+   - Usage metering and webhook signature verification
+
+3. **Billing Service** - `app/services/billing_service.py`
+   - `get_or_create_customer()`, `create_checkout_session()`
+   - `sync_subscription_from_stripe()`, quota checking
+   - Token usage recording and enforcement
+
+4. **Webhook Handler** - `app/billing/webhook_handler.py`
+   - Idempotent event processing with audit logging
+   - Handles: checkout.session.completed, subscription events, invoice events
+   - Automatic subscription state synchronization
+
+5. **Quota Enforcement Middleware** - `app/middleware/quota_enforcement.py`
+   - Checks quota before `/chat`, `/complete`, `/v1/` endpoints
+   - Returns 429 with upgrade prompt when quota exceeded
+   - Fail-open error handling if services unavailable
+
+6. **REST Endpoints** - `app/routers/billing.py`
+   - POST `/billing/checkout` - Create Stripe checkout session
+   - POST `/billing/portal` - Customer self-service portal
+   - GET `/billing/subscription`, `/billing/usage`, `/billing/quota/check`
+   - GET `/billing/invoices` - Invoice history
+   - POST `/billing/webhook` - Stripe webhook receiver
+
+7. **Frontend Billing Page** - `frontend/app/billing/page.tsx`
+   - Usage display with progress bar
+   - Pricing tier comparison cards
+   - Upgrade buttons → Stripe Checkout
+   - Manage billing → Customer Portal
+
+### Integration Complete ✅
+- Added middleware to `app/main.py` (QuotaEnforcementMiddleware + APIKeyMiddleware)
+- Services stored in `app.state` for lazy-loading pattern
+- All routers included and endpoints functional
+
+### New Providers Added ✅
+- **GroqProvider** - Ultra-fast LPU inference (llama-3.3-70b-versatile default)
+- **TogetherAIProvider** - Fine-tuned model hosting (Unsloth, custom LoRAs)
+
+### 📁 Files Created (18 new files)
+```
+# Phase 1: API Keys
+supabase/migrations/20241226000007_api_keys.sql
+app/models/api_keys.py
+app/services/api_key_service.py
+app/middleware/api_key_auth.py
+app/routers/api_keys.py
+
+# Phase 2: Billing
+migrations/supabase_stripe_billing.sql
+app/billing/__init__.py
+app/billing/stripe_client.py
+app/billing/webhook_handler.py
+app/services/billing_service.py
+app/middleware/__init__.py
+app/middleware/quota_enforcement.py
+app/routers/billing.py
+frontend/app/billing/page.tsx
+frontend/components/BudgetStatus.tsx
+```
+
+### 💰 Pricing Tiers Implemented
+| Tier | Price | Monthly Tokens | Features |
+|------|-------|----------------|----------|
+| Free | $0 | 10,000 | Basic routing |
+| Pro | $49/mo | 1,000,000 | + A/B testing |
+| Business | $299/mo | 10,000,000 | + Priority routing |
+| Enterprise | Custom | Unlimited | + Dedicated support |
+
+### 📋 Next Steps
+1. Set up Stripe account and create price IDs
+2. Add environment variables: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, etc.
+3. Run billing migration in Supabase
+4. Deploy and test end-to-end billing flow
+5. Create marketing landing page with pricing
