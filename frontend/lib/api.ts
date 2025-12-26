@@ -30,9 +30,39 @@ export interface RoutingMetrics {
 export interface HealthStatus {
   status: string
   version: string
-  providers: string[]
-  cache_enabled: boolean
-  embedding_model: string
+  providers_available: string[]
+  routing_engine: string
+  auto_route_enabled: boolean
+}
+
+export interface BudgetStatusData {
+  user_id: string
+  current_spend: number
+  monthly_budget: number
+  percentage_used: number
+  remaining: number
+  days_in_month: number
+  days_remaining: number
+  daily_average: number
+  projected_monthly: number
+  threshold_alerts: Array<{
+    threshold: number
+    threshold_percentage: number
+    status: string
+  }>
+  status: 'healthy' | 'warning' | 'critical'
+}
+
+export interface BudgetConfig {
+  user_id: string
+  monthly_budget: number
+  alert_thresholds: number[]
+  alert_email: string | null
+  alert_webhook_url: string | null
+  slack_webhook_url: string | null
+  discord_webhook_url: string | null
+  alert_cooldown_minutes: number
+  enabled: boolean
 }
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -82,4 +112,43 @@ export async function getLearningStatus(): Promise<{
   accuracy: number | null
 }> {
   return fetchAPI('/admin/learning/status')
+}
+
+// Budget Management APIs
+export async function getBudgetStatus(): Promise<BudgetStatusData> {
+  return fetchAPI<BudgetStatusData>('/budget/status')
+}
+
+export async function getBudgetConfig(): Promise<BudgetConfig> {
+  return fetchAPI<BudgetConfig>('/budget/config')
+}
+
+export async function setBudgetConfig(config: Partial<BudgetConfig>): Promise<BudgetConfig> {
+  return fetchAPI<BudgetConfig>('/budget/config', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  })
+}
+
+export async function testBudgetWebhook(): Promise<{
+  success: boolean
+  channels_notified: string[]
+  message: string
+}> {
+  return fetchAPI('/budget/test-webhook', { method: 'POST' })
+}
+
+export async function getBudgetAlerts(limit = 50): Promise<{
+  alerts: Array<{
+    id: string
+    threshold_percentage: number
+    current_spend: number
+    monthly_budget: number
+    alert_channels: string[]
+    status: string
+    sent_at: string
+  }>
+  count: number
+}> {
+  return fetchAPI(`/budget/alerts?limit=${limit}`)
 }

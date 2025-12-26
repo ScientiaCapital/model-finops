@@ -27,6 +27,14 @@ from app.cache import create_redis_cache
 from app.routers import experiments
 from app.experiments.tracker import ExperimentTracker
 
+# Monetization imports
+from app.routers import api_keys, billing
+from app.routers.api_keys import init_api_key_service
+from app.routers.billing import init_billing_router
+from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
+from app.billing import StripeClient
+from app.services.billing_service import BillingService
+
 # Load environment variables
 load_dotenv()
 
@@ -53,6 +61,7 @@ async def lifespan(app: FastAPI):
     # Initialize Supabase client (singleton)
     from app.database import get_supabase_client
     supabase_client = get_supabase_client()
+    app.state.supabase_client = supabase_client  # Store for middleware access
     logger.info("✅ Supabase client initialized")
 
     # Warm up embedding generator (load ML model)
@@ -70,6 +79,40 @@ async def lifespan(app: FastAPI):
     from app.services.admin_service import get_admin_service
     get_admin_service(scheduler=scheduler)
     logger.info("✅ Admin service initialized")
+
+    # Initialize monetization services (API keys and billing)
+    stripe_api_key = os.getenv("STRIPE_SECRET_KEY")
+    stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+    if stripe_api_key:
+        # Initialize Stripe client
+        stripe_client = StripeClient(
+            api_key=stripe_api_key,
+            webhook_secret=stripe_webhook_secret,
+        )
+        logger.info("✅ Stripe client initialized")
+
+        # Initialize billing service
+        billing_service = BillingService(
+            stripe_client=stripe_client,
+            supabase_client=supabase_client,
+        )
+        logger.info("✅ Billing service initialized")
+
+        # Initialize routers with services
+        init_api_key_service(supabase_client)
+        init_billing_router(billing_service, stripe_client, supabase_client)
+        logger.info("✅ Monetization routers initialized (API keys + Billing)")
+
+        # Store billing_service for middleware access
+        app.state.billing_service = billing_service
+    else:
+        logger.warning("⚠️ STRIPE_SECRET_KEY not configured - billing disabled")
+        app.state.billing_service = None
+
+        # Still initialize API key service without Stripe
+        init_api_key_service(supabase_client)
+        logger.info("✅ API key service initialized (billing disabled)")
 
     logger.info("🎉 AI Cost Optimizer ready!")
 
@@ -120,8 +163,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add monetization middleware (lazy loading - services initialized in lifespan)
+# Note: Middleware is added in reverse order (last added = first executed)
+# Order: CORS → QuotaEnforcement → APIKeyAuth → Request Handler
+
+# Quota enforcement (blocks when monthly token limit exceeded)
+app.add_middleware(
+    QuotaEnforcementMiddleware,
+    protected_paths=["/chat", "/complete", "/v1/"],
+    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/billing", "/api-keys"],
+)
+
+# API key authentication (validates X-API-Key header, enforces rate limits)
+app.add_middleware(
+    APIKeyMiddleware,
+    protected_paths=["/v1/"],  # Only /v1/ prefix requires API key
+    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/billing/webhook"],
+)
+
 # Include routers
 app.include_router(experiments.router)
+app.include_router(api_keys.router)
+app.include_router(billing.router)
 
 # Initialize global components
 providers = init_providers()
@@ -236,7 +299,7 @@ async def health_check():
 @app.post("/complete", response_model=CompleteResponse)
 async def complete_prompt(
     request: CompleteRequest,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Route and complete a prompt using optimal provider with caching.
@@ -389,7 +452,7 @@ async def complete_prompt(
 
 @app.get("/stats", response_model=StatsResponse)
 async def get_usage_stats(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get usage statistics from database.
@@ -399,7 +462,7 @@ async def get_usage_stats(
         and recent request history
     """
     try:
-        stats = routing_service.cost_tracker.get_usage_stats()
+        stats = await routing_service.cost_tracker.get_usage_stats()
         return StatsResponse(**stats)
 
     except Exception as e:
@@ -440,7 +503,7 @@ async def list_providers():
 @app.get("/recommendation")
 async def get_recommendation(
     prompt: str,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get routing recommendation without executing request.
@@ -464,7 +527,7 @@ async def get_recommendation(
 
 @app.get("/routing/metrics")
 async def get_routing_metrics(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get auto-routing analytics for monitoring and ROI tracking with Redis caching.
@@ -523,7 +586,7 @@ async def get_routing_metrics(
 async def get_routing_decision(
     prompt: str,
     auto_route: bool = True,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get detailed routing explanation for debugging and transparency.
@@ -559,7 +622,7 @@ async def get_routing_decision(
 
 @app.get("/cache/stats")
 async def get_cache_stats(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get response cache statistics.
@@ -583,7 +646,7 @@ async def get_cache_stats(
 
 @app.get("/metrics-cache/stats")
 async def get_metrics_cache_stats(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get metrics cache performance statistics (Redis caching for /routing/metrics).
@@ -626,7 +689,7 @@ async def get_metrics_cache_stats(
 async def submit_feedback(
     request: FeedbackRequest,
     user_agent: Optional[str] = None,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Submit user feedback (thumbs up/down) for a cached response.
@@ -740,7 +803,7 @@ async def submit_production_feedback(
 
 @app.get("/quality/stats")
 async def get_quality_stats(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get quality statistics across all cached responses.
@@ -768,7 +831,7 @@ async def get_quality_stats(
 @app.get("/analytics/cache")
 async def get_cache_analytics(
     days: int = 7,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get comprehensive cache analytics for the cost optimization dashboard.
@@ -916,7 +979,7 @@ async def get_cache_analytics(
 @app.get("/analytics/costs")
 async def get_cost_analytics(
     days: int = 7,
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """
     Get comprehensive cost analytics for the optimization dashboard.
@@ -952,7 +1015,7 @@ async def get_cost_analytics(
     """
     try:
         # Get usage stats from cost tracker
-        stats = routing_service.cost_tracker.get_usage_stats()
+        stats = await routing_service.cost_tracker.get_usage_stats()
 
         # Get cache stats for savings calculation
         cache_stats = await routing_service.cost_tracker.get_cache_stats()
@@ -1013,7 +1076,7 @@ async def get_cost_analytics(
 
 @app.get("/insights")
 async def get_learning_insights(
-    user_id: Optional[str] = OptionalAuth()
+    user_id: Optional[str] = Depends(OptionalAuth())
 ):
     """Get intelligent routing insights from learning module.
 
@@ -1109,6 +1172,184 @@ async def get_performance_trends(
         pattern=pattern,
         trends=trends
     )
+
+
+# ============================================================================
+# BUDGET ALERTING ENDPOINTS
+# ============================================================================
+
+class BudgetConfigRequest(BaseModel):
+    """Request model for budget configuration."""
+    monthly_budget: float = Field(..., gt=0, description="Monthly budget in USD")
+    alert_thresholds: Optional[List[float]] = Field(
+        default=[0.5, 0.8, 0.9],
+        description="Alert thresholds as percentages (0.0-1.0)"
+    )
+    alert_email: Optional[str] = Field(None, description="Email for alerts")
+    alert_webhook_url: Optional[str] = Field(None, description="Custom webhook URL")
+    slack_webhook_url: Optional[str] = Field(None, description="Slack webhook URL")
+    discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL")
+    alert_cooldown_minutes: int = Field(60, ge=1, description="Cooldown between alerts")
+
+
+class BudgetConfigResponse(BaseModel):
+    """Response model for budget configuration."""
+    user_id: str
+    monthly_budget: float
+    alert_thresholds: List[float]
+    alert_email: Optional[str]
+    alert_webhook_url: Optional[str]
+    slack_webhook_url: Optional[str]
+    discord_webhook_url: Optional[str]
+    alert_cooldown_minutes: int
+    enabled: bool
+
+
+class BudgetStatusResponse(BaseModel):
+    """Response model for budget status."""
+    user_id: str
+    current_spend: float
+    monthly_budget: float
+    percentage_used: float
+    remaining: float
+    days_in_month: int
+    days_remaining: int
+    daily_average: float
+    projected_monthly: float
+    threshold_alerts: List[dict]
+    status: str  # "healthy", "warning", "critical"
+
+
+@app.get("/budget/config", response_model=BudgetConfigResponse)
+async def get_budget_config(
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Get user's budget configuration."""
+    from app.services.budget_alerting import get_budget_service
+
+    service = get_budget_service()
+    config = await service.get_budget_config(current_user_id)
+
+    if not config:
+        raise HTTPException(status_code=404, detail="No budget configuration found")
+
+    return BudgetConfigResponse(
+        user_id=config.user_id,
+        monthly_budget=config.monthly_budget,
+        alert_thresholds=config.alert_thresholds,
+        alert_email=config.alert_email,
+        alert_webhook_url=config.alert_webhook_url,
+        slack_webhook_url=config.slack_webhook_url,
+        discord_webhook_url=config.discord_webhook_url,
+        alert_cooldown_minutes=config.alert_cooldown_minutes,
+        enabled=config.enabled,
+    )
+
+
+@app.post("/budget/config", response_model=BudgetConfigResponse)
+async def set_budget_config(
+    request: BudgetConfigRequest,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Create or update budget configuration."""
+    from app.services.budget_alerting import get_budget_service
+
+    service = get_budget_service()
+    config = await service.set_budget_config(
+        user_id=current_user_id,
+        monthly_budget=request.monthly_budget,
+        alert_thresholds=request.alert_thresholds,
+        alert_email=request.alert_email,
+        alert_webhook_url=request.alert_webhook_url,
+        slack_webhook_url=request.slack_webhook_url,
+        discord_webhook_url=request.discord_webhook_url,
+        alert_cooldown_minutes=request.alert_cooldown_minutes,
+    )
+
+    return BudgetConfigResponse(
+        user_id=config.user_id,
+        monthly_budget=config.monthly_budget,
+        alert_thresholds=config.alert_thresholds,
+        alert_email=config.alert_email,
+        alert_webhook_url=config.alert_webhook_url,
+        slack_webhook_url=config.slack_webhook_url,
+        discord_webhook_url=config.discord_webhook_url,
+        alert_cooldown_minutes=config.alert_cooldown_minutes,
+        enabled=config.enabled,
+    )
+
+
+@app.get("/budget/status", response_model=BudgetStatusResponse)
+async def get_budget_status(
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Get current budget status with projections."""
+    from app.services.budget_alerting import get_budget_service
+
+    service = get_budget_service()
+    status = await service.get_budget_status(current_user_id)
+
+    if not status:
+        raise HTTPException(status_code=404, detail="No budget configuration found")
+
+    # Determine status level
+    if status.percentage_used >= 90:
+        level = "critical"
+    elif status.percentage_used >= 80:
+        level = "warning"
+    else:
+        level = "healthy"
+
+    return BudgetStatusResponse(
+        user_id=status.user_id,
+        current_spend=status.current_spend,
+        monthly_budget=status.monthly_budget,
+        percentage_used=status.percentage_used,
+        remaining=status.remaining,
+        days_in_month=status.days_in_month,
+        days_remaining=status.days_remaining,
+        daily_average=status.daily_average,
+        projected_monthly=status.projected_monthly,
+        threshold_alerts=status.threshold_alerts,
+        status=level,
+    )
+
+
+@app.get("/budget/alerts")
+async def get_budget_alerts(
+    limit: int = 50,
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Get user's budget alert history."""
+    from app.services.budget_alerting import get_budget_service
+
+    service = get_budget_service()
+    alerts = await service.get_alert_history(current_user_id, limit=limit)
+
+    return {"alerts": alerts, "count": len(alerts)}
+
+
+@app.post("/budget/test-webhook")
+async def test_budget_webhook(
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """Send a test alert to configured webhooks."""
+    from app.services.budget_alerting import get_budget_service
+
+    service = get_budget_service()
+    config = await service.get_budget_config(current_user_id)
+
+    if not config:
+        raise HTTPException(status_code=404, detail="No budget configuration found")
+
+    # Send test alert at 50% threshold
+    channels = await service._send_alert(config, 0.5, config.monthly_budget * 0.5)
+
+    return {
+        "success": True,
+        "channels_notified": channels,
+        "message": f"Test alert sent to {len(channels)} channel(s)"
+    }
 
 
 # ============================================================================
