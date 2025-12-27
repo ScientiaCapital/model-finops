@@ -161,3 +161,202 @@ export async function getBudgetAlerts(limit = 50): Promise<{
 }> {
   return fetchAPI(`/budget/alerts?limit=${limit}`)
 }
+
+// ==========================================
+// Arbitrage APIs (Sprint Dec 27)
+// ==========================================
+
+export interface ArbitrageOpportunity {
+  id: string
+  current_model: string
+  current_provider: string
+  alternative_model: string
+  alternative_provider: string
+  current_cost: number
+  alternative_cost: number
+  savings_percent: number
+  quality_score: number
+  required_capabilities: string[]
+}
+
+export interface ArbitrageAnalysisResponse {
+  request_id: string
+  current_model: string
+  current_cost: number
+  opportunities: ArbitrageOpportunity[]
+  max_savings_percent: number
+  recommendation: ArbitrageOpportunity | null
+  analyzed_at: string
+}
+
+export interface ModelProfile {
+  provider: string
+  model_id: string
+  capabilities: Record<string, string>
+  input_price_per_million: number
+  output_price_per_million: number
+  context_window: number
+  avg_latency_ms: number | null
+}
+
+export interface SavingsReport {
+  total_potential_savings: number
+  actual_savings: number
+  opportunities_found: number
+  opportunities_applied: number
+  savings_rate: number
+}
+
+export async function analyzePromptArbitrage(
+  prompt: string,
+  currentModel: string,
+  inputTokens?: number,
+  outputTokens?: number
+): Promise<ArbitrageAnalysisResponse> {
+  return fetchAPI<ArbitrageAnalysisResponse>('/arbitrage/analyze', {
+    method: 'POST',
+    body: JSON.stringify({
+      prompt,
+      current_model: currentModel,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    }),
+  })
+}
+
+export async function getArbitrageOpportunities(limit = 20): Promise<ArbitrageOpportunity[]> {
+  return fetchAPI<ArbitrageOpportunity[]>(`/arbitrage/opportunities?limit=${limit}`)
+}
+
+export async function getArbitrageSavingsReport(days = 30): Promise<SavingsReport> {
+  return fetchAPI<SavingsReport>(`/arbitrage/savings-report?days=${days}`)
+}
+
+export async function getAllModels(): Promise<ModelProfile[]> {
+  return fetchAPI<ModelProfile[]>('/arbitrage/models')
+}
+
+export async function getModelAlternatives(modelId: string): Promise<ModelProfile[]> {
+  return fetchAPI<ModelProfile[]>(`/arbitrage/models/${encodeURIComponent(modelId)}/alternatives`)
+}
+
+export async function getCheapestModel(capability: string, minLevel?: string): Promise<ModelProfile> {
+  const params = minLevel ? `?min_level=${minLevel}` : ''
+  return fetchAPI<ModelProfile>(`/arbitrage/cheapest/${capability}${params}`)
+}
+
+// ==========================================
+// Forecasting APIs (Sprint Dec 27)
+// ==========================================
+
+export interface DailyForecast {
+  date: string
+  predicted_cost: number
+  lower_bound: number
+  upper_bound: number
+}
+
+export interface ForecastResponse {
+  user_id: string
+  generated_at: string
+  horizon_days: number
+  method_used: string
+  data_points_used: number
+  total_predicted_cost: number
+  daily_forecasts: DailyForecast[]
+  confidence_level: number
+  model_quality_score: number | null
+  provider: string | null
+}
+
+export interface CostAnomaly {
+  id: string
+  anomaly_date: string
+  actual_cost: number
+  expected_cost: number
+  deviation_percent: number
+  z_score: number
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  acknowledged: boolean
+  acknowledged_at: string | null
+  notes: string | null
+}
+
+export interface AnomalyListResponse {
+  anomalies: CostAnomaly[]
+  total_count: number
+  unacknowledged_count: number
+}
+
+export interface BudgetExhaustionResponse {
+  user_id: string
+  monthly_budget: number
+  current_spend: number
+  percentage_used: number
+  daily_burn_rate: number
+  projected_exhaustion_date: string | null
+  days_until_exhaustion: number | null
+  confidence_percentage: number
+  warning_level: 'safe' | 'caution' | 'warning' | 'critical'
+  recommendation: string
+}
+
+export interface ForecastSummaryResponse {
+  aggregate: ForecastResponse
+  by_provider: ForecastResponse[]
+  budget_projection: BudgetExhaustionResponse
+  recent_anomalies: CostAnomaly[]
+}
+
+export async function getForecast(
+  horizonDays = 7,
+  provider?: string,
+  includeConfidence = true
+): Promise<ForecastResponse> {
+  const params = new URLSearchParams({
+    horizon_days: horizonDays.toString(),
+    include_confidence: includeConfidence.toString(),
+  })
+  if (provider) params.set('provider', provider)
+  return fetchAPI<ForecastResponse>(`/forecasting/predict?${params}`)
+}
+
+export async function getForecastSummary(monthlyBudget: number): Promise<ForecastSummaryResponse> {
+  return fetchAPI<ForecastSummaryResponse>(`/forecasting/summary?monthly_budget=${monthlyBudget}`)
+}
+
+export async function getAnomalies(
+  lookbackDays = 30,
+  sensitivity = 2.0
+): Promise<AnomalyListResponse> {
+  return fetchAPI<AnomalyListResponse>(
+    `/forecasting/anomalies?lookback_days=${lookbackDays}&sensitivity=${sensitivity}`
+  )
+}
+
+export async function acknowledgeAnomaly(
+  anomalyId: string,
+  notes?: string
+): Promise<{ status: string; anomaly_id: string }> {
+  return fetchAPI(`/forecasting/anomalies/${anomalyId}/acknowledge`, {
+    method: 'POST',
+    body: JSON.stringify({ notes }),
+  })
+}
+
+export async function getBudgetExhaustion(monthlyBudget: number): Promise<BudgetExhaustionResponse> {
+  return fetchAPI<BudgetExhaustionResponse>(`/forecasting/budget-exhaustion?monthly_budget=${monthlyBudget}`)
+}
+
+export async function getForecastingHealth(): Promise<{
+  status: string
+  service: string
+  capabilities: {
+    forecast_methods: string[]
+    max_horizon_days: number
+    anomaly_detection: boolean
+    budget_projection: boolean
+  }
+}> {
+  return fetchAPI('/forecasting/health')
+}
