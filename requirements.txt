@@ -50,5 +50,5 @@ torch>=2.0.0  # Required by sentence-transformers
 scipy>=1.6.0
 numpy>=1.16.5
 
-# Scientia Capital core infrastructure
-lang-core @ git+https://github.com/ScientiaCapital/lang-core.git
+# Scientia Capital core infrastructure (optional - install separately if needed)
+# lang-core @ git+https://github.com/ScientiaCapital/lang-core.git
