@@ -106,3 +106,4 @@ artifacts/
 .worktrees/
 CLAUDE.md
 LICENSE.md
+.serena/
