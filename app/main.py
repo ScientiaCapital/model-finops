@@ -29,6 +29,9 @@ from app.experiments.tracker import ExperimentTracker
 
 # Monetization imports
 from app.routers import api_keys, billing, enterprise
+
+# New feature imports (Sprint Dec 27)
+from app.routers import arbitrage, forecasting
 from app.routers.api_keys import init_api_key_service
 from app.routers.billing import init_billing_router
 from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
@@ -186,6 +189,10 @@ app.include_router(experiments.router)
 app.include_router(api_keys.router)
 app.include_router(billing.router)
 app.include_router(enterprise.router)
+
+# Sprint Dec 27 feature routers
+app.include_router(arbitrage.router)
+app.include_router(forecasting.router)
 
 # Initialize global components
 providers = init_providers()

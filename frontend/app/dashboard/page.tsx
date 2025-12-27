@@ -6,6 +6,9 @@ import { ProviderChart } from '@/components/ProviderChart'
 import { RecentRequests } from '@/components/RecentRequests'
 import { RealtimeIndicator } from '@/components/RealtimeIndicator'
 import { BudgetStatus } from '@/components/BudgetStatus'
+import { ArbitrageOpportunities } from '@/components/ArbitrageOpportunities'
+import { ForecastChart } from '@/components/ForecastChart'
+import { AnomalyAlerts } from '@/components/AnomalyAlerts'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,11 +18,22 @@ import {
   getRoutingMetrics,
   getHealth,
   getBudgetStatus,
+  getArbitrageOpportunities,
+  getArbitrageSavingsReport,
+  getForecast,
+  getBudgetExhaustion,
+  getAnomalies,
+  acknowledgeAnomaly,
   type Stats,
   type CacheStats,
   type RoutingMetrics,
   type HealthStatus,
   type BudgetStatusData,
+  type ArbitrageOpportunity,
+  type SavingsReport,
+  type ForecastResponse,
+  type BudgetExhaustionResponse,
+  type CostAnomaly,
 } from '@/lib/api'
 import { useRealtimeMetrics } from '@/hooks/useRealtimeMetrics'
 import {
@@ -39,6 +53,12 @@ export default function DashboardPage() {
   const [routingMetrics, setRoutingMetrics] = useState<RoutingMetrics | null>(null)
   const [health, setHealth] = useState<HealthStatus | null>(null)
   const [budgetStatus, setBudgetStatus] = useState<BudgetStatusData | null>(null)
+  // New Sprint Dec 27 features
+  const [arbitrageOpportunities, setArbitrageOpportunities] = useState<ArbitrageOpportunity[]>([])
+  const [savingsReport, setSavingsReport] = useState<SavingsReport | null>(null)
+  const [forecast, setForecast] = useState<ForecastResponse | null>(null)
+  const [budgetExhaustion, setBudgetExhaustion] = useState<BudgetExhaustionResponse | null>(null)
+  const [anomalies, setAnomalies] = useState<CostAnomaly[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
@@ -68,26 +88,54 @@ export default function DashboardPage() {
       setLoading(true)
       setError(null)
 
-      const [statsData, cacheData, routingData, healthData, budgetData] = await Promise.all([
+      // Fetch core metrics and new Sprint Dec 27 features in parallel
+      const [
+        statsData, cacheData, routingData, healthData, budgetData,
+        arbitrageData, savingsData, forecastData, exhaustionData, anomalyData
+      ] = await Promise.all([
         getStats().catch(() => null),
         getCacheStats().catch(() => null),
         getRoutingMetrics().catch(() => null),
         getHealth().catch(() => null),
         getBudgetStatus().catch(() => null),
+        // Sprint Dec 27 features
+        getArbitrageOpportunities(10).catch(() => []),
+        getArbitrageSavingsReport(30).catch(() => null),
+        getForecast(7).catch(() => null),
+        getBudgetExhaustion(budgetStatus?.monthly_budget || 100).catch(() => null),
+        getAnomalies(30, 2.0).catch(() => ({ anomalies: [] })),
       ])
 
-      console.log('[Dashboard] Data fetched:', { statsData, cacheData, healthData })
+      console.log('[Dashboard] Data fetched:', { statsData, cacheData, healthData, arbitrageData, forecastData })
       setStats(statsData)
       setCacheStats(cacheData)
       setRoutingMetrics(routingData)
       setHealth(healthData)
       setBudgetStatus(budgetData)
+      // Sprint Dec 27 features
+      setArbitrageOpportunities(arbitrageData || [])
+      setSavingsReport(savingsData)
+      setForecast(forecastData)
+      setBudgetExhaustion(exhaustionData)
+      setAnomalies(anomalyData?.anomalies || [])
       setLastUpdated(new Date())
     } catch (err) {
       console.error('[Dashboard] Fetch error:', err)
       setError('Failed to fetch data. Is the API server running?')
     } finally {
       setLoading(false)
+    }
+  }, [budgetStatus?.monthly_budget])
+
+  // Handler to acknowledge anomalies
+  const handleAcknowledgeAnomaly = useCallback(async (anomalyId: string) => {
+    try {
+      await acknowledgeAnomaly(anomalyId, 'Acknowledged from dashboard')
+      setAnomalies(prev => prev.map(a =>
+        a.id === anomalyId ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() } : a
+      ))
+    } catch (err) {
+      console.error('[Dashboard] Failed to acknowledge anomaly:', err)
     }
   }, [])
 
@@ -239,13 +287,13 @@ export default function DashboardPage() {
           icon={Database}
         />
         <MetricsCard
-          title="Avg Confidence"
+          title="High Confidence"
           value={
             routingMetrics
-              ? `${(routingMetrics.avg_confidence * 100).toFixed(0)}%`
+              ? `${routingMetrics.confidence_distribution.high}%`
               : 'N/A'
           }
-          description="Routing confidence"
+          description="High confidence decisions"
           icon={Brain}
         />
       </div>
@@ -279,15 +327,77 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Sprint Dec 27: Cost Intelligence Features */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Brain className="h-5 w-5 text-purple-500" />
+          Cost Intelligence (Sprint Dec 27)
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Arbitrage Opportunities */}
+          <ArbitrageOpportunities
+            opportunities={arbitrageOpportunities}
+            loading={loading}
+          />
+
+          {/* Cost Forecast */}
+          <ForecastChart
+            forecast={forecast}
+            budgetExhaustion={budgetExhaustion}
+            loading={loading}
+          />
+
+          {/* Anomaly Alerts */}
+          <AnomalyAlerts
+            anomalies={anomalies}
+            onAcknowledge={handleAcknowledgeAnomaly}
+            loading={loading}
+          />
+        </div>
+
+        {/* Savings Report Summary */}
+        {savingsReport && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Potential Savings</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    ${savingsReport.total_potential_savings.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Actual Savings</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    ${savingsReport.actual_savings.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Opportunities Found</p>
+                  <p className="text-2xl font-bold">{savingsReport.opportunities_found}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Savings Rate</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {(savingsReport.savings_rate * 100).toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Recent Activity - Now with real-time data */}
       <RecentRequests
         requests={realtimeStats.recentMetrics.map((m) => ({
           id: m.id,
-          prompt: `${m.selected_provider} request`,
+          prompt_text: `${m.selected_provider} request`,
           provider: m.selected_provider,
-          tokens: 0,
-          responseTime: m.response_time_ms,
-          timestamp: m.created_at,
+          tokens_used: 0,
+          cost_cents: Math.round((m.cost_usd || 0) * 100),
+          response_time_ms: m.response_time_ms,
+          created_at: m.created_at,
         }))}
       />
     </div>
