@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 import asyncio
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
@@ -190,8 +190,8 @@ def mock_jwt_token(test_jwt_secret, test_user_id):
         "sub": test_user_id,  # Supabase user ID
         "email": "test@example.com",
         "aud": "authenticated",
-        "exp": datetime.utcnow() + timedelta(hours=1),
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        "iat": datetime.now(timezone.utc),
     }
     token = jwt.encode(payload, test_jwt_secret, algorithm="HS256")
     return token

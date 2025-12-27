@@ -28,7 +28,7 @@ from app.routers import experiments
 from app.experiments.tracker import ExperimentTracker
 
 # Monetization imports
-from app.routers import api_keys, billing
+from app.routers import api_keys, billing, enterprise
 from app.routers.api_keys import init_api_key_service
 from app.routers.billing import init_billing_router
 from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
@@ -185,6 +185,7 @@ app.add_middleware(
 app.include_router(experiments.router)
 app.include_router(api_keys.router)
 app.include_router(billing.router)
+app.include_router(enterprise.router)
 
 # Initialize global components
 providers = init_providers()

@@ -1,7 +1,7 @@
 """Admin service for feedback and learning analytics using Supabase."""
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database.supabase_client import get_supabase_client
 
@@ -344,7 +344,7 @@ class AsyncAdminService:
                 'sample_count': int(stats.get('count', 0)),
                 'confidence_level': confidence,
                 'retraining_run_id': run_id,
-                'updated_at': datetime.utcnow().isoformat()
+                'updated_at': datetime.now(timezone.utc).isoformat()
             }
 
             # Use admin client to bypass RLS (learning is global)
@@ -416,7 +416,7 @@ class AsyncAdminService:
             # Insert feedback
             feedback_data = {
                 'request_id': request_id,
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'quality_score': normalized_quality,
                 'is_correct': bool(is_correct),
                 'is_helpful': bool(is_helpful) if is_helpful is not None else None,

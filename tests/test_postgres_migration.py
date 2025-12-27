@@ -1,15 +1,15 @@
-"""Tests for PostgreSQL migration to feedback tables."""
+"""Tests for PostgreSQL migration to feedback tables.
+
+DEPRECATED: This test file is for the old PostgreSQL migration approach.
+The project has migrated to Supabase. These tests are kept for reference only.
+"""
 import os
 import pytest
-import psycopg2
-from alembic import command
-from alembic.config import Config
 
-
-# Mark all tests in this module as requiring PostgreSQL
-pytestmark = pytest.mark.skipif(
-    not os.getenv('TEST_DATABASE_URL'),
-    reason="PostgreSQL tests require TEST_DATABASE_URL environment variable"
+# Skip this entire module - Supabase migration complete
+pytest.skip(
+    "PostgreSQL migration tests deprecated - using Supabase now",
+    allow_module_level=True
 )
 
 TEST_DB_URL = os.getenv(

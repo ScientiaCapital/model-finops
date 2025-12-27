@@ -73,6 +73,23 @@ class SupabaseClient:
         self.client.auth.sign_out()
         logger.debug("User context cleared")
 
+    def table(self, table_name: str):
+        """
+        Get a table reference for direct operations.
+
+        Uses admin client (bypasses RLS) if available, otherwise uses user client.
+        This provides backwards compatibility with code using raw supabase-py interface.
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            Table query builder from supabase-py
+        """
+        if self.admin_client:
+            return self.admin_client.table(table_name)
+        return self.client.table(table_name)
+
     # ==================== QUERY HELPERS ====================
 
     async def insert(

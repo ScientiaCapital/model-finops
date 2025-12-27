@@ -20,7 +20,7 @@ Edge Cases Covered:
 
 import pytest
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
@@ -140,7 +140,7 @@ class TestMetadataFiltering:
     def test_age_filter_hours_calculation(self):
         """Test that age filtering correctly calculates time bounds."""
         max_age_hours = 24
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cutoff = now - timedelta(hours=max_age_hours)
 
         # Entry created 23 hours ago should pass
