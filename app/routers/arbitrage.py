@@ -6,7 +6,7 @@ Provides endpoints for model arbitrage detection and cost optimization.
 import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth import get_current_user_id
 from app.models.arbitrage import (
@@ -28,10 +28,10 @@ router = APIRouter(
 )
 
 
-def get_arbitrage_service() -> ArbitrageService:
-    """Dependency to get arbitrage service instance."""
-    # TODO: Inject Supabase client when available
-    return ArbitrageService()
+def get_arbitrage_service(request: Request) -> ArbitrageService:
+    """Dependency to get arbitrage service instance with Supabase client."""
+    supabase_client = getattr(request.app.state, "supabase_client", None)
+    return ArbitrageService(supabase_client=supabase_client)
 
 
 @router.post("/analyze", response_model=ArbitrageAnalysisResponse)
@@ -50,7 +50,7 @@ async def analyze_prompt(
         ArbitrageAnalysisResponse with opportunities and recommendations
     """
     try:
-        response = service.analyze_prompt(
+        response = await service.analyze_prompt(
             prompt=request.prompt,
             current_model=request.current_model,
             user_id=user_id,

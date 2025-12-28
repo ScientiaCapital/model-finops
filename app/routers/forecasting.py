@@ -6,7 +6,7 @@ Provides endpoints for cost forecasting, anomaly detection, and budget projectio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth import get_current_user_id
 from app.models.forecasting import (
@@ -28,10 +28,10 @@ router = APIRouter(
 )
 
 
-def get_forecasting_service() -> ForecastingService:
-    """Dependency to get forecasting service instance."""
-    # TODO: Inject Supabase client when available
-    return ForecastingService()
+def get_forecasting_service(request: Request) -> ForecastingService:
+    """Dependency to get forecasting service instance with Supabase client."""
+    supabase_client = getattr(request.app.state, "supabase_client", None)
+    return ForecastingService(supabase_client=supabase_client)
 
 
 @router.get("/predict", response_model=ForecastResponse)
