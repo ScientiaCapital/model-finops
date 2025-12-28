@@ -277,8 +277,8 @@ class NaiveForecaster(BaseForecaster):
         last_value = data[-1]
         predictions = np.full(horizon, last_value)
 
-        # Wide uncertainty bounds (50% of value)
-        uncertainty = last_value * 0.5 if last_value > 0 else 1.0
+        # Wide uncertainty bounds (50% of value, or small epsilon for zero)
+        uncertainty = last_value * 0.5 if last_value > 0 else 0.01
 
         # Bounds widen with horizon
         widening = 1 + np.arange(horizon) * 0.1

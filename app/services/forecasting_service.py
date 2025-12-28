@@ -421,11 +421,11 @@ class ForecastingService:
 
     def _z_score_to_severity(self, z: float) -> AnomalySeverity:
         """Convert Z-score to severity level."""
-        if z > 4.0:
+        if z >= 4.0:
             return AnomalySeverity.CRITICAL
-        elif z > 3.0:
+        elif z >= 3.0:
             return AnomalySeverity.HIGH
-        elif z > 2.5:
+        elif z >= 2.5:
             return AnomalySeverity.MEDIUM
         else:
             return AnomalySeverity.LOW
@@ -436,10 +436,23 @@ class ForecastingService:
         days_until: Optional[int],
         days_remaining: int,
     ) -> tuple:
-        """Determine budget warning level and recommendation."""
+        """Determine budget warning level and recommendation.
+
+        Priority order:
+        1. Budget exhausted (100%+) - always critical
+        2. Percentage thresholds (90%, 75%) - static limits
+        3. Projection thresholds - dynamic based on burn rate
+        """
         if percentage_used >= 100:
             return "critical", "Budget exhausted! Consider reducing usage or increasing budget."
 
+        # Check percentage thresholds FIRST (static limits take priority)
+        if percentage_used >= 90:
+            return "critical", "Over 90% of budget used. Immediate action needed."
+        if percentage_used >= 75:
+            return "warning", "Budget 75% used. Consider optimizing usage."
+
+        # Then check projection (dynamic burn rate)
         if days_until is not None and days_until < days_remaining:
             if days_until <= 3:
                 return "critical", f"Budget will exhaust in {days_until} days at current rate."
@@ -447,10 +460,5 @@ class ForecastingService:
                 return "warning", f"Budget projected to exhaust in {days_until} days."
             elif days_until <= 14:
                 return "caution", f"Budget may exhaust before month end ({days_until} days)."
-
-        if percentage_used >= 90:
-            return "warning", "Over 90% of budget used. Monitor closely."
-        elif percentage_used >= 75:
-            return "caution", "Budget 75% used. Consider optimizing usage."
 
         return "safe", "Budget on track for the month."

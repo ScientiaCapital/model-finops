@@ -40,7 +40,7 @@ class ArbitrageService:
         self.supabase = supabase_client
         self._quality_threshold = 0.85  # Minimum quality score for alternatives
 
-    def analyze_prompt(
+    async def analyze_prompt(
         self,
         prompt: str,
         current_model: str,
@@ -139,7 +139,7 @@ class ArbitrageService:
 
         # Log opportunity for tracking
         if opportunities and user_id and self.supabase:
-            self._log_opportunity(user_id, response)
+            await self._log_opportunity(user_id, response)
 
         return response
 
