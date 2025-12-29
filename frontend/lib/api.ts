@@ -360,3 +360,325 @@ export async function getForecastingHealth(): Promise<{
 }> {
   return fetchAPI('/forecasting/health')
 }
+
+// ==========================================
+// Provider Status APIs (API Setup Wizard)
+// ==========================================
+
+export type ProviderStatus = 'connected' | 'invalid' | 'not_configured' | 'error'
+
+export interface ProviderInfo {
+  name: string
+  display_name: string
+  status: ProviderStatus
+  message: string
+  category: string
+  setup_url: string
+  models_available: number | null
+  env_vars: string[]
+}
+
+export interface ProvidersStatusResponse {
+  providers: ProviderInfo[]
+  summary: {
+    connected: number
+    configured: number
+    not_configured: number
+    total: number
+  }
+  setup_progress: number
+}
+
+export interface SetupLink {
+  provider: string
+  display_name: string
+  category: string
+  setup_url: string
+  env_vars: string[]
+  instructions: string
+}
+
+export interface ValidateKeyRequest {
+  provider: string
+  api_key: string
+}
+
+export interface ValidateKeyResponse {
+  valid: boolean
+  message: string
+  models_available: number | null
+}
+
+export interface ProviderCategories {
+  categories: string[]
+  providers_by_category: Record<string, string[]>
+}
+
+export async function getProvidersStatus(): Promise<ProvidersStatusResponse> {
+  return fetchAPI<ProvidersStatusResponse>('/api/status/providers')
+}
+
+export async function getProviderStatus(provider: string): Promise<ProviderInfo> {
+  return fetchAPI<ProviderInfo>(`/api/status/providers/${provider}`)
+}
+
+export async function validateApiKey(request: ValidateKeyRequest): Promise<ValidateKeyResponse> {
+  return fetchAPI<ValidateKeyResponse>('/api/status/validate', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function getSetupLinks(category?: string): Promise<SetupLink[]> {
+  const params = category ? `?category=${encodeURIComponent(category)}` : ''
+  return fetchAPI<SetupLink[]>(`/api/status/setup-links${params}`)
+}
+
+export async function getProviderCategories(): Promise<ProviderCategories> {
+  return fetchAPI<ProviderCategories>('/api/status/categories')
+}
+
+// ==========================================
+// Enterprise APIs
+// ==========================================
+
+export interface Organization {
+  id: string
+  name: string
+  domain: string | null
+  plan: string
+  settings: Record<string, unknown>
+  created_at: string
+  updated_at: string | null
+}
+
+export interface Employee {
+  id: string
+  org_id: string
+  dept_id: string | null
+  email: string
+  name: string | null
+  role: string
+  personal_email: string | null
+  personal_linked_at: string | null
+  personal_consent: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string | null
+}
+
+export interface EmployeeWithUsage extends Employee {
+  usage?: EmployeeSpendSummary
+  department_name?: string
+}
+
+export interface EmployeeSpendSummary {
+  employee_name: string | null
+  email: string
+  work_spend_usd: number
+  personal_spend_usd: number
+  total_spend_usd: number
+}
+
+export interface DepartmentSpendSummary {
+  department_name: string
+  total_spend_usd: number
+  budget_usd: number | null
+  budget_percent: number
+  employee_count: number
+  top_provider: string | null
+}
+
+export interface ComplianceAlert {
+  id: string
+  org_id: string
+  employee_id: string | null
+  dept_id: string | null
+  alert_type: string
+  severity: string
+  provider: string | null
+  model: string | null
+  title: string
+  message: string
+  details: Record<string, unknown>
+  resolved: boolean
+  resolved_by: string | null
+  resolved_at: string | null
+  resolution_notes: string | null
+  created_at: string
+}
+
+export interface LinkPersonalAccountRequest {
+  personal_email: string
+  consent_given: boolean
+}
+
+export async function getOrganizations(): Promise<Organization[]> {
+  // Note: In production this would list orgs the user has access to
+  // For now, we'll implement a single org detail endpoint
+  return fetchAPI<Organization[]>('/api/enterprise/organizations')
+}
+
+export async function getOrganization(orgId: string): Promise<Organization> {
+  return fetchAPI<Organization>(`/api/enterprise/organizations/${orgId}`)
+}
+
+export async function getEmployees(orgId: string): Promise<Employee[]> {
+  return fetchAPI<Employee[]>(`/api/enterprise/organizations/${orgId}/employees`)
+}
+
+export async function getEmployeeUsage(employeeId: string): Promise<EmployeeSpendSummary> {
+  return fetchAPI<EmployeeSpendSummary>(`/api/enterprise/employees/${employeeId}/usage`)
+}
+
+export async function getDepartmentSpend(_orgId: string): Promise<DepartmentSpendSummary[]> {
+  const response = await fetchAPI<{ departments: DepartmentSpendSummary[] }>(
+    `/api/enterprise/org/spend-by-department`
+  )
+  return response.departments
+}
+
+export async function getComplianceAlerts(
+  orgId: string,
+  options?: { resolved?: boolean; alert_type?: string; limit?: number }
+): Promise<ComplianceAlert[]> {
+  const params = new URLSearchParams()
+  if (options?.resolved !== undefined) params.set('resolved', String(options.resolved))
+  if (options?.alert_type) params.set('alert_type', options.alert_type)
+  if (options?.limit) params.set('limit', String(options.limit))
+
+  const response = await fetchAPI<{ alerts: ComplianceAlert[] }>(
+    `/api/enterprise/compliance/alerts?${params}`
+  )
+  return response.alerts
+}
+
+export async function linkPersonalAccount(
+  employeeId: string,
+  data: LinkPersonalAccountRequest
+): Promise<Employee> {
+  return fetchAPI<Employee>(`/api/enterprise/employees/me/link-personal`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function resolveComplianceAlert(
+  alertId: string,
+  notes?: string
+): Promise<ComplianceAlert> {
+  return fetchAPI<ComplianceAlert>(
+    `/api/enterprise/compliance/alerts/${alertId}/resolve`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ resolution_notes: notes }),
+    }
+  )
+}
+
+// ==========================================
+// Subscription Tracking APIs
+// ==========================================
+
+export type SubscriptionStatus = 'active' | 'trial' | 'cancelled' | 'paused' | 'past_due'
+export type SubscriptionCategory = 'LLM Providers' | 'Voice AI (TTS)' | 'Voice AI (STT)' | 'Infrastructure' | 'AI Media' | 'Observability' | 'Billing' | 'Other'
+
+export interface Subscription {
+  id: string
+  user_id: string
+  service_name: string
+  service_provider: string | null
+  category: SubscriptionCategory
+  monthly_cost: number
+  billing_day: number | null
+  next_billing_date: string | null
+  status: SubscriptionStatus
+  alert_enabled: boolean
+  alert_days_before: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateSubscriptionData {
+  service_name: string
+  service_provider?: string
+  category: SubscriptionCategory
+  monthly_cost: number
+  billing_day?: number
+  status?: SubscriptionStatus
+  alert_enabled?: boolean
+  alert_days_before?: number
+}
+
+export interface UpdateSubscriptionData {
+  service_name?: string
+  service_provider?: string
+  category?: SubscriptionCategory
+  monthly_cost?: number
+  billing_day?: number
+  next_billing_date?: string
+  status?: SubscriptionStatus
+  alert_enabled?: boolean
+  alert_days_before?: number
+}
+
+export interface SpendSummary {
+  total_monthly_cost: number
+  total_yearly_cost: number
+  active_subscriptions: number
+  by_category: Array<{
+    category: SubscriptionCategory
+    count: number
+    monthly_cost: number
+  }>
+  by_status: Array<{
+    status: SubscriptionStatus
+    count: number
+    monthly_cost: number
+  }>
+}
+
+export interface UpcomingAlert {
+  subscription_id: string
+  service_name: string
+  monthly_cost: number
+  next_billing_date: string
+  days_until_billing: number
+  urgency: 'low' | 'medium' | 'high'
+}
+
+export async function getSubscriptions(): Promise<Subscription[]> {
+  return fetchAPI<Subscription[]>('/subscriptions')
+}
+
+export async function getSubscription(id: string): Promise<Subscription> {
+  return fetchAPI<Subscription>(`/subscriptions/${id}`)
+}
+
+export async function createSubscription(data: CreateSubscriptionData): Promise<Subscription> {
+  return fetchAPI<Subscription>('/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateSubscription(id: string, data: UpdateSubscriptionData): Promise<Subscription> {
+  return fetchAPI<Subscription>(`/subscriptions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteSubscription(id: string): Promise<void> {
+  await fetchAPI(`/subscriptions/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getSpendSummary(): Promise<SpendSummary> {
+  return fetchAPI<SpendSummary>('/subscriptions/summary')
+}
+
+export async function getUpcomingAlerts(days = 7): Promise<UpcomingAlert[]> {
+  return fetchAPI<UpcomingAlert[]>(`/subscriptions/upcoming-alerts?days=${days}`)
+}
