@@ -3,17 +3,23 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { UserMenu } from '@/components/UserMenu'
 import {
   LayoutDashboard,
   Key,
   Settings,
   Activity,
   Zap,
-  Building2
+  Building2,
+  CreditCard,
+  Receipt,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
+  { name: 'Billing', href: '/billing', icon: Receipt },
   { name: 'API Keys', href: '/api-keys', icon: Key },
   { name: 'Enterprise', href: '/enterprise', icon: Building2 },
   { name: 'Settings', href: '/settings', icon: Settings },
@@ -56,12 +62,14 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Status indicator */}
-          <div className="flex items-center">
-            <div className="flex items-center text-sm text-muted-foreground">
+          {/* Right side: Status + Theme Toggle + User Menu */}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center text-sm text-muted-foreground">
               <Activity className="mr-1 h-4 w-4 text-green-500" />
               <span>Connected</span>
             </div>
+            <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
       </div>

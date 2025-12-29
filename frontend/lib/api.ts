@@ -682,3 +682,108 @@ export async function getSpendSummary(): Promise<SpendSummary> {
 export async function getUpcomingAlerts(days = 7): Promise<UpcomingAlert[]> {
   return fetchAPI<UpcomingAlert[]>(`/subscriptions/upcoming-alerts?days=${days}`)
 }
+
+// ==========================================
+// Billing APIs (Stripe Integration)
+// ==========================================
+
+export type BillingTier = 'free' | 'pro' | 'business' | 'enterprise'
+
+export interface BillingSubscription {
+  id: string
+  user_id: string
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  tier: BillingTier
+  status: 'active' | 'past_due' | 'canceled' | 'incomplete' | 'trialing'
+  current_period_start: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface BillingUsage {
+  user_id: string
+  tier: BillingTier
+  tokens_used: number
+  tokens_limit: number
+  percentage_used: number
+  period_start: string
+  period_end: string
+  days_remaining: number
+}
+
+export interface BillingQuota {
+  allowed: boolean
+  tier: BillingTier
+  tokens_used: number
+  tokens_limit: number
+  percentage_used: number
+  upgrade_url: string | null
+}
+
+export interface BillingTierInfo {
+  tier: BillingTier
+  name: string
+  price_monthly: number
+  tokens_per_month: number
+  features: string[]
+  stripe_price_id: string | null
+}
+
+export interface Invoice {
+  id: string
+  stripe_invoice_id: string
+  amount_due: number
+  amount_paid: number
+  currency: string
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'
+  invoice_pdf: string | null
+  hosted_invoice_url: string | null
+  period_start: string
+  period_end: string
+  created_at: string
+}
+
+export interface CheckoutSession {
+  checkout_url: string
+  session_id: string
+}
+
+export interface PortalSession {
+  portal_url: string
+}
+
+export async function getBillingSubscription(): Promise<BillingSubscription> {
+  return fetchAPI<BillingSubscription>('/billing/subscription')
+}
+
+export async function getBillingUsage(): Promise<BillingUsage> {
+  return fetchAPI<BillingUsage>('/billing/usage')
+}
+
+export async function checkBillingQuota(): Promise<BillingQuota> {
+  return fetchAPI<BillingQuota>('/billing/quota/check')
+}
+
+export async function getBillingTiers(): Promise<BillingTierInfo[]> {
+  return fetchAPI<BillingTierInfo[]>('/billing/tiers')
+}
+
+export async function getInvoices(limit = 10): Promise<Invoice[]> {
+  return fetchAPI<Invoice[]>(`/billing/invoices?limit=${limit}`)
+}
+
+export async function createCheckoutSession(tier: BillingTier): Promise<CheckoutSession> {
+  return fetchAPI<CheckoutSession>('/billing/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ tier }),
+  })
+}
+
+export async function createPortalSession(): Promise<PortalSession> {
+  return fetchAPI<PortalSession>('/billing/portal', {
+    method: 'POST',
+  })
+}
