@@ -28,7 +28,8 @@ POD_NAME = "ai-cost-optimizer"
 VERCEL_URL = "https://ai-cost-optimizer-scientia-capital.vercel.app"
 
 # GPU Configuration
-GPU_TYPE = "NVIDIA GeForce RTX 3070"  # 8GB VRAM, commonly available
+# Options: "NVIDIA GeForce RTX 4090", "NVIDIA RTX 4000 Ada", "NVIDIA L40"
+GPU_TYPE = "NVIDIA GeForce RTX 4090"  # 24GB VRAM, latest consumer GPU
 
 # Environment variables for the pod
 env_vars = {
@@ -37,6 +38,8 @@ env_vars = {
     "LOG_LEVEL": "INFO",
     "EMBEDDING_DEVICE": "cpu",  # Docker image uses python:3.11-slim without CUDA
     "TORCH_HOME": "/app/model_cache",
+    "HF_HOME": "/app/model_cache",  # HuggingFace cache
+    "SENTENCE_TRANSFORMERS_HOME": "/app/model_cache",  # sentence-transformers cache
     "CORS_ORIGINS": VERCEL_URL,
 
     # Supabase
@@ -77,7 +80,7 @@ def deploy_pod():
             name=POD_NAME,
             image_name=IMAGE_NAME,
             gpu_type_id=GPU_TYPE,  # Cheapest GPU option
-            cloud_type="COMMUNITY",  # Cheaper than SECURE
+            cloud_type="ALL",  # Try any available cloud type
             container_disk_in_gb=20,
             volume_in_gb=10,
             volume_mount_path="/app/model_cache",

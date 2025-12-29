@@ -68,10 +68,15 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Supabase client initialized")
 
     # Warm up embedding generator (load ML model)
-    from app.embeddings import get_embedding_generator
-    embeddings = get_embedding_generator()
-    embeddings.warmup()  # Pre-load model to avoid cold start
-    logger.info(f"✅ Embedding model loaded (dim={embeddings.get_embedding_dimension()})")
+    try:
+        from app.embeddings import get_embedding_generator
+        embeddings = get_embedding_generator()
+        embeddings.warmup()  # Pre-load model to avoid cold start
+        dim = embeddings.get_embedding_dimension()
+        logger.info(f"✅ Embedding model loaded (dim={dim})")
+    except Exception as e:
+        logger.warning(f"⚠️ Embedding model not available: {e}")
+        logger.warning("Semantic caching disabled - falling back to exact match")
 
     # Start scheduler
     if scheduler:
