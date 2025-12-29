@@ -31,8 +31,8 @@ COPY --chown=appuser:appuser .env.example ./
 # Switch to non-root user
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check - increased timeouts for ML model loading
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port

@@ -39,6 +39,9 @@ asyncpg>=0.29.0
 supabase>=2.3.0
 PyJWT>=2.8.0
 
+# Billing & payments
+stripe>=7.0.0
+
 # Scheduled jobs
 APScheduler>=3.10.4
 

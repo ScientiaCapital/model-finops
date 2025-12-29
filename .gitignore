@@ -109,3 +109,4 @@ LICENSE.md
 .serena/
 .vercel
 .secrets/
+.env*.local
