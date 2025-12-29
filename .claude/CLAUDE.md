@@ -9,6 +9,26 @@ When user says "start day":
 
 ---
 
+## CRITICAL RULE: NO OPENAI
+
+**This project does NOT use OpenAI APIs or models. NEVER:**
+- Reference OpenAI SDK, GPT models, or `openai` package
+- Create OpenAI-compatible endpoints or drop-in replacements
+- Suggest OpenAI as a provider option
+- Use GPT-3.5, GPT-4, or any OpenAI model names
+
+**Use instead:**
+- **Claude** (Anthropic) - Primary for complex reasoning
+- **Gemini** (Google) - Cost-effective, large context
+- **DeepSeek** - Cheapest for bulk processing
+- **Groq** - Ultra-fast inference (LPU)
+- **Cerebras** - Fast inference (wafer-scale)
+- **OpenRouter** - Multi-model gateway (but NOT for OpenAI models)
+
+This is a hard rule. No exceptions.
+
+---
+
 ## 1. Project Status & Overview
 
 **Current Status**: Supabase Migration Complete! 🚀✨
