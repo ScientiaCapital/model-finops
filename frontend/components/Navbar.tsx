@@ -8,12 +8,14 @@ import {
   Key,
   Settings,
   Activity,
-  Zap
+  Zap,
+  Building2
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'API Keys', href: '/api-keys', icon: Key },
+  { name: 'Enterprise', href: '/enterprise', icon: Building2 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

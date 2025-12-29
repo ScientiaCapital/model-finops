@@ -31,7 +31,7 @@ from app.experiments.tracker import ExperimentTracker
 from app.routers import api_keys, billing, enterprise
 
 # New feature imports (Sprint Dec 27)
-from app.routers import arbitrage, forecasting
+from app.routers import arbitrage, forecasting, status, subscriptions
 from app.routers.api_keys import init_api_key_service
 from app.routers.billing import init_billing_router
 from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
@@ -193,6 +193,10 @@ app.include_router(enterprise.router)
 # Sprint Dec 27 feature routers
 app.include_router(arbitrage.router)
 app.include_router(forecasting.router)
+app.include_router(status.router)
+
+# Sprint Dec 29 feature routers
+app.include_router(subscriptions.router)
 
 # Initialize global components
 providers = init_providers()
