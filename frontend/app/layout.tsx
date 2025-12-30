@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AI Cost Optimizer',
+  title: 'ModelFinOps - FinOps for AI',
   description: 'Intelligent AI routing with semantic caching to reduce your LLM costs by 60%+',
 }
 

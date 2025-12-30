@@ -36,7 +36,7 @@ export function Navbar() {
             {/* Logo */}
             <div className="flex flex-shrink-0 items-center">
               <Zap className="h-8 w-8 text-primary" />
-              <span className="ml-2 text-xl font-bold">AI Cost Optimizer</span>
+              <span className="ml-2 text-xl font-bold">ModelFinOps</span>
             </div>
 
             {/* Navigation Links */}

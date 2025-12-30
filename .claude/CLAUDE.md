@@ -1,4 +1,4 @@
-# CLAUDE.md - AI Cost Optimizer
+# CLAUDE.md - Model FinOps (modelfinops.com)
 
 ## Start Day Protocol
 

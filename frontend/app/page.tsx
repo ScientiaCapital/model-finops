@@ -11,7 +11,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">AI Cost Optimizer</span>
+            <span className="text-xl font-bold">ModelFinOps</span>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild>
@@ -57,7 +57,7 @@ export default function LandingPage() {
         <section className="py-20 bg-muted/50">
           <div className="container mx-auto px-4">
             <h2 className="text-3xl font-bold text-center mb-12">
-              Why AI Cost Optimizer?
+              Why ModelFinOps?
             </h2>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {/* Feature 1: Cost Savings */}
@@ -127,7 +127,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} AI Cost Optimizer. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ModelFinOps. All rights reserved.</p>
         </div>
       </footer>
     </div>
