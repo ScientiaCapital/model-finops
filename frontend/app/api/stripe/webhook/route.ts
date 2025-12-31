@@ -168,7 +168,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  * Reset API usage counters for new billing period
  */
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription as string | null;
 
   if (!subscriptionId) {
     return; // One-time payment
@@ -190,7 +190,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
  * Handle failed invoice payment
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription as string | null;
 
   if (!subscriptionId) {
     return;
