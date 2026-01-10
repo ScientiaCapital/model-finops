@@ -290,9 +290,19 @@ class ForecastingService:
         # Get budget projection
         budget = await self.project_budget_exhaustion(user_id, monthly_budget)
 
+        # Generate per-provider forecasts
+        providers = await self._get_user_providers(user_id)
+        by_provider = []
+        for provider in providers:
+            provider_forecast = await self.generate_forecast(
+                user_id,
+                ForecastRequest(horizon_days=7, provider=provider),
+            )
+            by_provider.append(provider_forecast)
+
         return ForecastSummaryResponse(
             aggregate=aggregate,
-            by_provider=[],  # TODO: Add per-provider forecasts
+            by_provider=by_provider,
             budget_projection=budget,
             recent_anomalies=anomalies_response.anomalies[:5],  # Top 5
         )
@@ -350,6 +360,23 @@ class ForecastingService:
             return result.data or []
         except Exception as e:
             logger.error(f"Failed to get historical costs: {e}")
+            return []
+
+    async def _get_user_providers(self, user_id: str) -> List[str]:
+        """Get list of providers with cost data for a user."""
+        if not self.supabase:
+            return ["gemini", "claude", "openrouter"]  # Mock data for testing
+
+        try:
+            result = await self.supabase.table("daily_cost_aggregates") \
+                .select("provider") \
+                .eq("user_id", user_id) \
+                .not_("provider", "is", None) \
+                .execute()
+
+            return list(set(r["provider"] for r in result.data or []))
+        except Exception as e:
+            logger.error(f"Failed to get user providers: {e}")
             return []
 
     def _generate_mock_data(self, days: int) -> List[Dict]:

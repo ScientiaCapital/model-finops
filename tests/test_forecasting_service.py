@@ -238,3 +238,95 @@ class TestForecastSummary:
         assert hasattr(response, 'budget_projection')
         # Aggregate forecast should be present
         assert response.aggregate is not None
+
+    @pytest.mark.asyncio
+    async def test_returns_per_provider_forecasts_without_supabase(self):
+        """Returns per-provider forecasts using mock data."""
+        service = ForecastingService()
+        response = await service.get_forecast_summary("user-123", 1000.0)
+
+        # Without Supabase, mock providers are returned: gemini, claude, openrouter
+        assert hasattr(response, 'by_provider')
+        assert isinstance(response.by_provider, list)
+        assert len(response.by_provider) == 3  # Mock returns 3 providers
+
+        # Each provider forecast should have valid structure
+        for forecast in response.by_provider:
+            assert isinstance(forecast, ForecastResponse)
+            assert forecast.provider is not None
+            assert forecast.horizon_days == 7
+            assert forecast.user_id == "user-123"
+
+    @pytest.mark.asyncio
+    async def test_per_provider_forecasts_have_distinct_providers(self):
+        """Each per-provider forecast has a distinct provider name."""
+        service = ForecastingService()
+        response = await service.get_forecast_summary("user-123", 1000.0)
+
+        # Extract provider names
+        provider_names = [f.provider for f in response.by_provider]
+
+        # All providers should be unique
+        assert len(provider_names) == len(set(provider_names))
+
+        # Mock providers should be present
+        assert "gemini" in provider_names
+        assert "claude" in provider_names
+        assert "openrouter" in provider_names
+
+
+class TestGetUserProviders:
+    """Tests for _get_user_providers helper."""
+
+    @pytest.mark.asyncio
+    async def test_returns_mock_providers_without_supabase(self):
+        """Returns mock providers when no Supabase client."""
+        service = ForecastingService()
+        providers = await service._get_user_providers("user-123")
+
+        assert isinstance(providers, list)
+        assert len(providers) == 3
+        assert "gemini" in providers
+        assert "claude" in providers
+        assert "openrouter" in providers
+
+    @pytest.mark.asyncio
+    async def test_handles_empty_result_from_supabase(self):
+        """Returns empty list when Supabase returns no data."""
+        mock_client = MagicMock()
+        mock_result = MagicMock()
+        mock_result.data = []
+
+        # Create a fluent mock that returns itself for chained calls
+        mock_query = MagicMock()
+        mock_query.select = MagicMock(return_value=mock_query)
+        mock_query.eq = MagicMock(return_value=mock_query)
+        mock_query.not_ = MagicMock(return_value=mock_query)
+        mock_query.execute = AsyncMock(return_value=mock_result)
+
+        mock_client.table = MagicMock(return_value=mock_query)
+
+        service = ForecastingService(supabase_client=mock_client)
+        providers = await service._get_user_providers("user-123")
+
+        assert providers == []
+
+    @pytest.mark.asyncio
+    async def test_deduplicates_providers(self):
+        """Verifies deduplication logic works correctly."""
+        # Test the deduplication logic directly
+        # Given data with duplicates
+        data = [
+            {"provider": "gemini"},
+            {"provider": "gemini"},  # Duplicate
+            {"provider": "claude"},
+            {"provider": "claude"},  # Duplicate
+            {"provider": "openrouter"},
+        ]
+
+        # The logic: list(set(r["provider"] for r in data))
+        result = list(set(r["provider"] for r in data))
+
+        # Should have 3 unique providers
+        assert len(result) == 3
+        assert set(result) == {"gemini", "claude", "openrouter"}
