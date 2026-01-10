@@ -32,13 +32,23 @@ import {
   getUpcomingAlerts,
   createSubscription,
   deleteSubscription,
+  updateSubscription,
   type Subscription,
   type SpendSummary,
   type UpcomingAlert,
   type CreateSubscriptionData,
+  type UpdateSubscriptionData,
   type SubscriptionStatus,
   type SubscriptionCategory,
 } from '@/lib/api'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface SubscriptionTrackerProps {
   className?: string
@@ -282,6 +292,176 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
   )
 }
 
+interface EditSubscriptionDialogProps {
+  subscription: Subscription | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave: (id: string, data: UpdateSubscriptionData) => Promise<void>
+}
+
+function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: EditSubscriptionDialogProps) {
+  const [formData, setFormData] = useState<UpdateSubscriptionData>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  // Reset form when subscription changes
+  useEffect(() => {
+    if (subscription) {
+      setFormData({
+        service_name: subscription.service_name,
+        service_provider: subscription.service_provider || '',
+        category: subscription.category,
+        monthly_cost: subscription.monthly_cost,
+        billing_day: subscription.billing_day || undefined,
+        status: subscription.status,
+        alert_enabled: subscription.alert_enabled,
+        alert_days_before: subscription.alert_days_before,
+      })
+    }
+  }, [subscription])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!subscription) return
+
+    setSubmitting(true)
+    try {
+      await onSave(subscription.id, formData)
+      onOpenChange(false)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!subscription) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Edit Subscription</DialogTitle>
+          <DialogDescription>
+            Update the details for {subscription.service_name}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_service_name">Service Name *</Label>
+              <Input
+                id="edit_service_name"
+                value={formData.service_name || ''}
+                onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_service_provider">Provider</Label>
+              <Input
+                id="edit_service_provider"
+                value={formData.service_provider || ''}
+                onChange={(e) => setFormData({ ...formData, service_provider: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_category">Category</Label>
+              <select
+                id="edit_category"
+                value={formData.category || 'Other'}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value as SubscriptionCategory })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_monthly_cost">Monthly Cost ($)</Label>
+              <Input
+                id="edit_monthly_cost"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.monthly_cost || 0}
+                onChange={(e) => setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_status">Status</Label>
+              <select
+                id="edit_status"
+                value={formData.status || 'active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as SubscriptionStatus })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="active">Active</option>
+                <option value="trial">Trial</option>
+                <option value="paused">Paused</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_billing_day">Billing Day</Label>
+              <Input
+                id="edit_billing_day"
+                type="number"
+                min="1"
+                max="31"
+                value={formData.billing_day || ''}
+                onChange={(e) => setFormData({ ...formData, billing_day: parseInt(e.target.value) || undefined })}
+                placeholder="1-31"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit_alert_enabled"
+                checked={formData.alert_enabled ?? true}
+                onChange={(e) => setFormData({ ...formData, alert_enabled: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="edit_alert_enabled">Enable Alerts</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_alert_days">Alert Days Before</Label>
+              <Input
+                id="edit_alert_days"
+                type="number"
+                min="1"
+                max="30"
+                value={formData.alert_days_before || 3}
+                onChange={(e) => setFormData({ ...formData, alert_days_before: parseInt(e.target.value) || 3 })}
+                disabled={!formData.alert_enabled}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [summary, setSummary] = useState<SpendSummary | null>(null)
@@ -289,6 +469,7 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null)
 
   const fetchData = async () => {
     try {
@@ -330,6 +511,16 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
       await fetchData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete subscription')
+    }
+  }
+
+  const handleUpdateSubscription = async (id: string, data: UpdateSubscriptionData) => {
+    try {
+      await updateSubscription(id, data)
+      setEditingSubscription(null)
+      await fetchData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update subscription')
     }
   }
 
@@ -512,10 +703,7 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
                       <SubscriptionCard
                         key={sub.id}
                         subscription={sub}
-                        onEdit={() => {
-                          // TODO: Implement edit modal
-                          console.log('Edit:', sub.id)
-                        }}
+                        onEdit={() => setEditingSubscription(sub)}
                         onDelete={() => handleDeleteSubscription(sub.id)}
                       />
                     ))}
@@ -526,6 +714,14 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Subscription Dialog */}
+      <EditSubscriptionDialog
+        subscription={editingSubscription}
+        open={!!editingSubscription}
+        onOpenChange={(open) => !open && setEditingSubscription(null)}
+        onSave={handleUpdateSubscription}
+      />
     </div>
   )
 }

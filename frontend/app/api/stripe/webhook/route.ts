@@ -12,9 +12,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/client';
 import { getPlan, type PlanId } from '@/lib/stripe/plans';
+import { sendPaymentFailedEmail } from '@/lib/email';
 import type Stripe from 'stripe';
+
+// Server-side Supabase client with service role for webhook operations
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -100,17 +108,21 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
 
   const plan = getPlan(planId);
 
-  // TODO: Update your database here
-  // Example with Supabase:
-  // await supabase.from('subscriptions').upsert({
-  //   user_id: userId,
-  //   stripe_customer_id: customerId,
-  //   stripe_subscription_id: subscriptionId,
-  //   plan_id: planId,
-  //   api_calls_limit: plan.apiCallsMonthly,
-  //   api_calls_used: 0,
-  //   status: 'active',
-  // });
+  // Upsert subscription record in database
+  const { error } = await supabase.from('subscriptions').upsert({
+    user_id: userId,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId,
+    plan_id: planId,
+    api_calls_limit: plan.apiCallsMonthly,
+    api_calls_used: 0,
+    status: 'active',
+  }, { onConflict: 'stripe_subscription_id' });
+
+  if (error) {
+    console.error('Failed to create subscription:', error);
+    throw error;
+  }
 
   console.log(`Subscription created: ${subscriptionId} (${plan.name})`);
 }
@@ -134,12 +146,17 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 
   console.log(`Subscription ${subscriptionId} changed: ${status}`);
 
-  // TODO: Update your database here
-  // await supabase.from('subscriptions').update({
-  //   plan_id: planId,
-  //   api_calls_limit: plan.apiCallsMonthly,
-  //   status: status,
-  // }).eq('stripe_subscription_id', subscriptionId);
+  // Update subscription in database
+  const { error } = await supabase.from('subscriptions').update({
+    plan_id: planId,
+    api_calls_limit: plan.apiCallsMonthly,
+    status: status,
+  }).eq('stripe_subscription_id', subscriptionId);
+
+  if (error) {
+    console.error('Failed to update subscription:', error);
+    throw error;
+  }
 
   console.log(`Subscription synced: ${subscriptionId}`);
 }
@@ -153,12 +170,17 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
   console.log(`Subscription ${subscriptionId} cancelled`);
 
-  // TODO: Update your database here
-  // await supabase.from('subscriptions').update({
-  //   plan_id: 'free',
-  //   api_calls_limit: freePlan.apiCallsMonthly,
-  //   status: 'cancelled',
-  // }).eq('stripe_subscription_id', subscriptionId);
+  // Downgrade user to free tier
+  const { error } = await supabase.from('subscriptions').update({
+    plan_id: 'free',
+    api_calls_limit: freePlan.apiCallsMonthly,
+    status: 'cancelled',
+  }).eq('stripe_subscription_id', subscriptionId);
+
+  if (error) {
+    console.error('Failed to cancel subscription:', error);
+    throw error;
+  }
 
   console.log(`User downgraded to free tier`);
 }
@@ -176,12 +198,16 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
   console.log(`Invoice paid for subscription ${subscriptionId}`);
 
-  // TODO: Update your database here
-  // Reset API usage counters
-  // await supabase.from('subscriptions').update({
-  //   api_calls_used: 0,
-  //   status: 'active',
-  // }).eq('stripe_subscription_id', subscriptionId);
+  // Reset API usage counters for new billing period
+  const { error } = await supabase.from('subscriptions').update({
+    api_calls_used: 0,
+    status: 'active',
+  }).eq('stripe_subscription_id', subscriptionId);
+
+  if (error) {
+    console.error('Failed to reset usage counters:', error);
+    throw error;
+  }
 
   console.log(`API usage reset for new billing period`);
 }
@@ -191,6 +217,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null }).subscription as string | null;
+  const customerId = invoice.customer as string;
 
   if (!subscriptionId) {
     return;
@@ -198,12 +225,27 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   console.log(`Payment failed for subscription ${subscriptionId}`);
 
-  // TODO: Update your database here
-  // await supabase.from('subscriptions').update({
-  //   status: 'past_due',
-  // }).eq('stripe_subscription_id', subscriptionId);
+  // Mark subscription as past_due
+  const { error } = await supabase.from('subscriptions').update({
+    status: 'past_due',
+  }).eq('stripe_subscription_id', subscriptionId);
 
-  // TODO: Send email notification
+  if (error) {
+    console.error('Failed to update subscription status:', error);
+    throw error;
+  }
+
+  // Send email notification to customer
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer && !customer.deleted && customer.email) {
+      await sendPaymentFailedEmail(customer.email, customer.name ?? undefined);
+      console.log(`Payment failure email sent to ${customer.email}`);
+    }
+  } catch (emailError) {
+    // Don't fail the webhook if email fails
+    console.error('Failed to send payment failure email:', emailError);
+  }
 
   console.log(`Subscription marked as past_due`);
 }
