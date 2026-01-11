@@ -47,7 +47,7 @@ cp .env.example .env
 # Edit .env and add at least one API key
 
 # Start service
-python main.py
+python app/main.py
 ```
 
 Service runs at `http://localhost:8000`
