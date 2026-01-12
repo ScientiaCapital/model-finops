@@ -1,28 +1,32 @@
 # model-finops
 
-**Branch**: main | **Updated**: 2025-12-30
+**Branch**: main | **Updated**: 2026-01-12
 
 ## Status
-Stripe subscription integration complete with full API routes, products, prices, and webhooks configured via CLI. Test mode ready - switch to live keys for production.
+Pricing page complete and pushed to production. 3-tier subscription UI ($49/$149/$399) with Stripe checkout integration ready. Next: configure Stripe price IDs in .env.local and test checkout flow end-to-end.
 
 ## Today's Focus
-1. [ ] Add pricing page UI component
-2. [ ] Connect checkout flow to frontend
-3. [ ] Test subscription flow end-to-end
+1. [ ] Add real Stripe price IDs to .env.local
+2. [ ] Test checkout flow with Stripe test cards
+3. [ ] Verify Vercel deployment working
 
 ## Done (This Session)
-- Added Stripe lib (`frontend/lib/stripe/`) with lazy-init client, plans config
-- Created API routes: checkout, portal, webhook handlers
-- Created Stripe products via CLI: Starter ($49), Pro ($149), Enterprise ($399)
-- Created monthly + annual prices for all tiers
-- Configured webhook endpoint with subscription lifecycle events
-- Updated .env.local with all Stripe credentials (test mode)
+- Created pricing page UI (`frontend/app/pricing/page.tsx`) with 3 tiers
+- Added billing interval toggle (monthly/annual with 20% discount)
+- Wired checkout buttons to Stripe via `createCheckoutSession`
+- Fixed lazy initialization for Resend email client (build-time fix)
+- Fixed lazy initialization for Supabase in webhook handler
+- Updated `lib/stripe/plans.ts` with correct API limits (10K/100K/unlimited)
+- Added Stripe price ID env vars to `.env.example`
+- Added Pricing link to Navbar
+- Passed security audit (0 secrets, 0 CVEs)
+- Pushed commit `494609c` to origin/main
 
 ## Blockers
 None
 
 ## Tech Stack
-Next.js 15 + FastAPI backend + Supabase + Stripe (test mode)
+Next.js 16 + FastAPI backend + Supabase + Stripe (test mode)
 
 ## Stripe Products (Test Mode)
 | Tier | Monthly Price ID | Annual Price ID |
