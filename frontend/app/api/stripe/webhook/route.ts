@@ -12,17 +12,30 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/client';
 import { getPlan, type PlanId } from '@/lib/stripe/plans';
 import { sendPaymentFailedEmail } from '@/lib/email';
 import type Stripe from 'stripe';
 
-// Server-side Supabase client with service role for webhook operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy initialization for Supabase client to avoid build-time errors
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient {
+  if (!supabaseInstance) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error(
+        'Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required'
+      );
+    }
+
+    supabaseInstance = createClient(supabaseUrl, serviceRoleKey);
+  }
+  return supabaseInstance;
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -109,7 +122,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const plan = getPlan(planId);
 
   // Upsert subscription record in database
-  const { error } = await supabase.from('subscriptions').upsert({
+  const { error } = await getSupabase().from('subscriptions').upsert({
     user_id: userId,
     stripe_customer_id: customerId,
     stripe_subscription_id: subscriptionId,
@@ -147,7 +160,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log(`Subscription ${subscriptionId} changed: ${status}`);
 
   // Update subscription in database
-  const { error } = await supabase.from('subscriptions').update({
+  const { error } = await getSupabase().from('subscriptions').update({
     plan_id: planId,
     api_calls_limit: plan.apiCallsMonthly,
     status: status,
@@ -171,7 +184,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log(`Subscription ${subscriptionId} cancelled`);
 
   // Downgrade user to free tier
-  const { error } = await supabase.from('subscriptions').update({
+  const { error } = await getSupabase().from('subscriptions').update({
     plan_id: 'free',
     api_calls_limit: freePlan.apiCallsMonthly,
     status: 'cancelled',
@@ -199,7 +212,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   console.log(`Invoice paid for subscription ${subscriptionId}`);
 
   // Reset API usage counters for new billing period
-  const { error } = await supabase.from('subscriptions').update({
+  const { error } = await getSupabase().from('subscriptions').update({
     api_calls_used: 0,
     status: 'active',
   }).eq('stripe_subscription_id', subscriptionId);
@@ -226,7 +239,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   console.log(`Payment failed for subscription ${subscriptionId}`);
 
   // Mark subscription as past_due
-  const { error } = await supabase.from('subscriptions').update({
+  const { error } = await getSupabase().from('subscriptions').update({
     status: 'past_due',
   }).eq('stripe_subscription_id', subscriptionId);
 

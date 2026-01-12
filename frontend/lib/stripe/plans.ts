@@ -2,9 +2,9 @@
  * ModelFinOps Subscription Plans
  *
  * AI Cost Optimization platform tiers:
- * - Starter: $49/mo - Basic cost tracking
- * - Pro: $149/mo - Advanced optimization
- * - Enterprise: $399/mo - Full platform access
+ * - Starter: $49/mo - Basic routing, 10K requests
+ * - Pro: $149/mo - Semantic caching, 100K requests
+ * - Enterprise: $399/mo - Custom models, unlimited requests
  */
 
 export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise';
@@ -25,7 +25,7 @@ export const PLANS: Record<PlanId, Plan> = {
   free: {
     id: 'free',
     name: 'Free',
-    description: 'Get started with basic features',
+    description: 'Try before you buy',
     priceMonthly: 0,
     priceAnnual: 0,
     apiCallsMonthly: 100,
@@ -39,54 +39,56 @@ export const PLANS: Record<PlanId, Plan> = {
   starter: {
     id: 'starter',
     name: 'Starter',
-    description: 'Essential cost tracking',
+    description: 'Perfect for individuals and small projects',
     priceMonthly: 4900, // $49
-    priceAnnual: 49000, // $490 (2 months free)
-    apiCallsMonthly: 5000,
+    priceAnnual: 47000, // $470 (~20% off)
+    apiCallsMonthly: 10000,
     features: [
-      '5,000 API calls/month',
+      '10,000 requests/month',
+      'Basic intelligent routing',
       'Multi-provider cost tracking',
-      'Basic cost optimization',
-      'Usage alerts',
-      'CSV export',
+      'Usage analytics dashboard',
+      'Email alerts & notifications',
+      'CSV data export',
       'Email support',
     ],
   },
   pro: {
     id: 'pro',
     name: 'Pro',
-    description: 'Advanced cost optimization',
+    description: 'Best for growing teams and businesses',
     priceMonthly: 14900, // $149
-    priceAnnual: 149000, // $1,490 (2 months free)
-    apiCallsMonthly: 50000,
+    priceAnnual: 143000, // $1,430 (~20% off)
+    apiCallsMonthly: 100000,
     popular: true,
     features: [
-      '50,000 API calls/month',
+      '100,000 requests/month',
       'Everything in Starter',
-      'AI-powered routing',
-      'Semantic caching',
-      'Real-time analytics',
-      'Team management (5 seats)',
-      'API access',
+      'Semantic caching (3x cost savings)',
+      'AI-powered routing optimization',
+      'Real-time analytics & forecasting',
+      'Team management (10 seats)',
+      'Full API access',
       'Priority support',
     ],
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
-    description: 'Full platform access',
+    description: 'For organizations needing full control',
     priceMonthly: 39900, // $399
-    priceAnnual: 399000, // $3,990 (2 months free)
-    apiCallsMonthly: 500000,
+    priceAnnual: 383000, // $3,830 (~20% off)
+    apiCallsMonthly: -1, // unlimited
     features: [
-      '500,000 API calls/month',
+      'Unlimited requests',
       'Everything in Pro',
+      'Custom model routing rules',
       'Unlimited team seats',
-      'Custom integrations',
-      'SLA guarantees',
-      'Dedicated support',
-      'On-premise option',
-      'Custom model routing',
+      'Advanced security & compliance',
+      'Custom integrations & webhooks',
+      'SLA guarantees (99.9% uptime)',
+      'Dedicated account manager',
+      'On-premise deployment option',
     ],
   },
 };

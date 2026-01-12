@@ -19,6 +19,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
+  { name: 'Pricing', href: '/pricing', icon: Zap },
   { name: 'Billing', href: '/billing', icon: Receipt },
   { name: 'API Keys', href: '/api-keys', icon: Key },
   { name: 'Enterprise', href: '/enterprise', icon: Building2 },

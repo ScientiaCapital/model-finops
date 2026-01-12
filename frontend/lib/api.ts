@@ -775,10 +775,37 @@ export async function getInvoices(limit = 10): Promise<Invoice[]> {
   return fetchAPI<Invoice[]>(`/billing/invoices?limit=${limit}`)
 }
 
+export interface CreateCheckoutRequest {
+  price_id: string
+  success_url: string
+  cancel_url: string
+  trial_days?: number
+}
+
 export async function createCheckoutSession(tier: BillingTier): Promise<CheckoutSession> {
+  // Get base URL for redirects
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+
+  // Map tier to Stripe price ID (these should match backend tier_limits table)
+  const priceIdMap: Record<BillingTier, string> = {
+    free: '',
+    pro: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_starter_monthly',
+    business: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS || 'price_pro_monthly',
+    enterprise: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || 'price_enterprise_monthly',
+  }
+
+  const priceId = priceIdMap[tier]
+  if (!priceId) {
+    throw new Error('Invalid tier or free tier selected')
+  }
+
   return fetchAPI<CheckoutSession>('/billing/checkout', {
     method: 'POST',
-    body: JSON.stringify({ tier }),
+    body: JSON.stringify({
+      price_id: priceId,
+      success_url: `${baseUrl}/billing?success=true`,
+      cancel_url: `${baseUrl}/pricing?canceled=true`,
+    }),
   })
 }
 

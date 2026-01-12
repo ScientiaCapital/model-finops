@@ -2,11 +2,23 @@
  * Email Service - ModelFinOps
  *
  * Handles transactional emails using Resend.
+ * Uses lazy initialization to avoid build-time errors.
  */
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+function getResend(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Model FinOps <noreply@modelfinops.com>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://modelfinops.com';
@@ -20,7 +32,7 @@ export async function sendPaymentFailedEmail(
 ): Promise<void> {
   const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Payment Failed - Action Required',
@@ -54,7 +66,7 @@ export async function sendSubscriptionCancelledEmail(
 ): Promise<void> {
   const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Subscription Cancelled',
@@ -94,7 +106,7 @@ export async function sendWelcomeEmail(
   const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
   const plan = planName || 'your new plan';
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: 'Welcome to Model FinOps!',
