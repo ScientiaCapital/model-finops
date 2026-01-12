@@ -110,3 +110,4 @@ LICENSE.md
 .vercel
 .secrets/
 .env*.local
+.claude/settings.json
