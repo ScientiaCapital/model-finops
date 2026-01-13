@@ -94,10 +94,10 @@ def init_billing_router(
 
 class CreateCheckoutRequest(BaseModel):
     """Request to create a checkout session."""
-    price_id: str = Field(..., description="Stripe price ID for the plan")
-    success_url: str = Field(..., description="URL to redirect after successful payment")
-    cancel_url: str = Field(..., description="URL to redirect if user cancels")
-    trial_days: Optional[int] = Field(None, ge=1, le=30, description="Trial period in days")
+    tier: str = Field(..., description="Subscription tier: starter, pro, or enterprise")
+    success_url: Optional[str] = Field(None, description="URL to redirect after successful payment")
+    cancel_url: Optional[str] = Field(None, description="URL to redirect if user cancels")
+    trial_days: Optional[int] = Field(14, ge=1, le=30, description="Trial period in days")
 
 
 class CreateCheckoutResponse(BaseModel):
@@ -152,6 +152,7 @@ class InvoiceResponse(BaseModel):
     summary="Create Stripe checkout session",
     responses={
         200: {"description": "Checkout session created successfully"},
+        400: {"description": "Invalid tier specified"},
     },
 )
 async def create_checkout(
@@ -162,20 +163,40 @@ async def create_checkout(
     """
     Create a Stripe Checkout session for subscription purchase.
 
+    Accepts a tier name (starter, pro, enterprise) and creates a checkout session.
     Returns a checkout URL to redirect the user to Stripe's hosted payment page.
-    After payment, user is redirected to success_url with session_id query param.
     """
+    # Map tier to Stripe price ID
+    tier_to_price = {
+        "starter": os.getenv("STRIPE_PRICE_STARTER_MONTHLY"),
+        "pro": os.getenv("STRIPE_PRICE_PRO_MONTHLY"),
+        "business": os.getenv("STRIPE_PRICE_BUSINESS_MONTHLY"),
+        "enterprise": os.getenv("STRIPE_PRICE_ENTERPRISE_MONTHLY"),
+    }
+
+    price_id = tier_to_price.get(request.tier.lower())
+    if not price_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier: {request.tier}. Valid tiers: starter, pro, business, enterprise",
+        )
+
+    # Use default URLs if not provided
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    success_url = request.success_url or f"{frontend_url}/billing?success=true"
+    cancel_url = request.cancel_url or f"{frontend_url}/billing?canceled=true"
+
     try:
         session = await service.create_checkout_session(
             user_id=user["sub"],
             email=user.get("email", ""),
-            price_id=request.price_id,
-            success_url=request.success_url,
-            cancel_url=request.cancel_url,
+            price_id=price_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
             trial_days=request.trial_days,
         )
 
-        logger.info(f"Created checkout session for user {user['sub'][:8]}...")
+        logger.info(f"Created checkout session for user {user['sub'][:8]}... tier={request.tier}")
         return CreateCheckoutResponse(
             session_id=session.id,
             checkout_url=session.url,

@@ -34,6 +34,9 @@ import {
   FileText,
   Loader2,
   AlertCircle,
+  CheckCircle2,
+  Info,
+  X,
 } from 'lucide-react'
 
 export default function BillingPage() {
@@ -45,6 +48,21 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null)
   const [upgrading, setUpgrading] = useState<BillingTier | null>(null)
   const [openingPortal, setOpeningPortal] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [infoMessage, setInfoMessage] = useState<string | null>(null)
+
+  // Handle success/canceled URL params from Stripe checkout redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'true') {
+      setSuccessMessage('Subscription activated! Thank you for subscribing.')
+      window.history.replaceState({}, '', '/billing')
+    }
+    if (params.get('canceled') === 'true') {
+      setInfoMessage('Checkout was canceled. No charges were made.')
+      window.history.replaceState({}, '', '/billing')
+    }
+  }, [])
 
   useEffect(() => {
     loadBillingData()
@@ -153,6 +171,32 @@ export default function BillingPage() {
           Manage your subscription and billing details
         </p>
       </div>
+
+      {/* Success message from checkout */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <span className="text-green-700 dark:text-green-400">{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Info message from canceled checkout */}
+      {infoMessage && (
+        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info className="h-5 w-5 text-blue-500" />
+            <span className="text-blue-700 dark:text-blue-400">{infoMessage}</span>
+          </div>
+          <button onClick={() => setInfoMessage(null)} className="text-blue-500 hover:text-blue-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
