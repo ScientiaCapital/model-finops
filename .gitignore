@@ -104,7 +104,6 @@ cython_debug/
 .venv312/
 artifacts/
 .worktrees/
-CLAUDE.md
 LICENSE.md
 .serena/
 .vercel
