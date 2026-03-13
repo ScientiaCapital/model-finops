@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "prompt",
+        "prompt": "Silently load project context. Read .claude/PROJECT_CONTEXT.md if it exists. Check for any unresolved items in .claude/observers/ALERTS.md. Do NOT output anything to the user — just internalize the context for this session. If PROJECT_CONTEXT.md doesn't exist, that's fine — the user may create it with /begin.",
+        "async": true
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "bash .claude/hooks/check-secrets.sh \"$TOOL_INPUT\"",
+        "matcher": "Write|Edit",
+        "timeout": 5000
+      }
+    ],
+    "Stop": [
+      {
+        "type": "prompt",
+        "prompt": "Before ending, check: (1) Are there uncommitted changes? Run `git status --short`. (2) Are there unresolved CRITICALs in .claude/observers/QUALITY.md or BLOCKERs in .claude/observers/ARCH.md? If either is true, warn the user: 'You have uncommitted work or unresolved blockers. Run /end before closing.' Otherwise stay silent.",
+        "async": false
+      }
+    ]
+  }
+}
