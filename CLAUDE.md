@@ -3,7 +3,7 @@
 Intelligent LLM router that reduces AI API costs by routing prompts to the most cost-efficient model — FastAPI backend with semantic caching (pgvector), multi-tenant RLS, MCP integration for Claude Desktop, and a Next.js cost dashboard.
 
 ## Stack
-- Backend: FastAPI + Python 3.8+
+- Backend: FastAPI + Python 3.10+
 - Frontend: Next.js 15 + Tailwind CSS + shadcn/ui
 - Database: Supabase (PostgreSQL + pgvector for semantic caching)
 - AI: Multi-provider — Anthropic Claude, Google Gemini, Cerebras, OpenRouter (NO OpenAI)
