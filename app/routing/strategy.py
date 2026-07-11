@@ -94,7 +94,7 @@ class ComplexityStrategy(RoutingStrategy):
     def _select_simple_provider(self, available_providers: list) -> tuple:
         """Select provider for simple prompts with fallback chain.
 
-        Priority: gemini → openrouter/gemini → claude
+        Priority: gemini → openrouter/gemini → claude → ollama → deepseek → qwen
         """
         if "gemini" in available_providers:
             return "gemini", "gemini-1.5-flash"
@@ -105,12 +105,23 @@ class ComplexityStrategy(RoutingStrategy):
         if "claude" in available_providers:
             return "claude", "claude-3-haiku-20240307"
 
+        # Ollama first among new providers for simple work: free/local
+        if "ollama" in available_providers:
+            return "ollama", "llama3.2"
+
+        # DeepSeek / Qwen: cheap and capable for simple-to-moderate tiers
+        if "deepseek" in available_providers:
+            return "deepseek", "deepseek-chat"
+
+        if "qwen" in available_providers:
+            return "qwen", "qwen-plus"
+
         return None, None
 
     def _select_moderate_provider(self, available_providers: list) -> tuple:
         """Select provider for moderate prompts with fallback chain.
 
-        Priority: claude → gemini → openrouter
+        Priority: claude → gemini → openrouter → deepseek → qwen → glm → ollama
         """
         if "claude" in available_providers:
             return "claude", "claude-3-haiku-20240307"
@@ -121,12 +132,26 @@ class ComplexityStrategy(RoutingStrategy):
         if "openrouter" in available_providers:
             return "openrouter", "anthropic/claude-3-haiku"
 
+        # DeepSeek / Qwen: cheap and capable for moderate work
+        if "deepseek" in available_providers:
+            return "deepseek", "deepseek-chat"
+
+        if "qwen" in available_providers:
+            return "qwen", "qwen-plus"
+
+        # GLM: strong agentic model, also viable for moderate work
+        if "glm" in available_providers:
+            return "glm", "glm-4.7"
+
+        if "ollama" in available_providers:
+            return "ollama", "llama3.2"
+
         return None, None
 
     def _select_complex_provider(self, available_providers: list) -> tuple:
         """Select provider for complex prompts with fallback chain.
 
-        Priority: claude → gemini → openrouter
+        Priority: claude → gemini → openrouter → glm → deepseek → qwen
         """
         if "claude" in available_providers:
             return "claude", "claude-3-5-sonnet-20241022"
@@ -136,6 +161,17 @@ class ComplexityStrategy(RoutingStrategy):
 
         if "openrouter" in available_providers:
             return "openrouter", "anthropic/claude-3-sonnet"
+
+        # GLM: strongest of the new providers for complex/agentic work
+        if "glm" in available_providers:
+            return "glm", "glm-4.7"
+
+        # DeepSeek reasoner / Qwen as further complex-tier fallbacks
+        if "deepseek" in available_providers:
+            return "deepseek", "deepseek-reasoner"
+
+        if "qwen" in available_providers:
+            return "qwen", "qwen-plus"
 
         return None, None
 
@@ -156,6 +192,19 @@ class ComplexityStrategy(RoutingStrategy):
 
         if "openrouter" in available_providers:
             return "openrouter", "google/gemini-flash-1.5", True
+
+        # New providers as further last-resort options
+        if "ollama" in available_providers:
+            return "ollama", "llama3.2", True
+
+        if "deepseek" in available_providers:
+            return "deepseek", "deepseek-chat", True
+
+        if "qwen" in available_providers:
+            return "qwen", "qwen-plus", True
+
+        if "glm" in available_providers:
+            return "glm", "glm-4.7", True
 
         # Use first available as absolute last resort
         provider = available_providers[0]

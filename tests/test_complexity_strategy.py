@@ -137,3 +137,71 @@ def test_complexity_strategy_name():
     """Test strategy returns correct name."""
     strategy = ComplexityStrategy()
     assert strategy.get_name() == "complexity"
+
+
+# =============================================================================
+# New provider selectability (Ollama, DeepSeek, GLM, Qwen)
+# =============================================================================
+
+def test_complexity_strategy_simple_selects_ollama():
+    """Simple prompt should select Ollama when it's the only provider."""
+    strategy = ComplexityStrategy()
+    context = RoutingContext(prompt="Hello", available_providers=["ollama"])
+
+    decision = strategy.route("Hello", context)
+
+    assert decision.provider == "ollama"
+    assert decision.model == "llama3.2"
+    assert decision.fallback_used is False
+
+
+def test_complexity_strategy_simple_selects_deepseek():
+    """Simple prompt should select DeepSeek when it's the only provider."""
+    strategy = ComplexityStrategy()
+    context = RoutingContext(prompt="Hello", available_providers=["deepseek"])
+
+    decision = strategy.route("Hello", context)
+
+    assert decision.provider == "deepseek"
+    assert decision.model == "deepseek-chat"
+    assert decision.fallback_used is False
+
+
+def test_complexity_strategy_moderate_selects_qwen():
+    """Moderate prompt should select Qwen when it's the only provider."""
+    strategy = ComplexityStrategy()
+    context = RoutingContext(
+        prompt="Explain how HTTP works",
+        available_providers=["qwen"]
+    )
+
+    decision = strategy.route("Explain how HTTP works", context)
+
+    assert decision.provider == "qwen"
+    assert decision.model == "qwen-plus"
+    assert decision.fallback_used is False
+
+
+def test_complexity_strategy_complex_selects_glm():
+    """Complex prompt should select GLM when it's the only provider."""
+    strategy = ComplexityStrategy()
+    long_prompt = "Analyze the architectural trade-offs between " * 10
+    context = RoutingContext(prompt=long_prompt, available_providers=["glm"])
+
+    decision = strategy.route(long_prompt, context)
+
+    assert decision.provider == "glm"
+    assert decision.model == "glm-4.7"
+    assert decision.fallback_used is False
+
+
+def test_complexity_strategy_default_unchanged_by_new_providers():
+    """Default provider list should still prefer gemini/claude, not new providers."""
+    strategy = ComplexityStrategy()
+    context = RoutingContext(prompt="Hello")  # default available_providers
+
+    decision = strategy.route("Hello", context)
+
+    # New providers must not hijack the established simple-tier default
+    assert decision.provider == "gemini"
+    assert decision.model == "gemini-1.5-flash"

@@ -855,6 +855,203 @@ class BedrockProvider:
         return input_cost + output_cost
 
 
+class DeepSeekProvider:
+    """DeepSeek provider - cheap, capable OpenAI-compatible models."""
+
+    BASE_URL = "https://api.deepseek.com/v1"
+    MODEL = "deepseek-chat"  # Default: general chat; deepseek-reasoner also available
+
+    # PLACEHOLDER pricing — verify against vendor pricing pages before billing goes live
+    # Pricing per 1M tokens
+    MODEL_PRICING = {
+        "deepseek-chat": {"input": 0.27, "output": 1.10},
+        "deepseek-reasoner": {"input": 0.55, "output": 2.19},
+    }
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+        """
+        Send completion request to DeepSeek.
+
+        Returns:
+            Tuple of (response_text, input_tokens, output_tokens, cost)
+        """
+        url = f"{self.BASE_URL}/chat/completions"
+        model = model or self.MODEL
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                text = data["choices"][0]["message"]["content"]
+
+                usage = data["usage"]
+                input_tokens = usage["prompt_tokens"]
+                output_tokens = usage["completion_tokens"]
+
+                cost = self.calculate_cost(model, input_tokens, output_tokens)
+
+                return text, input_tokens, output_tokens, cost
+
+            except httpx.HTTPError as e:
+                raise ProviderError(f"DeepSeek API error: {str(e)}")
+
+    def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost based on model and token usage."""
+        pricing = self.MODEL_PRICING.get(model, {"input": 0.27, "output": 1.10})
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        return input_cost + output_cost
+
+
+class GLMProvider:
+    """GLM (Zhipu BigModel) provider - agentic-strong OpenAI-compatible models."""
+
+    # China endpoint. International alternative: https://api.z.ai/api/paas/v4
+    # (pending account-region confirmation — no API key exists yet to test either)
+    BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
+    MODEL = "glm-4.7"  # Default flagship model
+
+    # PLACEHOLDER pricing — verify against vendor pricing pages before billing goes live
+    # Pricing per 1M tokens
+    MODEL_PRICING = {
+        "glm-4.7": {"input": 0.60, "output": 2.20},
+    }
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+        """
+        Send completion request to GLM (Zhipu).
+
+        Returns:
+            Tuple of (response_text, input_tokens, output_tokens, cost)
+        """
+        url = f"{self.BASE_URL}/chat/completions"
+        model = model or self.MODEL
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                text = data["choices"][0]["message"]["content"]
+
+                usage = data["usage"]
+                input_tokens = usage["prompt_tokens"]
+                output_tokens = usage["completion_tokens"]
+
+                cost = self.calculate_cost(model, input_tokens, output_tokens)
+
+                return text, input_tokens, output_tokens, cost
+
+            except httpx.HTTPError as e:
+                raise ProviderError(f"GLM API error: {str(e)}")
+
+    def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost based on model and token usage."""
+        pricing = self.MODEL_PRICING.get(model, {"input": 0.60, "output": 2.20})
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        return input_cost + output_cost
+
+
+class QwenProvider:
+    """Qwen (Alibaba DashScope) provider - cheap, capable OpenAI-compatible models."""
+
+    BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    MODEL = "qwen-plus"  # Default balanced model
+
+    # PLACEHOLDER pricing — verify against vendor pricing pages before billing goes live
+    # Pricing per 1M tokens
+    MODEL_PRICING = {
+        "qwen-plus": {"input": 0.40, "output": 1.20},
+        "qwen-turbo": {"input": 0.05, "output": 0.20},
+        "qwen-max": {"input": 1.60, "output": 6.40},
+    }
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+        """
+        Send completion request to Qwen (DashScope).
+
+        Returns:
+            Tuple of (response_text, input_tokens, output_tokens, cost)
+        """
+        url = f"{self.BASE_URL}/chat/completions"
+        model = model or self.MODEL
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+
+                text = data["choices"][0]["message"]["content"]
+
+                usage = data["usage"]
+                input_tokens = usage["prompt_tokens"]
+                output_tokens = usage["completion_tokens"]
+
+                cost = self.calculate_cost(model, input_tokens, output_tokens)
+
+                return text, input_tokens, output_tokens, cost
+
+            except httpx.HTTPError as e:
+                raise ProviderError(f"Qwen API error: {str(e)}")
+
+    def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost based on model and token usage."""
+        pricing = self.MODEL_PRICING.get(model, {"input": 0.40, "output": 1.20})
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        return input_cost + output_cost
+
+
 def init_providers() -> dict:
     """
     Initialize available providers based on environment variables.
@@ -904,6 +1101,16 @@ def init_providers() -> dict:
 
     if api_key := os.getenv("COHERE_API_KEY"):
         providers["cohere"] = CohereProvider(api_key)
+
+    # Cheap + capable Chinese frontier providers (OpenAI-compatible)
+    if api_key := os.getenv("DEEPSEEK_API_KEY"):
+        providers["deepseek"] = DeepSeekProvider(api_key)
+
+    if api_key := os.getenv("GLM_API_KEY"):
+        providers["glm"] = GLMProvider(api_key)
+
+    if api_key := os.getenv("DASHSCOPE_API_KEY"):
+        providers["qwen"] = QwenProvider(api_key)
 
     # Ollama - local inference (no API key needed)
     if OllamaProvider.is_available():

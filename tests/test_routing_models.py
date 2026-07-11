@@ -29,7 +29,10 @@ def test_routing_context_defaults():
 
     assert context.prompt == "Test prompt"
     assert context.user_id is None
-    assert context.available_providers == ["gemini", "claude", "openrouter"]
+    assert context.available_providers == [
+        "gemini", "claude", "openrouter",
+        "ollama", "deepseek", "glm", "qwen",
+    ]
     assert context.max_cost is None
 
 

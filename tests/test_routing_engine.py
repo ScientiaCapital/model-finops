@@ -116,3 +116,33 @@ def test_route_creates_default_context_when_none_provided(engine):
     assert decision.provider in ["gemini", "claude", "openrouter"]
     assert decision.strategy_used == "complexity"
     assert decision.model is not None
+
+
+# =============================================================================
+# New providers must be valid routing targets (Ollama/DeepSeek/GLM/Qwen)
+# =============================================================================
+
+@pytest.mark.parametrize("provider", ["ollama", "deepseek", "glm", "qwen"])
+def test_new_providers_are_valid(provider):
+    """Engine should accept the new providers as valid routing targets."""
+    assert provider in RoutingEngine.VALID_PROVIDERS
+
+
+def test_route_accepts_deepseek_without_fallback(engine):
+    """A decision routing to DeepSeek should pass validation, not fall back."""
+    context = RoutingContext(prompt="Hello", available_providers=["deepseek"])
+
+    decision = engine.route(prompt="Hello", auto_route=False, context=context)
+
+    assert decision.provider == "deepseek"
+    assert decision.fallback_used is False
+
+
+def test_route_accepts_ollama_without_fallback(engine):
+    """A decision routing to Ollama should pass validation, not fall back."""
+    context = RoutingContext(prompt="Hello", available_providers=["ollama"])
+
+    decision = engine.route(prompt="Hello", auto_route=False, context=context)
+
+    assert decision.provider == "ollama"
+    assert decision.fallback_used is False

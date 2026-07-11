@@ -43,7 +43,10 @@ class RoutingContext:
     user_id: Optional[str] = None
     session_id: Optional[str] = None
     available_providers: List[str] = field(
-        default_factory=lambda: ["gemini", "claude", "openrouter"]
+        default_factory=lambda: [
+            "gemini", "claude", "openrouter",
+            "ollama", "deepseek", "glm", "qwen",
+        ]
     )
     max_cost: Optional[float] = None
     min_quality: Optional[float] = None

@@ -26,7 +26,7 @@ class RoutingEngine:
         db_path: Path to database for learning strategy
     """
 
-    VALID_PROVIDERS = ['gemini', 'claude', 'openrouter']
+    VALID_PROVIDERS = ['gemini', 'claude', 'openrouter', 'ollama', 'deepseek', 'glm', 'qwen']
     VALID_CONFIDENCE = ['high', 'medium', 'low']
 
     def __init__(self, db_path: str = "optimizer.db", track_metrics: bool = True):
