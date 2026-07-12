@@ -103,34 +103,34 @@ except BudgetExceededError as e:
 
 ### LLM Providers
 
-| Provider | Models | Pricing (per 1M tokens) |
-|----------|--------|------------------------|
-| Anthropic | Claude Opus/Sonnet/Haiku 4.5 | $1-$75 |
-| Google | Gemini 1.5 Flash/Pro | $0.075-$5 |
-| Groq | Llama 3.3 70B | $0.59-$0.79 |
-| Cerebras | Llama 3.1 8B/70B | $0.10-$0.60 |
-| DeepSeek | DeepSeek V3, R1 | $0.20-$2.19 |
-| Qwen | Qwen 2.5 72B | $0.35-$0.40 |
-| OpenRouter | 50+ models | Varies |
+| Provider   | Models                       | Pricing (per 1M tokens) |
+| ---------- | ---------------------------- | ----------------------- |
+| Anthropic  | Claude Opus/Sonnet/Haiku 4.5 | $1-$75                  |
+| Google     | Gemini 1.5 Flash/Pro         | $0.075-$5               |
+| Groq       | Llama 3.3 70B                | $0.59-$0.79             |
+| Cerebras   | Llama 3.1 8B/70B             | $0.10-$0.60             |
+| DeepSeek   | DeepSeek V3, R1              | $0.20-$2.19             |
+| Qwen       | Qwen 2.5 72B                 | $0.35-$0.40             |
+| OpenRouter | 50+ models                   | Varies                  |
 
 ### Voice AI
 
-| Service | Type | Pricing |
-|---------|------|---------|
-| Cartesia | TTS | $0.042/second |
-| ElevenLabs | TTS | $0.30/1K chars |
-| Deepgram | STT | $0.0043/minute |
-| AssemblyAI | STT | $0.00017/second |
+| Service    | Type | Pricing         |
+| ---------- | ---- | --------------- |
+| Cartesia   | TTS  | $0.042/second   |
+| ElevenLabs | TTS  | $0.30/1K chars  |
+| Deepgram   | STT  | $0.0043/minute  |
+| AssemblyAI | STT  | $0.00017/second |
 
 ### Infrastructure
 
-| Service | Component | Pricing |
-|---------|-----------|---------|
-| Supabase | Database | $0.01344/GB-hr |
-| Supabase | Edge Functions | $2/1M invocations |
-| Vercel | Serverless | $0.18/GB-hr |
-| Vercel | Edge | $0.65/1M invocations |
-| LangSmith | Traces | $0.00078/trace (Pro) |
+| Service   | Component      | Pricing              |
+| --------- | -------------- | -------------------- |
+| Supabase  | Database       | $0.01344/GB-hr       |
+| Supabase  | Edge Functions | $2/1M invocations    |
+| Vercel    | Serverless     | $0.18/GB-hr          |
+| Vercel    | Edge           | $0.65/1M invocations |
+| LangSmith | Traces         | $0.00078/trace (Pro) |
 
 ## API Reference
 

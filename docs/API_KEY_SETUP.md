@@ -8,55 +8,55 @@ Click any link below to go directly to the API key page for that service.
 
 ### LLM Providers
 
-| Service | Get API Key | Notes |
-|---------|-------------|-------|
-| **Anthropic Claude** | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) | Click "Create Key" → Copy |
-| **Google AI / Gemini** | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) | Click "Create API Key" |
-| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | Access 50+ models via one key |
-| **Groq** | [console.groq.com/keys](https://console.groq.com/keys) | Ultra-fast LPU inference |
-| **Cerebras** | [cloud.cerebras.ai/platform](https://cloud.cerebras.ai/platform) | 1000+ tokens/second |
-| **Together AI** | [api.together.xyz/settings/api-keys](https://api.together.xyz/settings/api-keys) | Fine-tuned models |
-| **Hugging Face** | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) | Models, Spaces, Inference API |
+| Service                | Get API Key                                                                        | Notes                         |
+| ---------------------- | ---------------------------------------------------------------------------------- | ----------------------------- |
+| **Anthropic Claude**   | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) | Click "Create Key" → Copy     |
+| **Google AI / Gemini** | [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)           | Click "Create API Key"        |
+| **OpenRouter**         | [openrouter.ai/keys](https://openrouter.ai/keys)                                   | Access 50+ models via one key |
+| **Groq**               | [console.groq.com/keys](https://console.groq.com/keys)                             | Ultra-fast LPU inference      |
+| **Cerebras**           | [cloud.cerebras.ai/platform](https://cloud.cerebras.ai/platform)                   | 1000+ tokens/second           |
+| **Together AI**        | [api.together.xyz/settings/api-keys](https://api.together.xyz/settings/api-keys)   | Fine-tuned models             |
+| **Hugging Face**       | [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)           | Models, Spaces, Inference API |
 
 ### Voice AI - Text-to-Speech (TTS)
 
-| Service | Get API Key | Pricing |
-|---------|-------------|---------|
-| **Cartesia** | [play.cartesia.ai/console](https://play.cartesia.ai/console) | $0.042/second |
+| Service        | Get API Key                                                                        | Pricing                  |
+| -------------- | ---------------------------------------------------------------------------------- | ------------------------ |
+| **Cartesia**   | [play.cartesia.ai/console](https://play.cartesia.ai/console)                       | $0.042/second            |
 | **ElevenLabs** | [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys) | $0.30/1K chars (Starter) |
 
 ### Voice AI - Speech-to-Text (STT)
 
-| Service | Get API Key | Pricing |
-|---------|-------------|---------|
-| **Deepgram** | [console.deepgram.com](https://console.deepgram.com) → Project → Keys | $0.0043/minute (Nova 2) |
-| **AssemblyAI** | [assemblyai.com/app/account](https://www.assemblyai.com/app/account) | $0.0037/second |
+| Service        | Get API Key                                                           | Pricing                 |
+| -------------- | --------------------------------------------------------------------- | ----------------------- |
+| **Deepgram**   | [console.deepgram.com](https://console.deepgram.com) → Project → Keys | $0.0043/minute (Nova 2) |
+| **AssemblyAI** | [assemblyai.com/app/account](https://www.assemblyai.com/app/account)  | $0.0037/second          |
 
 ### Infrastructure
 
-| Service | Get API Key | What You Need |
-|---------|-------------|---------------|
+| Service      | Get API Key                                                                     | What You Need                          |
+| ------------ | ------------------------------------------------------------------------------- | -------------------------------------- |
 | **Supabase** | [supabase.com/dashboard](https://supabase.com/dashboard/project/_/settings/api) | URL, Anon Key, Service Key, JWT Secret |
-| **Vercel** | [vercel.com/account/tokens](https://vercel.com/account/tokens) | Token, Org ID, Project ID |
-| **Railway** | [railway.app/account/tokens](https://railway.app/account/tokens) | API Token |
-| **RunPod** | [runpod.io/console/user/settings](https://www.runpod.io/console/user/settings) | API Key |
+| **Vercel**   | [vercel.com/account/tokens](https://vercel.com/account/tokens)                  | Token, Org ID, Project ID              |
+| **Railway**  | [railway.app/account/tokens](https://railway.app/account/tokens)                | API Token                              |
+| **RunPod**   | [runpod.io/console/user/settings](https://www.runpod.io/console/user/settings)  | API Key                                |
 
 ### AI Media
 
-| Service | Get API Key | Notes |
-|---------|-------------|-------|
+| Service    | Get API Key                                                                    | Notes               |
+| ---------- | ------------------------------------------------------------------------------ | ------------------- |
 | **Runway** | [app.runwayml.com/account/api-keys](https://app.runwayml.com/account/api-keys) | AI video generation |
 
 ### Observability
 
-| Service | Get API Key | Notes |
-|---------|-------------|-------|
+| Service       | Get API Key                                                          | Notes                   |
+| ------------- | -------------------------------------------------------------------- | ----------------------- |
 | **LangSmith** | [smith.langchain.com/settings](https://smith.langchain.com/settings) | LLM tracing & debugging |
 
 ### Billing
 
-| Service | Get API Key | Notes |
-|---------|-------------|-------|
+| Service    | Get API Key                                                          | Notes                  |
+| ---------- | -------------------------------------------------------------------- | ---------------------- |
 | **Stripe** | [dashboard.stripe.com/apikeys](https://dashboard.stripe.com/apikeys) | Use test keys for dev! |
 
 ---
@@ -89,6 +89,7 @@ python scripts/validate_api_keys.py
 ```
 
 Expected output:
+
 ```
 ╭──────────────────────────────────────────────────────╮
 │           AI Stack Optimizer - Key Validator         │
@@ -110,23 +111,23 @@ Expected output:
 
 ### "Invalid API Key" Error
 
-| Provider | Common Issues |
-|----------|--------------|
-| Anthropic | Key starts with `sk-ant-` not just `sk-` |
-| OpenRouter | Key starts with `sk-or-` |
-| Groq | Key is case-sensitive |
-| Supabase | Need ALL four values: URL, Anon Key, Service Key, JWT Secret |
+| Provider   | Common Issues                                                |
+| ---------- | ------------------------------------------------------------ |
+| Anthropic  | Key starts with `sk-ant-` not just `sk-`                     |
+| OpenRouter | Key starts with `sk-or-`                                     |
+| Groq       | Key is case-sensitive                                        |
+| Supabase   | Need ALL four values: URL, Anon Key, Service Key, JWT Secret |
 
 ### "Rate Limited" Error
 
 Most providers have free tiers with rate limits:
 
-| Provider | Free Tier Limit |
-|----------|-----------------|
-| Anthropic | $5 credit to start |
-| Groq | 100 req/min |
-| Deepgram | $200 credit |
-| OpenRouter | Pay-as-you-go |
+| Provider   | Free Tier Limit    |
+| ---------- | ------------------ |
+| Anthropic  | $5 credit to start |
+| Groq       | 100 req/min        |
+| Deepgram   | $200 credit        |
+| OpenRouter | Pay-as-you-go      |
 
 ### "Connection Refused"
 
@@ -153,6 +154,7 @@ Most providers have free tiers with rate limits:
 ### Supabase
 
 You need 4 values from Settings → API:
+
 1. **URL**: `https://xxxxx.supabase.co`
 2. **Anon Key**: `eyJhbGc...` (public, respects RLS)
 3. **Service Key**: `eyJhbGc...` (admin, bypasses RLS)
@@ -161,6 +163,7 @@ You need 4 values from Settings → API:
 ### Vercel
 
 You need 3 values:
+
 1. **Token**: Account → Tokens → Create
 2. **Org ID**: Found in URL when viewing organization
 3. **Project ID**: Project Settings → General

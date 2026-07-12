@@ -12,18 +12,19 @@ interface ForecastChartProps {
   loading?: boolean
 }
 
-export function ForecastChart({
-  forecast,
-  budgetExhaustion,
-  loading = false,
-}: ForecastChartProps) {
+export function ForecastChart({ forecast, budgetExhaustion, loading = false }: ForecastChartProps) {
   const getWarningVariant = (level: string) => {
     switch (level) {
-      case 'safe': return 'success'
-      case 'caution': return 'warning'
-      case 'warning': return 'warning'
-      case 'critical': return 'destructive'
-      default: return 'secondary'
+      case 'safe':
+        return 'success'
+      case 'caution':
+        return 'warning'
+      case 'warning':
+        return 'warning'
+      case 'critical':
+        return 'destructive'
+      default:
+        return 'secondary'
     }
   }
 
@@ -53,9 +54,7 @@ export function ForecastChart({
             <TrendingUp className="h-5 w-5 text-blue-500" />
             Cost Forecast
           </CardTitle>
-          {forecast && (
-            <Badge variant="outline">{forecast.method_used}</Badge>
-          )}
+          {forecast && <Badge variant="outline">{forecast.method_used}</Badge>}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -77,9 +76,7 @@ export function ForecastChart({
                   <Calendar className="h-4 w-4" />
                   Data Points
                 </div>
-                <div className="text-2xl font-bold mt-1">
-                  {forecast.data_points_used}
-                </div>
+                <div className="text-2xl font-bold mt-1">{forecast.data_points_used}</div>
               </div>
             </div>
 
@@ -103,7 +100,12 @@ export function ForecastChart({
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{forecast.daily_forecasts[0]?.date}</span>
-                  <span>{forecast.daily_forecasts[Math.min(6, forecast.daily_forecasts.length - 1)]?.date}</span>
+                  <span>
+                    {
+                      forecast.daily_forecasts[Math.min(6, forecast.daily_forecasts.length - 1)]
+                        ?.date
+                    }
+                  </span>
                 </div>
               </div>
             )}
@@ -132,9 +134,7 @@ export function ForecastChart({
                 ⚠️ Budget projected to exhaust in {budgetExhaustion.days_until_exhaustion} days
               </p>
             )}
-            <p className="text-xs mt-1 text-muted-foreground">
-              {budgetExhaustion.recommendation}
-            </p>
+            <p className="text-xs mt-1 text-muted-foreground">{budgetExhaustion.recommendation}</p>
           </div>
         )}
 

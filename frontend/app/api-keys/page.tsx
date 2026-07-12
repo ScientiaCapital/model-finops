@@ -10,9 +10,7 @@ export default function ApiKeysPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">API Keys</h1>
-          <p className="text-muted-foreground">
-            Manage your API keys for authentication
-          </p>
+          <p className="text-muted-foreground">Manage your API keys for authentication</p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
@@ -70,9 +68,7 @@ export default function ApiKeysPage() {
       <Card>
         <CardHeader>
           <CardTitle>Usage</CardTitle>
-          <CardDescription>
-            How to use your API key
-          </CardDescription>
+          <CardDescription>How to use your API key</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

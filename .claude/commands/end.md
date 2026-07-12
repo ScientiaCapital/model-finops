@@ -1,6 +1,6 @@
 ---
-description: "End Day workflow — observer report, security sweep, state sync, portfolio, git lockdown, handoff"
-argument-hint: ""
+description: 'End Day workflow — observer report, security sweep, state sync, portfolio, git lockdown, handoff'
+argument-hint: ''
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent
 ---
 
@@ -38,13 +38,13 @@ Pull `.claude/observers/QUALITY.md` and `.claude/observers/ARCH.md`.
 
 Disposition every item — nothing silently dropped:
 
-| Severity | Action |
-|---|---|
+| Severity | Action                                              |
+| -------- | --------------------------------------------------- |
 | CRITICAL | Resolve now OR log to `Backlog.md` with owner + ETA |
-| BLOCKER | Resolve now OR log to `Backlog.md` with owner + ETA |
-| WARNING | Log to `Backlog.md`, prioritize by impact |
-| RISK | Log to `Backlog.md`, prioritize by impact |
-| INFO | Log or discard with justification |
+| BLOCKER  | Resolve now OR log to `Backlog.md` with owner + ETA |
+| WARNING  | Log to `Backlog.md`, prioritize by impact           |
+| RISK     | Log to `Backlog.md`, prioritize by impact           |
+| INFO     | Log or discard with justification                   |
 
 **Devil's Advocate**: verify every flagged item was genuinely addressed, not just acknowledged. Confirm no work today introduced new issues observers missed.
 
@@ -74,12 +74,12 @@ Zero tolerance. Nothing ships with a secret in the codebase or git history.
 
 Update all planning docs to reflect true end-of-day state:
 
-| Doc | Action |
-|---|---|
-| `.claude/TASK.md` | Mark completed tasks done. Archive stale items (> 7 days, no movement) |
-| `.claude/PLANNING.md` | Adjust timeline based on today's actual velocity |
-| `.claude/Backlog.md` | Promote observer WARNINGs/RISKs to prioritized items with effort + impact |
-| Observer files | Copy to `.claude/archive/YYYY-MM-DD-OBSERVER-*.md`, then reset both files |
+| Doc                   | Action                                                                    |
+| --------------------- | ------------------------------------------------------------------------- |
+| `.claude/TASK.md`     | Mark completed tasks done. Archive stale items (> 7 days, no movement)    |
+| `.claude/PLANNING.md` | Adjust timeline based on today's actual velocity                          |
+| `.claude/Backlog.md`  | Promote observer WARNINGs/RISKs to prioritized items with effort + impact |
+| Observer files        | Copy to `.claude/archive/YYYY-MM-DD-OBSERVER-*.md`, then reset both files |
 
 ### Phase 4: Portfolio Metrics (~2 min)
 
@@ -89,20 +89,24 @@ Extract and present:
 ## Portfolio Capture — YYYY-MM-DD
 
 ### Output
+
 - Lines shipped: [total] (backend: [N] | frontend: [N] | tests: [N])
 - Features: [count] | Fixes: [count]
 
 ### Quality
+
 - Observer CRITICALs resolved: [N]
 - Observer BLOCKERs resolved: [N]
 - Tech debt prevented: [what observers caught]
 
 ### Cost
+
 - Session spend: $[X]
 - MTD: $[X] / $100
 - Cost per feature: $[X]
 
 ### GTME Value
+
 - GTM motion enabled: [what sales/marketing process this enables]
 - Operational leverage: [manual work reduced, time-to-value improved]
 - Portfolio positioning: [how to present this as GTME evidence]

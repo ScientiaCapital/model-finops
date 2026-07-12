@@ -1,6 +1,6 @@
 ---
-description: "Quick fix — branch, fix, test, commit. No ceremony."
-argument-hint: "<description of what to fix>"
+description: 'Quick fix — branch, fix, test, commit. No ceremony.'
+argument-hint: '<description of what to fix>'
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent
 ---
 

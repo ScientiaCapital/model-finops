@@ -20,14 +20,14 @@ Phase 2 transforms the learning intelligence from **advisory** to **operational*
 
 ## Design Decisions Summary
 
-| Decision Point | Choice | Rationale |
-|----------------|--------|-----------|
-| **High Confidence Routing** | Learning as primary, complexity as validation | Trust intelligence but validate sanity |
-| **Low Confidence Routing** | Use learning with warning flag | Aggressive learning - gather more data faster |
-| **API Integration** | Query parameter toggle (`?auto_route=true`) | Flexible A/B testing, gradual migration, zero breaking changes |
-| **Error Handling** | Fallback to complexity-based routing | Maximize training data collection, safe default |
-| **Success Metrics** | All 4: Cost savings, quality scores, confidence levels, model distribution | Comprehensive moat-building visibility |
-| **Architecture** | Strategy Pattern (pluggable routing strategies) | Long-term scalability, easy to add new strategies |
+| Decision Point              | Choice                                                                     | Rationale                                                      |
+| --------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **High Confidence Routing** | Learning as primary, complexity as validation                              | Trust intelligence but validate sanity                         |
+| **Low Confidence Routing**  | Use learning with warning flag                                             | Aggressive learning - gather more data faster                  |
+| **API Integration**         | Query parameter toggle (`?auto_route=true`)                                | Flexible A/B testing, gradual migration, zero breaking changes |
+| **Error Handling**          | Fallback to complexity-based routing                                       | Maximize training data collection, safe default                |
+| **Success Metrics**         | All 4: Cost savings, quality scores, confidence levels, model distribution | Comprehensive moat-building visibility                         |
+| **Architecture**            | Strategy Pattern (pluggable routing strategies)                            | Long-term scalability, easy to add new strategies              |
 
 ---
 
@@ -50,6 +50,7 @@ More customers attracted → More queries → Better routing → Bigger moat
 ### Timeline: Next 3-6 Months
 
 Focus: **Build IP and know-how**
+
 - Maximize training data collection (even low-confidence routes)
 - Prove cost savings vs baseline
 - Create proprietary routing intelligence competitors cannot access
@@ -500,11 +501,13 @@ async def chat(
 ### Backward Compatibility
 
 **Existing behavior preserved:**
+
 - `POST /chat` without `auto_route` parameter → ComplexityStrategy (existing logic)
 - All existing clients continue working unchanged
 - No breaking changes to API contracts
 
 **New behavior opt-in:**
+
 - `POST /chat?auto_route=true` → HybridStrategy (learning-powered)
 - Returns confidence and strategy metadata
 - Can be toggled per-request for A/B testing
@@ -702,6 +705,7 @@ class MetricsCollector:
    - Quality scores per model
 
 **Customer Dashboard** gets:
+
 - "Your savings: X% below standard routing"
 - "Powered by learning intelligence" badge
 
@@ -725,6 +729,7 @@ except Exception as e:
 ```
 
 **Guarantees:**
+
 - Every request ALWAYS gets routed (via fallback)
 - Zero downtime from learning engine failures
 - Every request logged (maximizes training data)
@@ -768,6 +773,7 @@ async def route_with_timeout(
 ### Unit Tests
 
 **Per Strategy:**
+
 ```python
 def test_complexity_strategy_simple_prompt():
     strategy = ComplexityStrategy()
@@ -789,6 +795,7 @@ def test_hybrid_strategy_validation():
 ```
 
 **Routing Engine:**
+
 ```python
 def test_routing_engine_auto_route_parameter():
     engine = RoutingEngine()
@@ -848,6 +855,7 @@ class ABTestManager:
 ### Phase 2a: Core Implementation (Week 1)
 
 **Tasks:**
+
 1. Implement strategy classes (ComplexityStrategy, LearningStrategy, HybridStrategy)
 2. Implement RoutingEngine orchestrator
 3. Create routing_metrics table
@@ -857,11 +865,13 @@ class ABTestManager:
 7. Write integration tests (endpoint + database)
 
 **Deployment:**
+
 - Deploy to production with `auto_route=false` as default
 - Existing behavior unchanged
 - No customer impact
 
 **Success Criteria:**
+
 - All tests passing
 - /chat endpoint responds correctly with auto_route=false
 - No performance degradation
@@ -869,6 +879,7 @@ class ABTestManager:
 ### Phase 2b: Internal Testing (Week 2)
 
 **Tasks:**
+
 1. Enable `auto_route=true` for internal test accounts
 2. Monitor metrics dashboard daily:
    - Cost savings vs baseline
@@ -879,6 +890,7 @@ class ABTestManager:
 4. Validate HybridStrategy validation logic
 
 **Success Criteria:**
+
 - Zero fallbacks from learning engine errors
 - Cost savings >20% vs baseline
 - Quality maintained (±5% of baseline)
@@ -887,17 +899,20 @@ class ABTestManager:
 ### Phase 2c: Gradual Rollout (Weeks 3-4)
 
 **Week 3:**
+
 - Enable auto_route for 25% of traffic (A/B test)
 - Monitor for 3-4 days
 - Compare metrics: auto_route vs baseline
 - Increase to 50% if metrics good
 
 **Week 4:**
+
 - 50% → 75% → 100% over 7 days
 - Daily metric reviews
 - Rollback capability if quality drops >10%
 
 **Success Criteria:**
+
 - Cost savings 30-50% vs baseline at 100% rollout
 - Quality maintained or improved
 - User satisfaction unchanged
@@ -905,6 +920,7 @@ class ABTestManager:
 ### Phase 2d: Make Default (Week 5)
 
 **Tasks:**
+
 1. Switch default to `auto_route=true`
 2. Add `auto_route=false` for opt-out
 3. Update API documentation
@@ -912,6 +928,7 @@ class ABTestManager:
 5. Announce feature to customers (if applicable)
 
 **Success Criteria:**
+
 - All traffic using learning intelligence
 - Documented cost savings proof
 - Dashboard showing moat building (confidence increasing)
@@ -923,6 +940,7 @@ class ABTestManager:
 ### Zero Breaking Changes
 
 **Guaranteed:**
+
 - Existing `/chat` requests work unchanged
 - No API contract modifications
 - Complexity strategy preserved as fallback
@@ -944,6 +962,7 @@ else:
 ### Monitoring
 
 **Key Metrics to Watch:**
+
 - Error rate (should not increase)
 - P95 latency (should stay <500ms)
 - Quality scores (should maintain ±5%)
@@ -957,16 +976,19 @@ else:
 ### Phase 3: Advanced Strategies
 
 **CostOptimizedStrategy:**
+
 - Prioritizes cheapest models
 - Acceptable quality threshold
 - Maximum cost savings
 
 **QualityFirstStrategy:**
+
 - Prioritizes highest quality
 - Cost secondary concern
 - For premium customers
 
 **LatencyOptimizedStrategy:**
+
 - Routes to fastest providers
 - Real-time response needs
 - Sacrifices cost for speed
@@ -974,6 +996,7 @@ else:
 ### Multi-Tenant Learning
 
 **Per-Customer Strategies:**
+
 ```python
 class TenantAwareStrategy(RoutingStrategy):
     def route(self, prompt: str, context: RoutingContext) -> RoutingDecision:
@@ -986,6 +1009,7 @@ class TenantAwareStrategy(RoutingStrategy):
 ### Reinforcement Learning
 
 **Feedback Loop:**
+
 - User ratings train model preferences
 - Cost/quality trade-off optimization
 - Self-improving routing decisions
@@ -1033,18 +1057,21 @@ Deployment:
 ## Success Metrics (Phase 2 Completion)
 
 **Technical Metrics:**
+
 - ✅ All strategies implemented and tested
 - ✅ Zero breaking changes to API
 - ✅ <1% fallback rate
 - ✅ P95 latency <500ms
 
 **Business Metrics:**
+
 - ✅ 30-50% cost savings vs baseline
 - ✅ Quality maintained (±5% of baseline)
 - ✅ Confidence levels increasing over time
 - ✅ Model selection patterns validated
 
 **Moat Building:**
+
 - ✅ All queries logged and learning
 - ✅ Proprietary routing intelligence growing
 - ✅ Measurable competitive advantage

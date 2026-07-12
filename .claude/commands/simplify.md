@@ -1,6 +1,6 @@
 ---
-description: "Simplify recent code — reduce complexity, improve readability."
-argument-hint: "[number of commits to simplify, default 3]"
+description: 'Simplify recent code — reduce complexity, improve readability.'
+argument-hint: '[number of commits to simplify, default 3]'
 allowed-tools: Read, Glob, Grep, Bash, Edit, Agent
 ---
 

@@ -1,6 +1,6 @@
 ---
-description: "Interrupt Protocol — snapshot current work and pivot to urgent task"
-argument-hint: "[reason for pivot]"
+description: 'Interrupt Protocol — snapshot current work and pivot to urgent task'
+argument-hint: '[reason for pivot]'
 allowed-tools: Read, Bash, Write, Edit
 ---
 
@@ -37,6 +37,7 @@ Append to `.claude/observers/ALERTS.md`:
 ### Step 3: Acknowledge
 
 Tell the user:
+
 - Current work is safely committed on branch `[branch]`
 - Original sprint plan is paused
 - Ready to work the urgent item

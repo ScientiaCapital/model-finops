@@ -13,6 +13,7 @@
 ## Task 1: Model Abstraction Layer
 
 **Files:**
+
 - Create: `agent/model_abstraction.py`
 - Test: `agent/test_model_abstraction.py`
 
@@ -148,6 +149,7 @@ Protects competitive intelligence while delivering customer value."
 ## Task 2: Enhance QueryPatternAnalyzer for Model-Level Tracking
 
 **Files:**
+
 - Modify: `app/learning.py` (enhance existing QueryPatternAnalyzer)
 - Test: Create `tests/test_learning_enhanced.py`
 
@@ -465,6 +467,7 @@ Enables smart routing based on model-specific historical performance."
 ## Task 3: Add 4 Learning-Powered Agent Tools
 
 **Files:**
+
 - Modify: `agent/tools.py`
 - Test: `agent/test_learning_tools.py`
 
@@ -891,6 +894,7 @@ All tools use black-box abstraction for competitive protection."
 ## Task 4: Register New Tools with Agent
 
 **Files:**
+
 - Modify: `agent/cost_optimizer_agent.py`
 
 **Step 1: Import new tools**
@@ -1057,6 +1061,7 @@ Agent now has 10 tools total (6 existing + 4 learning-powered)."
 ## Task 5: Build CLI Dashboard
 
 **Files:**
+
 - Create: `agent/dashboard.py`
 - Test: Manual testing (visual output)
 
@@ -1353,7 +1358,7 @@ Expected: Dashboard shows tier labels instead of model names
 
 Create `agent/DASHBOARD.md`:
 
-```markdown
+````markdown
 # Learning Intelligence Dashboard
 
 Visual CLI dashboard showing learning progress and model performance.
@@ -1367,6 +1372,7 @@ python3 dashboard.py --mode external
 # Internal view (actual models)
 python3 dashboard.py --mode internal
 ```
+````
 
 ## Sections
 
@@ -1381,7 +1387,8 @@ python3 dashboard.py --mode internal
 - Database with historical data (run `init_test_data.py` first)
 - Python 3.8+
 - No external dependencies (uses stdlib only)
-```
+
+````
 
 **Step 5: Commit**
 
@@ -1396,7 +1403,7 @@ Features:
 - No external dependencies
 
 Provides at-a-glance view of learning maturity and savings opportunities."
-```
+````
 
 ---
 
@@ -1405,6 +1412,7 @@ Provides at-a-glance view of learning maturity and savings opportunities."
 **Step 1: Verify all files created**
 
 Run:
+
 ```bash
 ls -la agent/model_abstraction.py
 ls -la agent/dashboard.py
@@ -1461,27 +1469,31 @@ Modify `agent/README.md` to document new tools:
 
 Add section:
 
-```markdown
+````markdown
 ## New: Learning Intelligence Tools
 
 The agent now includes 4 learning-powered tools:
 
 ### 1. get_smart_recommendation
+
 Get AI-powered routing recommendations based on historical data.
 
 **Example:** "What's the best model for debugging Python code?"
 
 ### 2. get_pattern_analysis
+
 View learning progress across 6 query patterns.
 
 **Example:** "Show me learning progress by pattern"
 
 ### 3. get_provider_performance
+
 Compare model performance (internal or external view).
 
 **Example:** "Compare provider performance"
 
 ### 4. calculate_potential_savings
+
 Calculate ROI of learning-powered routing.
 
 **Example:** "How much could I save with smart routing?"
@@ -1494,7 +1506,9 @@ Visual dashboard showing learning intelligence:
 python3 dashboard.py --mode external  # Customer view
 python3 dashboard.py --mode internal  # Admin view
 ```
-```
+````
+
+````
 
 **Step 2: Update main README**
 
@@ -1506,7 +1520,7 @@ Add to features section:
 - **Learning Intelligence (Phase 1)**: Smart routing recommendations based on historical performance
 - **Model Abstraction**: Black-box tier labels protect competitive intelligence
 - **CLI Dashboard**: Visual learning progress and savings projections
-```
+````
 
 **Step 3: Commit documentation**
 

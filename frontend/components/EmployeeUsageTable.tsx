@@ -35,9 +35,7 @@ export function EmployeeUsageTable({
 
   const departments = useMemo(() => {
     const depts = new Set(
-      employees
-        .map((e) => e.department_name)
-        .filter((d): d is string => Boolean(d))
+      employees.map(e => e.department_name).filter((d): d is string => Boolean(d))
     )
     return ['all', ...Array.from(depts).sort()]
   }, [employees])
@@ -55,9 +53,7 @@ export function EmployeeUsageTable({
     let filtered = employees
 
     if (departmentFilter !== 'all') {
-      filtered = filtered.filter(
-        (e) => e.department_name === departmentFilter
-      )
+      filtered = filtered.filter(e => e.department_name === departmentFilter)
     }
 
     const sorted = [...filtered].sort((a, b) => {
@@ -149,10 +145,10 @@ export function EmployeeUsageTable({
             <Filter className="h-4 w-4 text-muted-foreground" />
             <select
               value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
+              onChange={e => setDepartmentFilter(e.target.value)}
               className="border rounded-md px-3 py-1 text-sm"
             >
-              {departments.map((dept) => (
+              {departments.map(dept => (
                 <option key={dept} value={dept}>
                   {dept === 'all' ? 'All Departments' : dept}
                 </option>
@@ -221,7 +217,7 @@ export function EmployeeUsageTable({
                 </TableCell>
               </TableRow>
             ) : (
-              sortedAndFilteredEmployees.map((employee) => {
+              sortedAndFilteredEmployees.map(employee => {
                 const usage = employee.usage
                 const _hasPersonalAccount = Boolean(employee.personal_linked_at)
 
@@ -233,12 +229,8 @@ export function EmployeeUsageTable({
                   >
                     <TableCell>
                       <div>
-                        <div className="font-medium">
-                          {employee.name || 'No Name'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {employee.email}
-                        </div>
+                        <div className="font-medium">{employee.name || 'No Name'}</div>
+                        <div className="text-sm text-muted-foreground">{employee.email}</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -254,15 +246,18 @@ export function EmployeeUsageTable({
                         </div>
                         {usage && (usage.work_spend_usd > 0 || usage.personal_spend_usd > 0) && (
                           <div className="text-xs text-muted-foreground">
-                            Work: ${usage.work_spend_usd.toFixed(2)} | Personal:{' '}
-                            ${usage.personal_spend_usd.toFixed(2)}
+                            Work: ${usage.work_spend_usd.toFixed(2)} | Personal: $
+                            {usage.personal_spend_usd.toFixed(2)}
                           </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       {usage && usage.personal_spend_usd > 0 ? (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        <Badge
+                          variant="outline"
+                          className="bg-amber-50 text-amber-700 border-amber-200"
+                        >
                           ${usage.personal_spend_usd.toFixed(2)} Personal
                         </Badge>
                       ) : (

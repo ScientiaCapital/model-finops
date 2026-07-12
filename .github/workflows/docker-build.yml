@@ -7,7 +7,7 @@ on:
       - 'app/**'
       - 'requirements.txt'
       - 'Dockerfile'
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch: # Manual trigger from GitHub UI
 
 env:
   REGISTRY: ghcr.io

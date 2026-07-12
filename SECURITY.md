@@ -44,6 +44,7 @@ Before every commit, verify:
 ## 🔍 How to Scan for Leaked Secrets
 
 ### Quick Scan (before commit)
+
 ```bash
 # Check staged files for API key patterns
 git diff --cached | grep -E "sk-[a-zA-Z0-9]{48}|AIza[a-zA-Z0-9_-]{35}|eyJ[a-zA-Z0-9_-]*\."
@@ -52,6 +53,7 @@ git diff --cached | grep -E "sk-[a-zA-Z0-9]{48}|AIza[a-zA-Z0-9_-]{35}|eyJ[a-zA-Z
 ```
 
 ### Full Repository Scan
+
 ```bash
 # Scan all Python/JS/TS files for hardcoded keys
 grep -r "API_KEY\s*=\s*['\"]" --include="*.py" --include="*.js" --include="*.ts" --exclude-dir=node_modules --exclude-dir=.venv .
@@ -60,6 +62,7 @@ grep -r "API_KEY\s*=\s*['\"]" --include="*.py" --include="*.js" --include="*.ts"
 ```
 
 ### Check Git History
+
 ```bash
 # Check if .env was ever committed
 git log --all --full-history -- "*.env"
@@ -80,6 +83,7 @@ git log --all --full-history -- "*.env"
    - Anthropic: https://console.anthropic.com/settings/keys
    - Google AI: https://aistudio.google.com/app/apikey
 3. **Remove from git history**:
+
    ```bash
    # Install git-filter-repo
    pip install git-filter-repo
@@ -97,6 +101,7 @@ git log --all --full-history -- "*.env"
 ## 📋 Environment Variable Patterns
 
 ### Python (FastAPI Backend)
+
 ```python
 import os
 from dotenv import load_dotenv
@@ -112,6 +117,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 ```
 
 ### Node.js / Next.js (Frontend/API Routes)
+
 ```typescript
 // CORRECT ✅
 const apiKey = process.env.OPENROUTER_API_KEY
@@ -122,6 +128,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 ```
 
 ### Environment File Hierarchy
+
 ```
 Project Root:
 ├── .env              ← Your real secrets (gitignored)
@@ -156,6 +163,7 @@ exit 0
 ```
 
 Make it executable:
+
 ```bash
 chmod +x .git/hooks/pre-commit
 ```
@@ -163,6 +171,7 @@ chmod +x .git/hooks/pre-commit
 ## 📚 Security Tools (Recommended)
 
 ### 1. git-secrets (AWS tool, works for all secrets)
+
 ```bash
 # Install
 brew install git-secrets  # macOS
@@ -176,6 +185,7 @@ git secrets --add 'eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*'
 ```
 
 ### 2. gitleaks (Comprehensive secret scanner)
+
 ```bash
 # Install
 brew install gitleaks  # macOS
@@ -188,6 +198,7 @@ gitleaks protect --staged
 ```
 
 ### 3. trufflehog (Deep history scanning)
+
 ```bash
 # Install
 brew install trufflehog  # macOS

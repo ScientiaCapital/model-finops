@@ -10,11 +10,7 @@ export const metadata: Metadata = {
   description: 'Intelligent AI routing with semantic caching to reduce your LLM costs by 60%+',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
@@ -24,9 +20,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="min-h-screen bg-background">
-            {children}
-          </div>
+          <div className="min-h-screen bg-background">{children}</div>
         </ThemeProvider>
       </body>
     </html>

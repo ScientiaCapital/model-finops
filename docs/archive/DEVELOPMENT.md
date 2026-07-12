@@ -5,6 +5,7 @@ This guide helps you set up and contribute to the AI Cost Optimizer project.
 ## Quick Start
 
 1. **Clone and setup:**
+
    ```bash
    git clone <repo-url>
    cd ai-cost-optimizer
@@ -12,6 +13,7 @@ This guide helps you set up and contribute to the AI Cost Optimizer project.
    ```
 
 2. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env and add your API keys
@@ -91,6 +93,7 @@ cd next-app && npm test
 - Type hints encouraged (mypy configured)
 
 **Format before committing:**
+
 ```bash
 make format
 ```
@@ -104,6 +107,7 @@ make format
 - Use functional components with hooks
 
 **Format before committing:**
+
 ```bash
 cd next-app && npm run format
 ```
@@ -113,9 +117,11 @@ cd next-app && npm run format
 See `.env.example` for all available configuration options.
 
 **Required for development:**
+
 - At least one provider API key (GOOGLE_API_KEY, ANTHROPIC_API_KEY, etc.)
 
 **Optional:**
+
 - `CORS_ORIGINS` - Comma-separated origins (default: "*")
 - `PORT` - Backend port (default: 8000)
 - `LOG_LEVEL` - Logging verbosity (default: INFO)
@@ -125,6 +131,7 @@ See `.env.example` for all available configuration options.
 The SQLite database (`optimizer.db`) is created automatically on first run.
 
 **Reset database:**
+
 ```bash
 make db-reset
 ```
@@ -134,6 +141,7 @@ make db-reset
 ## Adding a New Provider
 
 1. Create provider class in `app/providers.py`:
+
    ```python
    class NewProvider(Provider):
        async def complete(self, prompt, max_tokens):
@@ -171,16 +179,19 @@ make db-reset
 ## Git Workflow
 
 1. Create a branch for your feature:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
 
 2. Make changes and test:
+
    ```bash
    make lint format test
    ```
 
 3. Commit with clear messages:
+
    ```bash
    git commit -m "feat: add new provider"
    ```
@@ -248,4 +259,3 @@ make lint format typecheck test
 - Check existing issues on GitHub
 - Review `TECH_AUDIT.md` for known issues
 - Ask in team chat or create an issue
-

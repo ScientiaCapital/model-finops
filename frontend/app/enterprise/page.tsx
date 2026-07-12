@@ -61,11 +61,9 @@ export default function EnterprisePage() {
   }, [fetchData])
 
   const handleAlertResolved = useCallback((alertId: string) => {
-    setAlerts((prev) =>
-      prev.map((a) =>
-        a.id === alertId
-          ? { ...a, resolved: true, resolved_at: new Date().toISOString() }
-          : a
+    setAlerts(prev =>
+      prev.map(a =>
+        a.id === alertId ? { ...a, resolved: true, resolved_at: new Date().toISOString() } : a
       )
     )
   }, [])
@@ -73,10 +71,12 @@ export default function EnterprisePage() {
   // Calculate metrics
   const totalEmployees = employees.length
   const totalMonthlySpend = departments.reduce((sum, d) => sum + d.total_spend_usd, 0)
-  const criticalAlerts = alerts.filter((a) => !a.resolved && a.severity === 'critical').length
+  const criticalAlerts = alerts.filter(a => !a.resolved && a.severity === 'critical').length
   const complianceScore = Math.max(
     0,
-    100 - criticalAlerts * 10 - alerts.filter((a) => !a.resolved && a.severity === 'warning').length * 3
+    100 -
+      criticalAlerts * 10 -
+      alerts.filter(a => !a.resolved && a.severity === 'warning').length * 3
   )
 
   if (loading && !organization) {
@@ -153,8 +153,8 @@ export default function EnterprisePage() {
             complianceScore >= 90
               ? { text: 'Excellent', variant: 'success' }
               : complianceScore >= 70
-              ? { text: 'Good', variant: 'warning' }
-              : { text: 'Needs Attention', variant: 'destructive' }
+                ? { text: 'Good', variant: 'warning' }
+                : { text: 'Needs Attention', variant: 'destructive' }
           }
         />
         <MetricsCard
@@ -176,7 +176,7 @@ export default function EnterprisePage() {
         <div className="lg:col-span-2">
           <EmployeeUsageTable
             employees={employees}
-            onEmployeeClick={(employee) => {
+            onEmployeeClick={employee => {
               console.log('Employee clicked:', employee)
               // TODO: Open detail modal
             }}
@@ -186,11 +186,7 @@ export default function EnterprisePage() {
 
       {/* Compliance Alerts - Full Width */}
       <div>
-        <ComplianceAlerts
-          alerts={alerts}
-          onAlertResolved={handleAlertResolved}
-          loading={loading}
-        />
+        <ComplianceAlerts alerts={alerts} onAlertResolved={handleAlertResolved} loading={loading} />
       </div>
 
       {/* Organization Settings Summary */}

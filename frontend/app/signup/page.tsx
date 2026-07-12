@@ -85,16 +85,12 @@ export default function SignupPage() {
             </div>
             <CardTitle>Check your email</CardTitle>
             <CardDescription>
-              We&apos;ve sent a confirmation link to <strong>{email}</strong>.
-              Click the link to verify your account.
+              We&apos;ve sent a confirmation link to <strong>{email}</strong>. Click the link to
+              verify your account.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => router.push('/login')}
-            >
+            <Button variant="outline" className="w-full" onClick={() => router.push('/login')}>
               Back to Login
             </Button>
           </CardContent>
@@ -192,7 +188,7 @@ export default function SignupPage() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 required
                 disabled={loading || oauthLoading !== null}
               />
@@ -204,7 +200,7 @@ export default function SignupPage() {
                 type="password"
                 placeholder="Create a password (8+ characters)"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 required
                 minLength={8}
                 disabled={loading || oauthLoading !== null}
@@ -217,16 +213,12 @@ export default function SignupPage() {
                 type="password"
                 placeholder="Confirm your password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={e => setConfirmPassword(e.target.value)}
                 required
                 disabled={loading || oauthLoading !== null}
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading || oauthLoading !== null}
-            >
+            <Button type="submit" className="w-full" disabled={loading || oauthLoading !== null}>
               {loading ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (

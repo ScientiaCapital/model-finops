@@ -69,6 +69,7 @@
 ```
 
 See full architecture details in [ARCHITECTURE.md](./ARCHITECTURE.md) including:
+
 - Detailed component descriptions
 - Request flow diagrams
 - Deployment architecture

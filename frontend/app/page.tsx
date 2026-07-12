@@ -29,12 +29,11 @@ export default function LandingPage() {
         <section className="py-20 md:py-32">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Cut Your AI Costs by{' '}
-              <span className="text-primary">60%+</span>
+              Cut Your AI Costs by <span className="text-primary">60%+</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Intelligent routing and semantic caching for your LLM workloads.
-              Same quality, dramatically lower costs.
+              Intelligent routing and semantic caching for your LLM workloads. Same quality,
+              dramatically lower costs.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
@@ -56,9 +55,7 @@ export default function LandingPage() {
         {/* Features */}
         <section className="py-20 bg-muted/50">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">
-              Why ModelFinOps?
-            </h2>
+            <h2 className="text-3xl font-bold text-center mb-12">Why ModelFinOps?</h2>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {/* Feature 1: Cost Savings */}
               <Card>
@@ -68,8 +65,8 @@ export default function LandingPage() {
                   </div>
                   <CardTitle>60%+ Cost Reduction</CardTitle>
                   <CardDescription>
-                    Our intelligent routing automatically selects the most cost-effective
-                    model for each prompt, without sacrificing quality.
+                    Our intelligent routing automatically selects the most cost-effective model for
+                    each prompt, without sacrificing quality.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -82,8 +79,8 @@ export default function LandingPage() {
                   </div>
                   <CardTitle>Multi-Provider Support</CardTitle>
                   <CardDescription>
-                    Access Claude, Gemini, DeepSeek, Groq, and more through a single API.
-                    Automatic fallback ensures 99.9% uptime.
+                    Access Claude, Gemini, DeepSeek, Groq, and more through a single API. Automatic
+                    fallback ensures 99.9% uptime.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -96,8 +93,8 @@ export default function LandingPage() {
                   </div>
                   <CardTitle>Semantic Caching</CardTitle>
                   <CardDescription>
-                    Similar prompts hit the cache. &quot;What is Python?&quot; and
-                    &quot;Explain Python&quot; return instant cached responses.
+                    Similar prompts hit the cache. &quot;What is Python?&quot; and &quot;Explain
+                    Python&quot; return instant cached responses.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -108,9 +105,7 @@ export default function LandingPage() {
         {/* CTA */}
         <section className="py-20">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-4">
-              Ready to reduce your AI costs?
-            </h2>
+            <h2 className="text-3xl font-bold mb-4">Ready to reduce your AI costs?</h2>
             <p className="text-muted-foreground mb-8">
               Join teams saving thousands on their AI infrastructure.
             </p>

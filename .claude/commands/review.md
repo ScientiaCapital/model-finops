@@ -1,6 +1,6 @@
 ---
-description: "Quick code review of recent changes"
-argument-hint: "[number of commits to review, default 5]"
+description: 'Quick code review of recent changes'
+argument-hint: '[number of commits to review, default 5]'
 allowed-tools: Read, Glob, Grep, Bash, Agent
 ---
 

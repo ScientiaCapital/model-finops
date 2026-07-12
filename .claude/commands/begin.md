@@ -1,6 +1,6 @@
 ---
-description: "Start Day workflow — context sync, observer audit, standup, sprint plan"
-argument-hint: "[full|light]"
+description: 'Start Day workflow — context sync, observer audit, standup, sprint plan'
+argument-hint: '[full|light]'
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent
 ---
 
@@ -28,10 +28,12 @@ Cost state:
 ### Mode Detection
 
 If `$1` is "light" OR the only planned work today is docs/typos/config/single-file patches:
+
 - Run **Phase 1 only**, then report ready status
 - Skip Phases 2-4
 
 If `$1` is "full" or blank:
+
 - Run **all 4 phases** in order
 
 ### Phase 1: Context Sync + Environment Health (~3 min)
@@ -51,11 +53,13 @@ If `$1` is "full" or blank:
 Run two observer audits as point-in-time checks (NOT persistent daemons):
 
 **Code Quality Observer** (use haiku model if spawning subagent):
+
 - Audit `git diff HEAD~5..HEAD` for: tech debt, test gaps, silent exception handlers, hardcoded values, unused imports
 - Write findings to `.claude/observers/QUALITY.md`
 - Format: `[CRITICAL | WARNING | INFO] — file:line — description — fix`
 
 **Architecture Observer** (use sonnet model):
+
 - Check for: contract violations, scope creep, duplicate logic, unresolved TODOs blocking other work, missing deps
 - Write findings to `.claude/observers/ARCH.md`
 - Format: `[BLOCKER | RISK | SMELL] — component — description — impact`
@@ -71,23 +75,29 @@ Present this report before sprint plan:
 ## Standup: [PROJECT_NAME] — YYYY-MM-DD
 
 ### Git State
+
 Branch: [branch] | Ahead/Behind: [N/N] | Dirty files: [N]
 
 ### Budget
+
 Yesterday: $[X] | MTD: $[X] | % of $100/mo cap: [N]%
 
 ### Completed Since Last Session
+
 - [task] → [outcome metric]
 
 ### Carry-Overs
+
 | Task | Worktree/Branch | % Complete |
-|------|-----------------|------------|
+| ---- | --------------- | ---------- |
 
 ### Observer Flags
+
 - CRITICALs: [count] | BLOCKERs: [count]
 - [list each]
 
 ### Devil's Advocate Findings
+
 - [gaps, drift, or hidden blockers]
 ```
 
@@ -96,6 +106,7 @@ Yesterday: $[X] | MTD: $[X] | % of $100/mo cap: [N]%
 **Hard gate:** All observer BLOCKERs must be cleared first.
 
 For each proposed task:
+
 - Route through agent-capability-matrix → assign skill + model tier
 - Show parallelization strategy (worktrees vs subagents)
 - Include cost forecast
@@ -103,8 +114,8 @@ For each proposed task:
 ```markdown
 ## Sprint Plan — YYYY-MM-DD
 
-| # | Task | Agent/Skill | Model | Worktree | Est Cost |
-|---|------|-------------|-------|----------|----------|
+| #   | Task | Agent/Skill | Model | Worktree | Est Cost |
+| --- | ---- | ----------- | ----- | -------- | -------- |
 
 **Session forecast:** $[X] | **Parallelization:** [strategy]
 ```

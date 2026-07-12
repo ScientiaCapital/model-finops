@@ -19,12 +19,14 @@
 ## Success Criteria
 
 ### Must-Haves
+
 - All tests pass (target: 92/92)
 - Redis caching works with <10ms response time
 - A/B testing framework operational
 - Visible performance improvements with before/after metrics
 
 ### Nice-to-Haves
+
 - Advanced ML pattern recognition
 - Full authentication system
 - Comprehensive benchmarking suite
@@ -34,16 +36,19 @@
 ## Feature Selection
 
 ### Feature 1: Real-Time Metrics Dashboard with Redis Caching (3-4 hours)
+
 **Production**: Fix 6 failing tests, deploy PostgreSQL + Redis via Docker Compose, full stack running locally
 **Intelligence**: Live metrics showing routing decisions, confidence levels, cost savings in real-time
 **Performance**: Redis caching for sub-10ms metric queries, instant dashboard updates
 
 ### Feature 2: A/B Testing Framework with Auto-Reporting (4-5 hours)
+
 **Production**: Robust experiment tracking with PostgreSQL, statistically significant result detection
 **Intelligence**: Scientific strategy comparison (Complexity vs Learning vs Hybrid), automatic winner detection
 **Performance**: Efficient experiment allocation with minimal overhead, concurrent experiment support
 
 ### Feature 3: Async Optimization & Connection Pooling (2-3 hours)
+
 **Production**: Full async/await throughout codebase, proper connection lifecycle management
 **Intelligence**: Request batching for similar prompts, smart queue management
 **Performance**: 5-10x throughput improvement, <50ms latency for cached requests
@@ -55,6 +60,7 @@
 ## System Architecture
 
 ### Enhanced Stack
+
 ```
 FastAPI Layer (Enhanced)
 ├─ NEW: /experiments/start, /experiments/results, /metrics/live
@@ -79,30 +85,35 @@ Storage Layer (Enhanced)
 ### New Components
 
 **1. RedisCache** (`app/cache/redis_cache.py`)
+
 - Sub-10ms response caching
 - Metrics caching for dashboard
 - Automatic TTL management
 - Fallback to PostgreSQL if Redis unavailable
 
 **2. ExperimentTracker** (`app/experiments/tracker.py`)
+
 - A/B test allocation (user_id → strategy assignment)
 - Statistical significance calculation (chi-square tests)
 - Automatic winner detection
 - Performance metrics per strategy
 
 **3. AsyncConnectionPool** (`app/database/pool.py`)
+
 - PostgreSQL async connection pooling
 - Redis connection pooling
 - Health checks and auto-reconnect
 - Resource limits and monitoring
 
 **4. MetricsDashboard** (`app/api/dashboard.py`)
+
 - Real-time WebSocket endpoint for live metrics
 - Historical trend queries with Redis caching
 - Cost savings visualization data
 - Experiment results summary
 
 ### Docker Compose Stack
+
 ```yaml
 services:
   postgres:
@@ -202,6 +213,7 @@ Level 3: Provider API (500-3000ms, cold)
 ## Error Handling
 
 ### 1. Graceful Degradation (Redis failures)
+
 ```python
 async def get_metrics():
     try:
@@ -215,6 +227,7 @@ async def get_metrics():
 ```
 
 ### 2. Circuit Breaker (PostgreSQL overload)
+
 ```python
 if postgres_failure_count > 5:
     circuit_open = True
@@ -224,6 +237,7 @@ if postgres_failure_count > 5:
 ```
 
 ### 3. Experiment Safety
+
 ```python
 # Never fail a request due to experiment tracking
 try:
@@ -238,10 +252,12 @@ except Exception as e:
 ## Testing Strategy
 
 ### Current State
+
 - 68 tests total
 - 62 passing, 6 failing (PostgreSQL connection issues)
 
 ### Feature 1 Tests (8 new)
+
 - `test_redis_cache_hit_performance()` - Verify <10ms
 - `test_redis_fallback_to_postgres()` - Graceful degradation
 - `test_metrics_dashboard_websocket()` - Real-time updates
@@ -249,6 +265,7 @@ except Exception as e:
 - 4 more covering edge cases
 
 ### Feature 2 Tests (10 new)
+
 - `test_experiment_creation()` - Setup experiment
 - `test_user_assignment_deterministic()` - Same user → same strategy
 - `test_statistical_significance()` - Chi-square calculations
@@ -256,6 +273,7 @@ except Exception as e:
 - 6 more covering allocation, winner detection, edge cases
 
 ### Feature 3 Tests (6 new)
+
 - `test_async_connection_pooling()` - Pool behavior
 - `test_concurrent_requests_performance()` - Load test
 - `test_connection_lifecycle()` - Cleanup
@@ -264,6 +282,7 @@ except Exception as e:
 **Total: 68 + 24 = 92 tests, targeting 100% pass rate**
 
 ### Test Execution Strategy
+
 1. Fix 6 failing tests FIRST (get PostgreSQL running)
 2. Write tests BEFORE implementation (TDD)
 3. Run full suite after each feature
@@ -274,18 +293,21 @@ except Exception as e:
 ## Implementation Timeline
 
 ### Hours 1-4: Feature 1 - Real-Time Metrics Dashboard with Redis
+
 - **Hour 1**: Fix 6 failing tests, get PostgreSQL + Redis running via Docker Compose
 - **Hour 2**: Implement RedisCache class, connection pooling, integration tests
 - **Hour 3**: Build /metrics/live WebSocket endpoint, real-time updates
 - **Hour 4**: Dashboard endpoint with Redis caching, verify <10ms response times
 
 ### Hours 5-8: Feature 2 - A/B Testing Framework
+
 - **Hour 5**: ExperimentTracker class, PostgreSQL schema, deterministic user assignment
 - **Hour 6**: POST /experiments/start, GET /experiments/results endpoints
 - **Hour 7**: Statistical significance calculation, winner detection logic
 - **Hour 8**: Integration with routing service, end-to-end experiment flow testing
 
 ### Hours 9-12: Feature 3 - Async Optimization (if time permits)
+
 - **Hour 9**: AsyncConnectionPool, migrate database calls to async
 - **Hour 10**: Full async/await throughout service layer
 - **Hour 11**: Load testing, performance benchmarking
@@ -296,21 +318,25 @@ except Exception as e:
 ## Success Metrics
 
 ### Production Hardening
+
 - ✅ 90+ tests passing (target: 92/92)
 - ✅ Full Docker Compose stack running (PostgreSQL + Redis + API)
 - ✅ Zero errors in logs during smoke test
 
 ### Intelligence
+
 - ✅ A/B testing framework operational
 - ✅ Real-time metrics dashboard showing live routing decisions
 - ✅ Statistical significance detection working
 
 ### Performance
+
 - ✅ Redis caching: <10ms response time (measured)
 - ✅ Metrics queries: 50ms → 10ms improvement (5x faster)
 - ✅ API throughput: 50 → 200+ req/sec (4x improvement)
 
 ### Measurement Commands
+
 ```bash
 # Test count
 pytest --collect-only -q | tail -1
@@ -327,14 +353,17 @@ redis-cli INFO stats | grep keyspace_hits
 ## Risk Mitigation
 
 ### Time Risks
+
 - **Risk**: Features take longer than estimated
 - **Mitigation**: Feature 1 is highest priority, delivers immediately. Features 2-3 are additive.
 
 ### Technical Risks
+
 - **Risk**: Redis integration complexity
 - **Mitigation**: Fallback to PostgreSQL ensures zero downtime
 
 ### Integration Risks
+
 - **Risk**: Docker Compose networking issues
 - **Mitigation**: Start with local testing, Docker is last integration step
 
@@ -343,6 +372,7 @@ redis-cli INFO stats | grep keyspace_hits
 ## Future Extensions
 
 After this BUSU session, consider:
+
 - Advanced ML pattern recognition with embeddings
 - Full authentication and rate limiting
 - Cloud deployment (RunPod when ready)

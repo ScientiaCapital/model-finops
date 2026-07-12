@@ -17,6 +17,7 @@
 **Goal:** Set up Alembic migrations and create new feedback tables in PostgreSQL schema
 
 **Files:**
+
 - Create: `alembic/versions/003_add_feedback_tables.py`
 - Create: `app/database/postgres.py`
 - Test: `tests/test_postgres_migration.py`
@@ -27,6 +28,7 @@
 **File:** `requirements.txt`
 
 Add:
+
 ```
 psycopg2-binary>=2.9.9
 alembic>=1.12.0
@@ -303,6 +305,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Create `/feedback` endpoint to collect user quality ratings
 
 **Files:**
+
 - Create: `app/models/feedback.py`
 - Modify: `app/main.py`
 - Create: `app/database/feedback_store.py`
@@ -535,12 +538,14 @@ class FeedbackStore:
 **Modify:** `app/main.py`
 
 Add import:
+
 ```python
 from app.models.feedback import FeedbackRequest, FeedbackResponse
 from app.database.feedback_store import FeedbackStore
 ```
 
 Add endpoint before the `if __name__ == "__main__"` block:
+
 ```python
 # Initialize feedback store
 feedback_store = FeedbackStore()
@@ -611,6 +616,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Create automated retraining system that updates routing from feedback
 
 **Files:**
+
 - Create: `app/learning/feedback_trainer.py`
 - Test: `tests/test_feedback_trainer.py`
 
@@ -1014,6 +1020,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Create Docker Compose configuration for PostgreSQL and FastAPI
 
 **Files:**
+
 - Create: `docker-compose.yml`
 - Create: `docker-compose.dev.yml`
 - Create: `.env.example`
@@ -1038,9 +1045,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./alembic/versions:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U optimizer_user"]
+      test: ['CMD-SHELL', 'pg_isready -U optimizer_user']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1061,7 +1068,7 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8000:8000"
+      - '8000:8000'
     restart: unless-stopped
     networks:
       - optimizer-network
@@ -1074,7 +1081,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@optimizer.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "5050:80"
+      - '5050:80'
     depends_on:
       - postgres
     restart: unless-stopped
@@ -1103,14 +1110,14 @@ services:
       file: docker-compose.yml
       service: postgres
     ports:
-      - "5433:5432"  # Different port for dev
+      - '5433:5432' # Different port for dev
 
   api:
     extends:
       file: docker-compose.yml
       service: api
     volumes:
-      - ./app:/app/app  # Mount for hot reload
+      - ./app:/app/app # Mount for hot reload
       - ./tests:/app/tests
     environment:
       LOG_LEVEL: DEBUG
@@ -1219,6 +1226,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Add admin endpoints for monitoring learning progress
 
 **Files:**
+
 - Modify: `app/main.py`
 - Create: `app/models/admin.py`
 - Test: `tests/test_admin_endpoints.py`
@@ -1354,6 +1362,7 @@ class PerformanceTrends(BaseModel):
 **Modify:** `app/main.py`
 
 Add imports:
+
 ```python
 from app.models.admin import (
     FeedbackSummary, LearningStatus,
@@ -1363,6 +1372,7 @@ from app.learning.feedback_trainer import FeedbackTrainer
 ```
 
 Add endpoints:
+
 ```python
 # Initialize trainer
 feedback_trainer = FeedbackTrainer()
@@ -1536,6 +1546,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Create script to migrate existing SQLite data to PostgreSQL
 
 **Files:**
+
 - Create: `scripts/migrate_to_postgres.sh`
 - Create: `scripts/import_sqlite_data.py`
 
@@ -1618,6 +1629,7 @@ echo "3. Test API: curl http://localhost:8000/health"
 ```
 
 Make executable:
+
 ```bash
 chmod +x scripts/migrate_to_postgres.sh
 ```
@@ -1831,6 +1843,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Add weekly automated retraining scheduler
 
 **Files:**
+
 - Create: `app/scheduler.py`
 - Modify: `app/main.py`
 - Modify: `requirements.txt`
@@ -1841,11 +1854,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Modify:** `requirements.txt`
 
 Add:
+
 ```
 APScheduler>=3.10.4
 ```
 
 Install:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -2024,12 +2039,14 @@ class RetrainingScheduler:
 **Modify:** `app/main.py`
 
 Add import:
+
 ```python
 from app.scheduler import RetrainingScheduler
 import os
 ```
 
 Add after app initialization:
+
 ```python
 # Initialize retraining scheduler
 scheduler = None
@@ -2055,6 +2072,7 @@ async def shutdown_event():
 ```
 
 Update retrain endpoint to use scheduler:
+
 ```python
 @app.post("/admin/learning/retrain", response_model=RetrainingResult)
 async def trigger_retraining(dry_run: bool = True):
@@ -2106,6 +2124,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** End-to-end integration tests and deployment documentation
 
 **Files:**
+
 - Create: `tests/test_integration_feedback_loop.py`
 - Create: `docs/DEPLOYMENT.md`
 - Create: `scripts/startup.sh`
@@ -2261,7 +2280,7 @@ def test_low_quality_feedback_prevents_routing_change():
 
 **Create:** `docs/DEPLOYMENT.md`
 
-```markdown
+````markdown
 # Deployment Guide
 
 ## Prerequisites
@@ -2283,8 +2302,10 @@ cp .env.example .env
 # Edit with your API keys
 nano .env
 ```
+````
 
 Required in `.env`:
+
 ```bash
 DB_PASSWORD=your_secure_database_password
 GOOGLE_API_KEY=your_key  # At least one required
@@ -2315,11 +2336,13 @@ docker-compose up -d
 ```
 
 Verify services:
+
 ```bash
 docker-compose ps
 ```
 
 Should show:
+
 - `optimizer-db` (healthy)
 - `optimizer-api` (healthy)
 - `optimizer-pgadmin` (healthy)
@@ -2368,10 +2391,12 @@ docker-compose logs -f postgres
 Access pgAdmin at http://localhost:5050
 
 Login:
+
 - Email: From `.env` (default: admin@optimizer.local)
 - Password: From `.env`
 
 Connect to database:
+
 - Host: postgres
 - Port: 5432
 - Database: optimizer
@@ -2395,11 +2420,13 @@ curl http://localhost:8000/admin/learning/status | jq
 ### Manual Retraining
 
 Dry run (preview changes):
+
 ```bash
 curl -X POST http://localhost:8000/admin/learning/retrain?dry_run=true | jq
 ```
 
 Actual retraining:
+
 ```bash
 curl -X POST http://localhost:8000/admin/learning/retrain?dry_run=false | jq
 ```
@@ -2431,6 +2458,7 @@ docker-compose up -d
 ### Automated Backups
 
 Add to crontab:
+
 ```bash
 0 3 * * * /path/to/ai-cost-optimizer/scripts/backup_db.sh
 ```
@@ -2440,11 +2468,13 @@ Add to crontab:
 ### API Won't Start
 
 Check logs:
+
 ```bash
 docker-compose logs api
 ```
 
 Common issues:
+
 - Database not ready → Wait 30s and restart
 - Missing env vars → Check `.env` file
 - Port conflict → Change port in `docker-compose.yml`
@@ -2504,7 +2534,8 @@ After deployment:
 4. **Week 4+**: Optimize based on metrics
 
 See [design document](plans/2025-11-08-production-feedback-loop-design.md) for detailed roadmap.
-```
+
+````
 
 ### Step 3: Create startup script
 
@@ -2551,9 +2582,10 @@ echo ""
 echo "Logs:     docker-compose logs -f"
 echo "Stop:     docker-compose down"
 echo "========================================="
-```
+````
 
 Make executable:
+
 ```bash
 chmod +x scripts/startup.sh
 ```
@@ -2573,6 +2605,7 @@ echo "✓ All services stopped"
 ```
 
 Make executable:
+
 ```bash
 chmod +x scripts/shutdown.sh
 ```
@@ -2611,11 +2644,13 @@ Plan complete and saved to `docs/plans/2025-11-08-production-feedback-loop-imple
 **Two execution options:**
 
 **1. Subagent-Driven (this session)**
+
 - I dispatch fresh subagent per task
 - Code review between tasks
 - Fast iteration with quality gates
 
 **2. Parallel Session (separate)**
+
 - Open new session with executing-plans
 - Batch execution with checkpoints
 - Independent progress

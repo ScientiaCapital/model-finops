@@ -9,6 +9,7 @@ As a full-stack AI engineer, I faced a frustrating reality: **AI costs are unpre
 What starts as $50/month can suddenly become $5,000 when you're iterating quickly or experimenting with different approaches. The problem isn't just the money—it's the **anxiety of not knowing** how much each API call costs and whether you're using the right model for the task.
 
 **The typical workflow**:
+
 1. Start with GPT-4 because it's good
 2. Realize costs are too high
 3. Switch everything to GPT-3.5
@@ -25,6 +26,7 @@ What starts as $50/month can suddenly become $5,000 when you're iterating quickl
 - But we're paying premium prices for everything because manual selection is tedious
 
 **Research backs this up**:
+
 - McKinsey: 56% faster completion with AI assistants
 - But developers are scared to experiment due to cost anxiety
 - The solution isn't to use cheaper models—it's to use the **right** model for each task
@@ -34,6 +36,7 @@ What starts as $50/month can suddenly become $5,000 when you're iterating quickl
 **Automatic routing based on complexity analysis.**
 
 Build a proxy that:
+
 1. Analyzes prompt complexity (0.0-1.0 score)
 2. Routes to the optimal model (free → cheap → medium → premium)
 3. Tracks costs in real-time
@@ -55,6 +58,7 @@ This is a **personal learning project** that solves a real problem I face daily.
 ### Why This Project
 
 **Learning Goals**:
+
 - FastAPI and async Python patterns
 - LLM provider API integration (8 different providers!)
 - Cost optimization algorithms
@@ -63,12 +67,14 @@ This is a **personal learning project** that solves a real problem I face daily.
 - Production monitoring and observability
 
 **Personal Value**:
+
 - I want to save money on AI costs
 - I want to experiment without anxiety
 - I want to understand which models are actually needed
 - I want data on my AI spending patterns
 
 **Potential for Others**:
+
 - Every AI developer faces this problem
 - Existing solutions are either too complex or too limited
 - Simple, practical tools often win
@@ -78,6 +84,7 @@ This is a **personal learning project** that solves a real problem I face daily.
 ### What's Built ✅
 
 **Core Service** (Weeks 1-2):
+
 - FastAPI backend with 6 REST endpoints
 - Smart routing algorithm based on complexity analysis
 - 8 LLM provider integrations:
@@ -87,13 +94,14 @@ This is a **personal learning project** that solves a real problem I face daily.
   - DeepSeek (Chinese specialist)
   - OpenRouter (gateway to 100+ models)
   - HuggingFace (open models)
-  -  (local/free)
+  - (local/free)
   - Cartesia (partial)
 - Cost tracking with token counting
 - Budget management with configurable thresholds
 - Provider auto-enablement based on API keys
 
 **Claude Desktop Integration** (Week 3):
+
 - Full MCP server implementation
 - 5 tools for Claude to use:
   - complete_prompt (smart routing)
@@ -105,6 +113,7 @@ This is a **personal learning project** that solves a real problem I face daily.
 - Formatted markdown responses
 
 **Production Ready** (Week 4):
+
 - Docker containerization
 - RunPod deployment configuration
 - Health check and metrics endpoints
@@ -114,6 +123,7 @@ This is a **personal learning project** that solves a real problem I face daily.
 - Request timing middleware
 
 **Marketplace Package** (Week 4):
+
 - Complete SKILL.md for Claude Desktop marketplace
 - Deployment guide for RunPod
 - MCP setup instructions
@@ -123,16 +133,19 @@ This is a **personal learning project** that solves a real problem I face daily.
 ### What's Stubbed 🚧
 
 **Database Persistence**:
+
 - SQLite configured but cost tracking uses in-memory storage
 - Need to implement actual DB writes
 - Schema designed, just needs implementation
 
 **Budget Alerts**:
+
 - Thresholds calculated correctly
 - Alert conditions detected
 - But no actual notification system (email, webhook, etc.)
 
 **Usage Analytics**:
+
 - Basic stats available via API
 - But no detailed historical analysis
 - No visualization or trends
@@ -140,21 +153,25 @@ This is a **personal learning project** that solves a real problem I face daily.
 ### What's Missing ❌
 
 **Assets for Marketplace**:
+
 - Icon (512x512 PNG) - need to design/generate
 - Screenshots (3-5 images) - need real usage captures
 - Demo video (optional but helpful)
 
 **Testing**:
+
 - No unit tests yet (learning project, iterating fast)
 - No integration tests
 - Manual testing only
 
 **UI Dashboard**:
+
 - Streamlit dashboard planned for v1.1
 - Would show: costs over time, model usage, savings calculations
 - Not blocking for MVP
 
 **Advanced Features**:
+
 - ML-based complexity prediction (currently heuristic)
 - Response quality scoring
 - A/B testing framework
@@ -203,6 +220,7 @@ This is a **personal learning project** that solves a real problem I face daily.
 ### 1. Cost-Aware by Default
 
 Every decision considers cost:
+
 - Default to cheaper models when uncertain
 - Show cost breakdowns in responses
 - Make savings visible to users
@@ -211,6 +229,7 @@ Every decision considers cost:
 ### 2. Transparent Routing
 
 Users should understand **why** a model was chosen:
+
 - Complexity score included in responses
 - Model selection reasoning available
 - Override options when users know better
@@ -219,6 +238,7 @@ Users should understand **why** a model was chosen:
 ### 3. Graceful Degradation
 
 Things will fail, handle it well:
+
 - Provider outages → route to alternatives
 - API key expiration → helpful error messages
 - Rate limits → backoff and retry
@@ -227,6 +247,7 @@ Things will fail, handle it well:
 ### 4. Smart Defaults
 
 Minimize configuration:
+
 - Auto-enable providers based on API keys
 - Smart database path detection (local vs production)
 - Reasonable budget defaults ($100/month)
@@ -235,6 +256,7 @@ Minimize configuration:
 ### 5. Production Ready
 
 Not just a prototype:
+
 - Health checks for orchestration
 - Metrics for monitoring
 - Structured logging
@@ -246,21 +268,25 @@ Not just a prototype:
 ### What Worked
 
 **Complexity Analysis**:
+
 - Simple heuristic (length + keywords + code presence) works surprisingly well
 - Users can understand the scoring
 - Easy to debug and improve
 
 **Provider Abstraction**:
+
 - Common interface makes adding providers easy
 - Auto-initialization based on env vars is convenient
 - Each provider handles its own quirks
 
 **MCP Integration**:
+
 - Protocol is well-designed and easy to work with
 - Tool-based approach fits perfectly
 - Claude Desktop makes testing smooth
 
 **Docker + RunPod**:
+
 - Containerization was worth it from day one
 - RunPod deployment is actually simple
 - Health checks catch issues early
@@ -268,11 +294,13 @@ Not just a prototype:
 ### What Was Hard
 
 **Token Counting**:
+
 - Different providers count tokens differently
 - tiktoken doesn't support all models
 - Had to implement provider-specific counting
 
 **Error Handling**:
+
 - So many ways things can fail:
   - Provider API down
   - Rate limits
@@ -282,12 +310,14 @@ Not just a prototype:
 - Had to be methodical about catching everything
 
 **Cost Calculation**:
+
 - Provider pricing changes frequently
 - Different pricing for input vs output tokens
 - Some models have special pricing (cached, batched, etc.)
 - Need to keep pricing data updated
 
 **Complexity Analysis**:
+
 - Hard to calibrate the thresholds
 - What's "complex" varies by domain
 - Needed manual testing and adjustment
@@ -400,12 +430,14 @@ Not just a prototype:
 ### Target Audience
 
 **Primary**:
+
 - AI engineers experimenting rapidly
 - Indie developers building AI apps
 - Freelancers with tight budgets
 - Students learning LLM integration
 
 **Secondary**:
+
 - Small teams needing cost controls
 - Agencies managing client projects
 - Researchers with limited grants
@@ -453,18 +485,21 @@ Not just a prototype:
 ## Inspiration & Prior Art
 
 **Similar Projects**:
+
 - LiteLLM (more complex, framework-focused)
 - OpenRouter (aggregator, not smart routing)
 - Helicone (logging-focused, not routing)
 - PromptLayer (observability, not cost optimization)
 
 **Differentiators**:
+
 - **Simpler**: Just routing + cost tracking, not a framework
 - **Smarter**: Automatic complexity analysis, not manual selection
 - **Integrated**: Native Claude Desktop support via MCP
 - **Transparent**: Show costs and reasoning, not hide them
 
 **Inspirations**:
+
 - Cloudflare's smart routing
 - AWS Lambda's pay-per-use model
 - Railway's developer experience
@@ -473,6 +508,7 @@ Not just a prototype:
 ## Final Thoughts
 
 This project embodies **pragmatic learning**:
+
 - Solving a real problem I face daily
 - Building with technologies I want to master
 - Sharing openly with the community

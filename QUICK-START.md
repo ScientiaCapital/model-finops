@@ -3,6 +3,7 @@
 ## ✅ What We Built (v4.0.0)
 
 Production-ready AI Cost Optimizer with:
+
 - **Smart Routing**: Auto-selects optimal model based on complexity analysis
 - **Semantic Caching**: pgvector-powered fuzzy matching (3x better cache hit rate!)
 - **Multi-Tenancy**: Row-Level Security for data isolation
@@ -29,11 +30,13 @@ Production-ready AI Cost Optimizer with:
 ### 3. Add Your Environment Variables
 
 Create `.env` from the template:
+
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` with your credentials:
+
 ```bash
 # REQUIRED - Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
@@ -62,6 +65,7 @@ python app/main.py
 ```
 
 You should see:
+
 ```
 INFO: AI Cost Optimizer v4.0.0 initialized
 INFO: Providers enabled: ['gemini', 'claude', 'cerebras']
@@ -93,9 +97,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "ai-cost-optimizer": {
       "command": "python3",
-      "args": [
-        "/Users/tmkipper/Desktop/tk_projects/ai-cost-optimizer/mcp/server.py"
-      ],
+      "args": ["/Users/tmkipper/Desktop/tk_projects/ai-cost-optimizer/mcp/server.py"],
       "env": {
         "COST_OPTIMIZER_API_URL": "http://localhost:8000"
       }
@@ -109,6 +111,7 @@ Restart Claude Desktop completely (Cmd+Q, then relaunch).
 ## 🎯 Routing Logic
 
 **Hybrid Strategy** (default with `auto_route=true`):
+
 1. Learning-based recommendation from feedback data
 2. Validated against complexity analysis
 3. Fallback to complexity-based routing if no learning data
@@ -118,15 +121,15 @@ Restart Claude Desktop completely (Cmd+Q, then relaunch).
 
 ## 📊 Key Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/complete` | POST | Route and execute prompt |
-| `/stats` | GET | Usage statistics |
-| `/cache/stats` | GET | Semantic cache performance |
-| `/routing/metrics` | GET | Routing analytics |
-| `/feedback` | POST | Submit quality feedback |
-| `/health` | GET | Service health check |
-| `/admin/learning/status` | GET | ML learning pipeline status |
+| Endpoint                 | Method | Description                 |
+| ------------------------ | ------ | --------------------------- |
+| `/complete`              | POST   | Route and execute prompt    |
+| `/stats`                 | GET    | Usage statistics            |
+| `/cache/stats`           | GET    | Semantic cache performance  |
+| `/routing/metrics`       | GET    | Routing analytics           |
+| `/feedback`              | POST   | Submit quality feedback     |
+| `/health`                | GET    | Service health check        |
+| `/admin/learning/status` | GET    | ML learning pipeline status |
 
 ## 🔧 Architecture
 
@@ -155,15 +158,18 @@ Restart Claude Desktop completely (Cmd+Q, then relaunch).
 ## 🐛 Troubleshooting
 
 **Service won't start:**
+
 - Check Supabase credentials in `.env`
 - Verify at least one AI provider API key is set
 - Check port 8000: `lsof -i :8000`
 
 **Cache not working:**
+
 - Ensure pgvector extension is enabled in Supabase
 - Check `migrations/supabase_part1_extensions.sql` was run
 
 **MCP not appearing:**
+
 - Verify absolute path in Claude Desktop config
 - Check service: `curl http://localhost:8000/health`
 - Completely restart Claude Desktop

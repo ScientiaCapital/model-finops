@@ -7,18 +7,18 @@
  * - Enterprise: $399/mo - Custom models, unlimited requests
  */
 
-export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise';
+export type PlanId = 'free' | 'starter' | 'pro' | 'enterprise'
 
 export interface Plan {
-  id: PlanId;
-  name: string;
-  description: string;
-  priceMonthly: number; // cents
-  priceAnnual: number; // cents
-  features: string[];
-  apiCallsMonthly: number;
-  popular?: boolean;
-  contactSales?: boolean;
+  id: PlanId
+  name: string
+  description: string
+  priceMonthly: number // cents
+  priceAnnual: number // cents
+  features: string[]
+  apiCallsMonthly: number
+  popular?: boolean
+  contactSales?: boolean
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -91,7 +91,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'On-premise deployment option',
     ],
   },
-};
+}
 
 // Stripe Price IDs from environment
 export const STRIPE_PRICES = {
@@ -101,19 +101,19 @@ export const STRIPE_PRICES = {
   pro_annual: process.env.STRIPE_PRICE_PRO_ANNUAL || '',
   enterprise_monthly: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '',
   enterprise_annual: process.env.STRIPE_PRICE_ENTERPRISE_ANNUAL || '',
-};
+}
 
 export function getPlan(planId: PlanId): Plan {
-  return PLANS[planId] || PLANS.free;
+  return PLANS[planId] || PLANS.free
 }
 
 export function getPlanMetadata(planId: PlanId): Record<string, string> {
-  const plan = getPlan(planId);
+  const plan = getPlan(planId)
   return {
     plan_id: planId,
     plan_name: plan.name,
     site: 'modelfinops',
-  };
+  }
 }
 
 export function formatPrice(cents: number): string {
@@ -122,13 +122,13 @@ export function formatPrice(cents: number): string {
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).format(cents / 100)
 }
 
 export function getMonthlyPrice(planId: PlanId): number {
-  return getPlan(planId).priceMonthly;
+  return getPlan(planId).priceMonthly
 }
 
 export function getAnnualPrice(planId: PlanId): number {
-  return getPlan(planId).priceAnnual;
+  return getPlan(planId).priceAnnual
 }

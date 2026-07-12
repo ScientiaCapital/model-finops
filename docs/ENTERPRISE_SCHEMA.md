@@ -3,6 +3,7 @@
 ## Use Case: HR/Compliance AI Governance
 
 **Target Users:**
+
 - HR Leaders managing AI policy
 - Compliance teams tracking data residency
 - Finance tracking AI spend by department
@@ -13,6 +14,7 @@
 ## Database Schema
 
 ### Organizations (Companies)
+
 ```sql
 CREATE TABLE organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,6 +36,7 @@ CREATE TABLE organizations (
 ```
 
 ### Departments/Teams
+
 ```sql
 CREATE TABLE departments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -46,6 +49,7 @@ CREATE TABLE departments (
 ```
 
 ### Employees (Users)
+
 ```sql
 CREATE TABLE employees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,6 +72,7 @@ CREATE TABLE employees (
 ```
 
 ### API Keys (Work + Personal)
+
 ```sql
 CREATE TABLE employee_api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,6 +100,7 @@ CREATE TABLE employee_api_keys (
 ```
 
 ### AI Providers Registry (Compliance Data)
+
 ```sql
 CREATE TABLE ai_providers (
     id TEXT PRIMARY KEY,                   -- "deepseek", "anthropic", etc.
@@ -133,6 +139,7 @@ INSERT INTO ai_providers (id, display_name, headquarters_country, data_residency
 ```
 
 ### Usage Tracking (Per Request)
+
 ```sql
 CREATE TABLE ai_usage_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -161,6 +168,7 @@ CREATE INDEX idx_usage_provider ON ai_usage_log(provider, created_at DESC);
 ```
 
 ### Compliance Alerts
+
 ```sql
 CREATE TABLE compliance_alerts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,6 +199,7 @@ CREATE TABLE compliance_alerts (
 ## HR Admin Dashboard Views
 
 ### 1. Company-Wide AI Spend
+
 ```sql
 -- Monthly spend by department
 SELECT
@@ -208,6 +217,7 @@ ORDER BY total_spend DESC;
 ```
 
 ### 2. Chinese Model Usage (Compliance Alert)
+
 ```sql
 -- Flag any usage of Chinese AI providers
 SELECT
@@ -229,6 +239,7 @@ ORDER BY request_count DESC;
 ```
 
 ### 3. Personal vs Work Spend (Expense Reporting)
+
 ```sql
 -- Employees expensing personal AI usage
 SELECT
@@ -316,6 +327,7 @@ GET  /api/org/employees     - Employee AI usage summary
 ## MVP for You (Tim)
 
 Start with:
+
 1. ✅ Your work APIs (tim@coperniq.io)
 2. ✅ Your personal APIs (tkipper@gmail.com)
 3. ✅ Track both in one dashboard

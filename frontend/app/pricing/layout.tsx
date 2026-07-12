@@ -3,11 +3,7 @@ import { Zap } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 
-export default function PricingLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function PricingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Simple Marketing Header */}
@@ -28,10 +24,7 @@ export default function PricingLayout({
               >
                 Home
               </Link>
-              <Link
-                href="/pricing"
-                className="text-sm font-medium text-foreground"
-              >
+              <Link href="/pricing" className="text-sm font-medium text-foreground">
                 Pricing
               </Link>
               <Link
@@ -76,7 +69,10 @@ export default function PricingLayout({
               <Link href="/terms" className="hover:text-foreground transition-colors">
                 Terms
               </Link>
-              <Link href="mailto:support@modelfinops.com" className="hover:text-foreground transition-colors">
+              <Link
+                href="mailto:support@modelfinops.com"
+                className="hover:text-foreground transition-colors"
+              >
                 Contact
               </Link>
             </div>

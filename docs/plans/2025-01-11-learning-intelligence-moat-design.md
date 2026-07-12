@@ -96,12 +96,14 @@ The learning engine leverages data you already collect. No schema changes requir
 **Input:** `{"prompt": "user query text"}`
 
 **Output:**
+
 - Recommended tier label (not provider name)
 - Confidence level (high/medium/low)
 - Quality and cost metrics
 - Alternative options with trade-offs
 
 **Example:**
+
 ```
 Recommended: Premium Tier
 Confidence: high
@@ -117,12 +119,14 @@ Alternatives:
 **Purpose:** Show learning progress by query pattern
 
 **Output:**
+
 - 6 pattern categories (code, explanation, creative, analysis, factual, reasoning)
 - Sample count and confidence level per pattern
 - Best model for each pattern (black-boxed as tier)
 - Learning gaps requiring more data
 
 **Example:**
+
 ```
 Code queries: 82 samples (high confidence)
 Best: Premium Tier (quality 0.89, cost $0.00087)
@@ -137,12 +141,14 @@ Need 12 more samples for high confidence
 **Purpose:** Compare models across quality and cost dimensions
 
 **Output:**
+
 - Top 10 models ranked by composite score
 - Quality, cost, and request count per model
 - Internal view shows actual models; external view shows tiers
 - Confidence levels based on data volume
 
 **Example (Internal View):**
+
 ```
 Rank  Model                Score  Quality  Cost      Requests
 1     openrouter/qwen-2    0.912  0.85     $0.00047  23
@@ -151,6 +157,7 @@ Rank  Model                Score  Quality  Cost      Requests
 ```
 
 **Example (External View):**
+
 ```
 Rank  Tier           Score  Quality  Cost      Requests
 1     Premium Tier   0.912  0.85     $0.00047  23
@@ -165,12 +172,14 @@ Rank  Tier           Score  Quality  Cost      Requests
 **Input:** `{"days": 30}` (optional, default 30)
 
 **Output:**
+
 - Current monthly cost vs optimized cost
 - Percentage reduction
 - Specific swap opportunities (N queries × savings per query)
 - Quality impact analysis (neutral, minor drop, improvement)
 
 **Example:**
+
 ```
 Current routing: $0.84 (mostly Premium Tier)
 Optimized routing: $0.36 (57% reduction)
@@ -187,11 +196,13 @@ Quality-neutral: 156 queries (same or better quality)
 ### Two-Tier Architecture
 
 **Internal (Admin View):**
+
 - Full transparency: "openrouter/deepseek-coder"
 - Actual costs, quality scores, request counts
 - Provider names, model names, all metadata
 
 **External (Customer View):**
+
 - Strategic opacity: "Economy Tier"
 - Aggregated metrics, no provider details
 - Black-boxed implementation
@@ -249,6 +260,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### Component 1: Agent Tools (agent/tools.py)
 
 **Changes:**
+
 - Add 4 new @tool decorated functions
 - Import QueryPatternAnalyzer and model_abstraction
 - Implement black-box conversion for external responses
@@ -258,6 +270,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### Component 2: Model Abstraction (agent/model_abstraction.py)
 
 **New File:**
+
 - Define MODEL_TIERS mapping
 - Implement get_public_label(internal_model)
 - Implement get_internal_models(public_label)
@@ -267,6 +280,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### Component 3: Enhanced Analyzer (app/learning.py)
 
 **Changes:**
+
 - Update get_provider_performance() to group by (provider, model)
 - Add get_pattern_confidence_levels() method
 - Return model-specific details for dashboard
@@ -276,6 +290,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### Component 4: CLI Dashboard (agent/dashboard.py)
 
 **New File:**
+
 - Main dashboard rendering logic
 - ASCII table formatting
 - Progress bar visualization
@@ -286,6 +301,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### Component 5: Agent Registration (agent/cost_optimizer_agent.py)
 
 **Changes:**
+
 - Add 4 new tools to cost_analyzer_server.tools list
 - Update agent_options.allowed_tools list
 
@@ -300,6 +316,7 @@ ASCII tables and progress bars for terminal rendering. No external dependencies 
 ### No Schema Changes Required
 
 Current schema already tracks:
+
 - `requests.model` (provider + model name)
 - `response_cache.model` (provider + model name)
 - `response_feedback` (user ratings)
@@ -307,6 +324,7 @@ Current schema already tracks:
 ### What We Need
 
 Ensure OpenRouter queries save full model names:
+
 - Good: `"openrouter/deepseek-chat"`
 - Bad: `"openrouter"`
 
@@ -352,6 +370,7 @@ Run on 30 days of data → Should show potential savings
 Integrate learning into FastAPI router. Requests automatically route to optimal models based on intelligence.
 
 **Key Changes:**
+
 - Router checks QueryPatternAnalyzer before routing
 - High-confidence recommendations override default routing
 - Fallback to complexity-based routing for low-confidence
@@ -363,6 +382,7 @@ Integrate learning into FastAPI router. Requests automatically route to optimal 
 Scale the intelligence and create network effects.
 
 **Key Features:**
+
 - Multi-tenant learning (each customer strengthens global intelligence)
 - A/B testing framework (compare learned vs default routing)
 - Customer dashboards (show their savings over time)

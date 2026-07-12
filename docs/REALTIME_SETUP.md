@@ -5,12 +5,14 @@ This guide explains how to use Supabase Realtime to replace the custom WebSocket
 ## 📡 What is Supabase Realtime?
 
 Supabase Realtime is a built-in pub/sub system that allows you to:
+
 - Listen to database changes in real-time
 - Subscribe to INSERT, UPDATE, DELETE events
 - Filter subscriptions by row-level security (RLS)
 - Scale to millions of concurrent connections
 
 **Benefits over custom WebSocket:**
+
 - ✅ No custom connection management code
 - ✅ Automatic reconnection handling
 - ✅ RLS filtering (users only see their own data)
@@ -35,6 +37,7 @@ Supabase Realtime is a built-in pub/sub system that allows you to:
 6. Click **Save**
 
 **Alternative: Enable via SQL**
+
 ```sql
 -- Enable Realtime for routing_metrics table
 ALTER PUBLICATION supabase_realtime ADD TABLE routing_metrics;
@@ -64,7 +67,7 @@ import { useEffect, useState } from 'react'
 
 const supabase = createClient(
   'https://nhjhzzkcqtsmfgvairos.supabase.co',
-  'YOUR_ANON_KEY'  // Use anon key (respects RLS)
+  'YOUR_ANON_KEY' // Use anon key (respects RLS)
 )
 
 function MetricsDashboard() {
@@ -79,9 +82,9 @@ function MetricsDashboard() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'routing_metrics'
+          table: 'routing_metrics',
         },
-        (payload) => {
+        payload => {
           console.log('New routing decision:', payload.new)
 
           // Add new metric to state
@@ -114,46 +117,43 @@ function MetricsDashboard() {
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Real-Time Metrics</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
-  <div id="metrics"></div>
+  <head>
+    <title>Real-Time Metrics</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <div id="metrics"></div>
 
-  <script>
-    const { createClient } = supabase
+    <script>
+      const { createClient } = supabase
 
-    const client = createClient(
-      'https://nhjhzzkcqtsmfgvairos.supabase.co',
-      'YOUR_ANON_KEY'
-    )
+      const client = createClient('https://nhjhzzkcqtsmfgvairos.supabase.co', 'YOUR_ANON_KEY')
 
-    // Subscribe to routing_metrics
-    const channel = client
-      .channel('routing-metrics')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'routing_metrics'
-        },
-        (payload) => {
-          const metric = payload.new
-          const metricsDiv = document.getElementById('metrics')
+      // Subscribe to routing_metrics
+      const channel = client
+        .channel('routing-metrics')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'routing_metrics',
+          },
+          payload => {
+            const metric = payload.new
+            const metricsDiv = document.getElementById('metrics')
 
-          // Create element safely (no XSS vulnerability)
-          const p = document.createElement('p')
-          p.textContent = `${metric.timestamp}: ${metric.provider}/${metric.model} - $${metric.cost}`
+            // Create element safely (no XSS vulnerability)
+            const p = document.createElement('p')
+            p.textContent = `${metric.timestamp}: ${metric.provider}/${metric.model} - $${metric.cost}`
 
-          // Insert at beginning
-          metricsDiv.insertBefore(p, metricsDiv.firstChild)
-        }
-      )
-      .subscribe()
-  </script>
-</body>
+            // Insert at beginning
+            metricsDiv.insertBefore(p, metricsDiv.firstChild)
+          }
+        )
+        .subscribe()
+    </script>
+  </body>
 </html>
 ```
 
@@ -164,15 +164,12 @@ When users are authenticated, Realtime automatically filters rows based on RLS p
 ```javascript
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  'https://nhjhzzkcqtsmfgvairos.supabase.co',
-  'YOUR_ANON_KEY'
-)
+const supabase = createClient('https://nhjhzzkcqtsmfgvairos.supabase.co', 'YOUR_ANON_KEY')
 
 // User logs in
 const { data, error } = await supabase.auth.signInWithPassword({
   email: 'user@example.com',
-  password: 'password'
+  password: 'password',
 })
 
 // Now subscriptions automatically filter by user_id!
@@ -183,10 +180,10 @@ const channel = supabase
     {
       event: 'INSERT',
       schema: 'public',
-      table: 'routing_metrics'
+      table: 'routing_metrics',
       // No need to filter by user_id - RLS does it automatically!
     },
-    (payload) => {
+    payload => {
       // Only sees their own metrics thanks to RLS
       console.log('My routing decision:', payload.new)
     }
@@ -208,9 +205,9 @@ const channel = supabase
       event: 'INSERT',
       schema: 'public',
       table: 'routing_metrics',
-      filter: 'provider=eq.gemini'  // ← Server-side filter!
+      filter: 'provider=eq.gemini', // ← Server-side filter!
     },
-    (payload) => {
+    payload => {
       console.log('Gemini routing:', payload.new)
     }
   )
@@ -225,9 +222,9 @@ const channel2 = supabase
       event: 'INSERT',
       schema: 'public',
       table: 'routing_metrics',
-      filter: 'cost=gt.0.01'  // cost > $0.01
+      filter: 'cost=gt.0.01', // cost > $0.01
     },
-    (payload) => {
+    payload => {
       console.log('High cost routing:', payload.new)
     }
   )
@@ -235,6 +232,7 @@ const channel2 = supabase
 ```
 
 **Available Operators:**
+
 - `eq` - equals
 - `neq` - not equals
 - `gt` - greater than
@@ -294,13 +292,14 @@ async def websocket_endpoint(websocket: WebSocket):
 ```javascript
 // Frontend
 const ws = new WebSocket('ws://localhost:8000/ws/metrics')
-ws.onmessage = (event) => {
+ws.onmessage = event => {
   const metrics = JSON.parse(event.data)
   updateUI(metrics)
 }
 ```
 
 **Problems:**
+
 - ❌ Manual connection management
 - ❌ Polling database (inefficient)
 - ❌ No automatic RLS filtering
@@ -319,14 +318,16 @@ await metrics_collector.track_decision(...)
 // Frontend
 const channel = supabase
   .channel('metrics')
-  .on('postgres_changes',
+  .on(
+    'postgres_changes',
     { event: 'INSERT', schema: 'public', table: 'routing_metrics' },
-    (payload) => updateUI(payload.new)
+    payload => updateUI(payload.new)
   )
   .subscribe()
 ```
 
 **Benefits:**
+
 - ✅ Automatic connection management
 - ✅ Push-based (instant updates, no polling)
 - ✅ RLS filtering automatic
@@ -338,12 +339,14 @@ const channel = supabase
 Once Realtime is working, you can delete:
 
 **Backend (app/main.py):**
+
 - `ConnectionManager` class
 - `/ws/metrics` WebSocket endpoint
 - `ws_clients_cache` dictionary
 - All WebSocket management code
 
 **Frontend:**
+
 - Old WebSocket connection code
 - Polling logic
 - Reconnection handling
@@ -361,7 +364,7 @@ channel
     const state = channel.presenceState()
     console.log('Online users:', Object.keys(state))
   })
-  .subscribe(async (status) => {
+  .subscribe(async status => {
     if (status === 'SUBSCRIBED') {
       await channel.track({ user_id: currentUser.id, online_at: new Date() })
     }

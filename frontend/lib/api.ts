@@ -8,8 +8,18 @@ export interface Stats {
     total_tokens_out: number
     avg_cost_per_request: number
   }
-  by_provider: Array<{ provider: string; request_count: number; total_cost: number; avg_cost: number }>
-  by_complexity: Array<{ complexity: string; request_count: number; total_cost: number; avg_cost: number }>
+  by_provider: Array<{
+    provider: string
+    request_count: number
+    total_cost: number
+    avg_cost: number
+  }>
+  by_complexity: Array<{
+    complexity: string
+    request_count: number
+    total_cost: number
+    avg_cost: number
+  }>
   recent_requests: Array<{ timestamp: string; provider: string; cost: number }>
 }
 
@@ -240,7 +250,10 @@ export async function getModelAlternatives(modelId: string): Promise<ModelProfil
   return fetchAPI<ModelProfile[]>(`/arbitrage/models/${encodeURIComponent(modelId)}/alternatives`)
 }
 
-export async function getCheapestModel(capability: string, minLevel?: string): Promise<ModelProfile> {
+export async function getCheapestModel(
+  capability: string,
+  minLevel?: string
+): Promise<ModelProfile> {
   const params = minLevel ? `?min_level=${minLevel}` : ''
   return fetchAPI<ModelProfile>(`/arbitrage/cheapest/${capability}${params}`)
 }
@@ -344,8 +357,12 @@ export async function acknowledgeAnomaly(
   })
 }
 
-export async function getBudgetExhaustion(monthlyBudget: number): Promise<BudgetExhaustionResponse> {
-  return fetchAPI<BudgetExhaustionResponse>(`/forecasting/budget-exhaustion?monthly_budget=${monthlyBudget}`)
+export async function getBudgetExhaustion(
+  monthlyBudget: number
+): Promise<BudgetExhaustionResponse> {
+  return fetchAPI<BudgetExhaustionResponse>(
+    `/forecasting/budget-exhaustion?monthly_budget=${monthlyBudget}`
+  )
 }
 
 export async function getForecastingHealth(): Promise<{
@@ -567,13 +584,10 @@ export async function resolveComplianceAlert(
   alertId: string,
   notes?: string
 ): Promise<ComplianceAlert> {
-  return fetchAPI<ComplianceAlert>(
-    `/api/enterprise/compliance/alerts/${alertId}/resolve`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ resolution_notes: notes }),
-    }
-  )
+  return fetchAPI<ComplianceAlert>(`/api/enterprise/compliance/alerts/${alertId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ resolution_notes: notes }),
+  })
 }
 
 // ==========================================
@@ -581,7 +595,15 @@ export async function resolveComplianceAlert(
 // ==========================================
 
 export type SubscriptionStatus = 'active' | 'trial' | 'cancelled' | 'paused' | 'past_due'
-export type SubscriptionCategory = 'LLM Providers' | 'Voice AI (TTS)' | 'Voice AI (STT)' | 'Infrastructure' | 'AI Media' | 'Observability' | 'Billing' | 'Other'
+export type SubscriptionCategory =
+  | 'LLM Providers'
+  | 'Voice AI (TTS)'
+  | 'Voice AI (STT)'
+  | 'Infrastructure'
+  | 'AI Media'
+  | 'Observability'
+  | 'Billing'
+  | 'Other'
 
 export interface Subscription {
   id: string
@@ -662,7 +684,10 @@ export async function createSubscription(data: CreateSubscriptionData): Promise<
   })
 }
 
-export async function updateSubscription(id: string, data: UpdateSubscriptionData): Promise<Subscription> {
+export async function updateSubscription(
+  id: string,
+  data: UpdateSubscriptionData
+): Promise<Subscription> {
   return fetchAPI<Subscription>(`/subscriptions/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),

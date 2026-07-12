@@ -12,26 +12,30 @@ interface AnomalyAlertsProps {
   loading?: boolean
 }
 
-export function AnomalyAlerts({
-  anomalies,
-  onAcknowledge,
-  loading = false,
-}: AnomalyAlertsProps) {
+export function AnomalyAlerts({ anomalies, onAcknowledge, loading = false }: AnomalyAlertsProps) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <XCircle className="h-4 w-4 text-red-500" />
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-500" />
-      case 'medium': return <AlertCircle className="h-4 w-4 text-yellow-500" />
-      default: return <Info className="h-4 w-4 text-blue-500" />
+      case 'critical':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case 'high':
+        return <AlertTriangle className="h-4 w-4 text-orange-500" />
+      case 'medium':
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
+      default:
+        return <Info className="h-4 w-4 text-blue-500" />
     }
   }
 
   const getSeverityBadgeVariant = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'destructive'
-      case 'high': return 'destructive'
-      case 'medium': return 'warning'
-      default: return 'secondary'
+      case 'critical':
+        return 'destructive'
+      case 'high':
+        return 'destructive'
+      case 'medium':
+        return 'warning'
+      default:
+        return 'secondary'
     }
   }
 
@@ -47,9 +51,7 @@ export function AnomalyAlerts({
             Cost Anomalies
           </CardTitle>
           {unacknowledged.length > 0 && (
-            <Badge variant="destructive">
-              {unacknowledged.length} new
-            </Badge>
+            <Badge variant="destructive">{unacknowledged.length} new</Badge>
           )}
         </div>
       </CardHeader>
@@ -63,7 +65,7 @@ export function AnomalyAlerts({
         ) : (
           <div className="space-y-4">
             {/* Unacknowledged anomalies first */}
-            {unacknowledged.slice(0, 5).map((anomaly) => (
+            {unacknowledged.slice(0, 5).map(anomaly => (
               <div
                 key={anomaly.id}
                 className="flex items-start justify-between p-3 rounded-lg border bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
@@ -85,9 +87,7 @@ export function AnomalyAlerts({
                       <span className="text-red-600 font-medium">
                         Actual: ${anomaly.actual_cost.toFixed(2)}
                       </span>
-                      <span className="ml-2">
-                        (+{anomaly.deviation_percent.toFixed(0)}%)
-                      </span>
+                      <span className="ml-2">(+{anomaly.deviation_percent.toFixed(0)}%)</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Z-score: {anomaly.z_score.toFixed(2)}
@@ -113,7 +113,7 @@ export function AnomalyAlerts({
                 <p className="text-xs text-muted-foreground mb-2">
                   Previously acknowledged ({acknowledged.length})
                 </p>
-                {acknowledged.slice(0, 3).map((anomaly) => (
+                {acknowledged.slice(0, 3).map(anomaly => (
                   <div
                     key={anomaly.id}
                     className="flex items-center justify-between py-2 text-xs text-muted-foreground"

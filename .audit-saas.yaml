@@ -1,18 +1,18 @@
 # audit-saas Business Config
 
 business:
-  name: "AI Cost Optimizer"
-  type: "product"  # product | service | hybrid
-  value_proposition: "Reduce AI API costs by 60% with smart model routing - Gemini, Claude, OpenRouter"
-  target_customer: "AI developers, startups with high LLM usage"
-  price_point: "$49/month + usage savings"
+  name: 'AI Cost Optimizer'
+  type: 'product' # product | service | hybrid
+  value_proposition: 'Reduce AI API costs by 60% with smart model routing - Gemini, Claude, OpenRouter'
+  target_customer: 'AI developers, startups with high LLM usage'
+  price_point: '$49/month + usage savings'
 
 investment:
-  start_date: "2025-10-30"
+  start_date: '2025-10-30'
   total_hours: 35
   hourly_rate: 150
 
 revenue:
-  status: "pre-revenue"  # pre-revenue | has-leads | has-revenue
+  status: 'pre-revenue' # pre-revenue | has-leads | has-revenue
   monthly_revenue: 0
   paying_customers: 0

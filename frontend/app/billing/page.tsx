@@ -132,22 +132,35 @@ export default function BillingPage() {
     }).format(amount / 100)
   }
 
-  function getTierBadgeVariant(tier: BillingTier): 'default' | 'secondary' | 'destructive' | 'outline' {
+  function getTierBadgeVariant(
+    tier: BillingTier
+  ): 'default' | 'secondary' | 'destructive' | 'outline' {
     switch (tier) {
-      case 'enterprise': return 'default'
-      case 'business': return 'default'
-      case 'pro': return 'secondary'
-      default: return 'outline'
+      case 'enterprise':
+        return 'default'
+      case 'business':
+        return 'default'
+      case 'pro':
+        return 'secondary'
+      default:
+        return 'outline'
     }
   }
 
-  function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  function getStatusBadgeVariant(
+    status: string
+  ): 'default' | 'secondary' | 'destructive' | 'outline' {
     switch (status) {
-      case 'active': return 'default'
-      case 'trialing': return 'secondary'
-      case 'past_due': return 'destructive'
-      case 'canceled': return 'outline'
-      default: return 'outline'
+      case 'active':
+        return 'default'
+      case 'trialing':
+        return 'secondary'
+      case 'past_due':
+        return 'destructive'
+      case 'canceled':
+        return 'outline'
+      default:
+        return 'outline'
     }
   }
 
@@ -167,9 +180,7 @@ export default function BillingPage() {
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Billing</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your subscription and billing details
-        </p>
+        <p className="text-muted-foreground mt-1">Manage your subscription and billing details</p>
       </div>
 
       {/* Success message from checkout */}
@@ -179,7 +190,10 @@ export default function BillingPage() {
             <CheckCircle2 className="h-5 w-5 text-green-500" />
             <span className="text-green-700 dark:text-green-400">{successMessage}</span>
           </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-green-500 hover:text-green-700">
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-green-500 hover:text-green-700"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -192,7 +206,10 @@ export default function BillingPage() {
             <Info className="h-5 w-5 text-blue-500" />
             <span className="text-blue-700 dark:text-blue-400">{infoMessage}</span>
           </div>
-          <button onClick={() => setInfoMessage(null)} className="text-blue-500 hover:text-blue-700">
+          <button
+            onClick={() => setInfoMessage(null)}
+            className="text-blue-500 hover:text-blue-700"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -267,9 +284,7 @@ export default function BillingPage() {
               <Zap className="h-5 w-5" />
               Usage This Period
             </CardTitle>
-            <CardDescription>
-              {usage && `${usage.days_remaining} days remaining`}
-            </CardDescription>
+            <CardDescription>{usage && `${usage.days_remaining} days remaining`}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -277,17 +292,18 @@ export default function BillingPage() {
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Tokens Used</span>
                   <span>
-                    {usage ? formatTokens(usage.tokens_used) : '0'} / {usage ? formatTokens(usage.tokens_limit) : '10K'}
+                    {usage ? formatTokens(usage.tokens_used) : '0'} /{' '}
+                    {usage ? formatTokens(usage.tokens_limit) : '10K'}
                   </span>
                 </div>
                 <Progress
                   value={usagePercent}
-                  className={usagePercent > 90 ? 'bg-red-200' : usagePercent > 75 ? 'bg-yellow-200' : ''}
+                  className={
+                    usagePercent > 90 ? 'bg-red-200' : usagePercent > 75 ? 'bg-yellow-200' : ''
+                  }
                 />
               </div>
-              <div className="text-center text-2xl font-bold">
-                {usagePercent.toFixed(1)}%
-              </div>
+              <div className="text-center text-2xl font-bold">{usagePercent.toFixed(1)}%</div>
               {usagePercent > 80 && currentTier !== 'enterprise' && (
                 <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm">
                   Running low on tokens. Consider upgrading your plan.
@@ -302,7 +318,7 @@ export default function BillingPage() {
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {(tiers.length > 0 ? tiers : defaultTiers).map((tier) => (
+          {(tiers.length > 0 ? tiers : defaultTiers).map(tier => (
             <Card
               key={tier.tier}
               className={tier.tier === currentTier ? 'border-primary ring-2 ring-primary' : ''}
@@ -310,9 +326,7 @@ export default function BillingPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="capitalize">{tier.name}</span>
-                  {tier.tier === currentTier && (
-                    <Badge variant="default">Current</Badge>
-                  )}
+                  {tier.tier === currentTier && <Badge variant="default">Current</Badge>}
                 </CardTitle>
                 <CardDescription>
                   {tier.price_monthly === 0 ? (
@@ -382,7 +396,7 @@ export default function BillingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((invoice) => (
+                  {invoices.map(invoice => (
                     <TableRow key={invoice.id}>
                       <TableCell>{formatDate(invoice.created_at)}</TableCell>
                       <TableCell>

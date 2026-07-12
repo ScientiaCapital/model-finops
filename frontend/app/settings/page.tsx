@@ -10,9 +10,7 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Configure your AI Cost Optimizer preferences
-        </p>
+        <p className="text-muted-foreground">Configure your AI Cost Optimizer preferences</p>
       </div>
 
       {/* Routing Settings */}
@@ -22,9 +20,7 @@ export default function SettingsPage() {
             <Brain className="h-5 w-5" />
             Routing Configuration
           </CardTitle>
-          <CardDescription>
-            Configure how prompts are routed to AI providers
-          </CardDescription>
+          <CardDescription>Configure how prompts are routed to AI providers</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between py-2">
@@ -64,9 +60,7 @@ export default function SettingsPage() {
             <Database className="h-5 w-5" />
             Cache Configuration
           </CardTitle>
-          <CardDescription>
-            Configure semantic caching behavior
-          </CardDescription>
+          <CardDescription>Configure semantic caching behavior</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between py-2">
@@ -106,9 +100,7 @@ export default function SettingsPage() {
             <Zap className="h-5 w-5" />
             Provider Priority
           </CardTitle>
-          <CardDescription>
-            Configure provider preferences and fallback order
-          </CardDescription>
+          <CardDescription>Configure provider preferences and fallback order</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">

@@ -87,7 +87,9 @@ export function BudgetStatus({
           </div>
           <div className="col-span-2">
             <p className="text-muted-foreground">Projected Monthly</p>
-            <p className={`font-medium ${projectedMonthly > monthlyBudget ? 'text-red-500' : 'text-green-500'}`}>
+            <p
+              className={`font-medium ${projectedMonthly > monthlyBudget ? 'text-red-500' : 'text-green-500'}`}
+            >
               ${projectedMonthly.toFixed(2)}
               {projectedMonthly > monthlyBudget && (
                 <span className="text-xs ml-1">(over budget)</span>

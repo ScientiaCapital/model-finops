@@ -42,7 +42,7 @@ export function Navbar() {
 
             {/* Navigation Links */}
             <div className="hidden sm:ml-10 sm:flex sm:space-x-8">
-              {navigation.map((item) => {
+              {navigation.map(item => {
                 const isActive = pathname === item.href
                 return (
                   <Link

@@ -2,8 +2,8 @@
  * Stripe exports for ModelFinOps
  */
 
-export { stripe } from './client';
-export type { Stripe } from './client';
+export { stripe } from './client'
+export type { Stripe } from './client'
 export {
   PLANS,
   STRIPE_PRICES,
@@ -14,4 +14,4 @@ export {
   getAnnualPrice,
   type PlanId,
   type Plan,
-} from './plans';
+} from './plans'

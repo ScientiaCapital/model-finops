@@ -67,22 +67,26 @@ python3 cost_optimizer_agent.py "Compare provider costs"
 ## 5. Example Queries to Try
 
 ### Cost Analysis
+
 - "What are my total costs?"
 - "How much did I spend this week?"
 - "Show me spending trends"
 - "What was my most expensive day?"
 
 ### Optimization
+
 - "Where can I save money?"
 - "Give me cost optimization recommendations"
 - "Why are my costs high?"
 
 ### Cache Analysis
+
 - "Is my cache working well?"
 - "How much am I saving with caching?"
 - "What's my cache hit rate?"
 
 ### Provider Comparison
+
 - "Compare Gemini vs Claude costs"
 - "Which provider am I using most?"
 - "Show me provider performance"
@@ -90,6 +94,7 @@ python3 cost_optimizer_agent.py "Compare provider costs"
 ## 6. Test Data
 
 The database has been initialized with sample data:
+
 - 5 test requests
 - Mix of simple and complex queries
 - Gemini and Claude providers

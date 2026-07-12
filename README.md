@@ -5,6 +5,7 @@
 ## What It Does
 
 Automatically routes your prompts to the most cost-efficient model for each task:
+
 - **Smart routing** analyzes each prompt and selects the optimal provider
 - **Cost tracking** monitors spending across all requests
 - **Multi-provider support** works with Google Gemini, Anthropic Claude, OpenRouter, and more
@@ -64,9 +65,7 @@ Add the MCP server:
   "mcpServers": {
     "ai-cost-optimizer": {
       "command": "python3",
-      "args": [
-        "/ABSOLUTE/PATH/TO/ai-cost-optimizer/mcp/server.py"
-      ],
+      "args": ["/ABSOLUTE/PATH/TO/ai-cost-optimizer/mcp/server.py"],
       "env": {
         "COST_OPTIMIZER_API_URL": "http://localhost:8000"
       }
@@ -88,6 +87,7 @@ curl -X POST http://localhost:8000/complete \
 ```
 
 Response:
+
 ```json
 {
   "response": "Quantum computing is...",
@@ -165,6 +165,7 @@ LOG_LEVEL=INFO
 ## How It Works
 
 The optimizer uses an **intelligent routing engine** that:
+
 1. Analyzes incoming prompts
 2. Selects the most cost-efficient provider for the task
 3. Tracks all costs and usage metrics

@@ -39,19 +39,12 @@ export function MetricsCard({
       <CardContent>
         <div className="flex items-baseline space-x-2">
           <div className="text-2xl font-bold">{value}</div>
-          {badge && (
-            <Badge variant={badge.variant || 'default'}>{badge.text}</Badge>
-          )}
+          {badge && <Badge variant={badge.variant || 'default'}>{badge.text}</Badge>}
         </div>
         {(description || trend) && (
           <div className="flex items-center text-xs text-muted-foreground mt-1">
             {trend && (
-              <span
-                className={cn(
-                  'mr-1',
-                  trend.isPositive ? 'text-green-500' : 'text-red-500'
-                )}
-              >
+              <span className={cn('mr-1', trend.isPositive ? 'text-green-500' : 'text-red-500')}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </span>
             )}

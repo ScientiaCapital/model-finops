@@ -1,7 +1,7 @@
 ---
-name: "ai-cost-optimizer"
-description: "Save 40-70% on AI costs with intelligent multi-LLM routing. Automatically selects the optimal model based on task complexity across 40+ models from 8 providers."
-license: "MIT"
+name: 'ai-cost-optimizer'
+description: 'Save 40-70% on AI costs with intelligent multi-LLM routing. Automatically selects the optimal model based on task complexity across 40+ models from 8 providers.'
+license: 'MIT'
 ---
 
 # AI Cost Optimizer
@@ -32,6 +32,7 @@ license: "MIT"
 The FastAPI service must be running (locally or on RunPod).
 
 **Quick Start (Local)**:
+
 ```bash
 # Clone repository
 git clone https://github.com/yourusername/ai-cost-optimizer.git
@@ -83,9 +84,7 @@ Add to your Claude Desktop config:
   "mcpServers": {
     "ai-cost-optimizer": {
       "command": "python",
-      "args": [
-        "/absolute/path/to/ai-cost-optimizer/mcp/server.py"
-      ],
+      "args": ["/absolute/path/to/ai-cost-optimizer/mcp/server.py"],
       "env": {
         "COST_OPTIMIZER_API_URL": "http://localhost:8000"
       }
@@ -95,6 +94,7 @@ Add to your Claude Desktop config:
 ```
 
 **For RunPod deployment**, update the URL:
+
 ```json
 "COST_OPTIMIZER_API_URL": "https://your-pod-id.runpod.io"
 ```
@@ -112,11 +112,13 @@ Once installed, Claude has access to 5 powerful tools:
 **Command**: Ask Claude to route your prompt through the optimizer
 
 **Example**:
+
 ```
 Please use the cost optimizer to answer: "What is quantum entanglement?"
 ```
 
 **Response**:
+
 ```
 Response: Quantum entanglement is a phenomenon where...
 
@@ -135,11 +137,13 @@ Cost Analysis:
 **Command**: View all available models and pricing
 
 **Example**:
+
 ```
 Show me all available models and their costs
 ```
 
 **Response**:
+
 ```
 # Available Models and Pricing
 
@@ -170,12 +174,14 @@ Total Models Available: 24
 **Command**: Analyze complexity and get cost estimate before running
 
 **Example**:
+
 ```
 Analyze this prompt and recommend a model:
 "Write a comprehensive technical architecture document for a distributed system"
 ```
 
 **Response**:
+
 ```
 Recommendation Analysis
 
@@ -203,11 +209,13 @@ Note: This is an estimate. Use complete_prompt to execute.
 **Command**: Monitor your spending and usage
 
 **Example**:
+
 ```
 What's my AI spending this month?
 ```
 
 **Response**:
+
 ```
 Usage Statistics (30 days)
 
@@ -228,11 +236,13 @@ Models Used:
 **Command**: Configure spending limits and alerts
 
 **Example**:
+
 ```
 Set my monthly AI budget to $50 with alerts at 50%, 80%, and 90%
 ```
 
 **Response**:
+
 ```
 Budget Updated Successfully
 
@@ -247,22 +257,24 @@ You will receive alerts when spending reaches these thresholds.
 
 The optimizer automatically categorizes prompts into tiers:
 
-| Tier | Complexity | Example Tasks | Models | Cost/M Tokens |
-|------|------------|---------------|--------|---------------|
-| **Free** | 0.0-0.2 | Simple facts, definitions, basic Q&A | Gemini 2.0 Flash | $0 |
-| **Cheap** | 0.2-0.4 | Code snippets, summaries, translations | Cerebras, DeepSeek, Haiku | $0.1-1 |
-| **Medium** | 0.4-0.7 | Analysis, complex explanations, refactoring | Gemini Pro, Sonnet | $1-5 |
-| **Premium** | 0.7-1.0 | Architecture design, research papers, complex code | Opus, GPT-4 | $5-75 |
+| Tier        | Complexity | Example Tasks                                      | Models                    | Cost/M Tokens |
+| ----------- | ---------- | -------------------------------------------------- | ------------------------- | ------------- |
+| **Free**    | 0.0-0.2    | Simple facts, definitions, basic Q&A               | Gemini 2.0 Flash          | $0            |
+| **Cheap**   | 0.2-0.4    | Code snippets, summaries, translations             | Cerebras, DeepSeek, Haiku | $0.1-1        |
+| **Medium**  | 0.4-0.7    | Analysis, complex explanations, refactoring        | Gemini Pro, Sonnet        | $1-5          |
+| **Premium** | 0.7-1.0    | Architecture design, research papers, complex code | Opus, GPT-4               | $5-75         |
 
 ## 📊 Real-World Savings Examples
 
 ### Example 1: Daily Q&A (100 requests/day)
 
 **Without Optimizer**:
+
 - All requests to GPT-4
 - Cost: ~$150/month
 
 **With Optimizer**:
+
 - 80% routed to free/cheap models
 - 20% to premium models
 - Cost: ~$30/month
@@ -271,10 +283,12 @@ The optimizer automatically categorizes prompts into tiers:
 ### Example 2: Code Assistant (50 requests/day)
 
 **Without Optimizer**:
+
 - All requests to Claude Sonnet
 - Cost: ~$90/month
 
 **With Optimizer**:
+
 - Simple syntax: Free models
 - Complex architecture: Premium models
 - Cost: ~$35/month
@@ -283,10 +297,12 @@ The optimizer automatically categorizes prompts into tiers:
 ### Example 3: Content Writing (200 requests/day)
 
 **Without Optimizer**:
+
 - Mix of GPT-3.5 and GPT-4
 - Cost: ~$200/month
 
 **With Optimizer**:
+
 - Intelligent routing by complexity
 - Cost: ~$60/month
 - **Savings: $140/month (70%)**
@@ -334,6 +350,7 @@ Adjust in `claude_desktop_config.json`:
 ### Issue: "Cannot connect to AI Cost Optimizer service"
 
 **Solution**: Ensure the service is running:
+
 ```bash
 cd ai-cost-optimizer
 python main.py
@@ -344,6 +361,7 @@ Verify at: `http://localhost:8000/health`
 ### Issue: "No providers available"
 
 **Solution**: Add at least one API key to `.env`:
+
 ```bash
 GOOGLE_API_KEY=your-key-here
 ```
@@ -353,6 +371,7 @@ Restart the service.
 ### Issue: MCP server not appearing in Claude Desktop
 
 **Solutions**:
+
 1. Use absolute paths, not relative
 2. Verify Python is in PATH
 3. Check Claude Desktop logs
@@ -361,6 +380,7 @@ Restart the service.
 ### Issue: "Budget exceeded"
 
 **Solution**: Increase budget or check usage:
+
 ```bash
 curl http://localhost:8000/v1/usage
 ```
@@ -372,6 +392,7 @@ Or ask Claude: "What's my current AI spending?"
 For production deployment:
 
 1. **Build Docker Image**:
+
 ```bash
 docker build -t ai-cost-optimizer:latest .
 docker tag ai-cost-optimizer:latest your-dockerhub-username/ai-cost-optimizer:latest
@@ -379,6 +400,7 @@ docker push your-dockerhub-username/ai-cost-optimizer:latest
 ```
 
 2. **Deploy on RunPod**:
+
 - Go to https://www.runpod.io/
 - Deploy Custom Container
 - Use your Docker image
@@ -386,6 +408,7 @@ docker push your-dockerhub-username/ai-cost-optimizer:latest
 - Add 5GB persistent volume at `/data`
 
 3. **Update Claude Desktop Config**:
+
 ```json
 "COST_OPTIMIZER_API_URL": "https://your-pod-id.runpod.io"
 ```
@@ -424,6 +447,7 @@ Track spending per user by setting user_id in requests.
 ## 🤝 Contributing
 
 Contributions welcome! Areas of interest:
+
 - Additional provider integrations
 - Improved complexity analysis algorithms
 - Cost prediction models
@@ -436,16 +460,19 @@ MIT License - Free for personal and commercial use
 ## 🔮 Roadmap
 
 **v1.1** (Next Month):
+
 - [ ] Streamlit dashboard for usage analytics
 - [ ] Cost prediction before execution
 - [ ] Provider health checking and failover
 
 **v1.2** (Q2):
+
 - [ ] Advanced routing with ML-based complexity analysis
 - [ ] Team collaboration features
 - [ ] Webhook alerts for budget thresholds
 
 **v2.0** (Q3):
+
 - [ ] Response quality scoring
 - [ ] A/B testing across models
 - [ ] Cost vs quality optimization curves
@@ -453,6 +480,7 @@ MIT License - Free for personal and commercial use
 ## 💬 Community
 
 Join our community:
+
 - Discord: [Your Discord Server]
 - Twitter: [@ai_cost_optimizer]
 - LinkedIn: [Your Profile]
@@ -460,6 +488,7 @@ Join our community:
 ## 🙏 Acknowledgments
 
 Built with:
+
 - FastAPI for the API backend
 - MCP SDK for Claude Desktop integration
 - Anthropic, Google, Cerebras, and other LLM providers

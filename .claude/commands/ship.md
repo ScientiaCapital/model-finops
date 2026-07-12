@@ -1,6 +1,6 @@
 ---
-description: "Stage, commit, push. One command."
-argument-hint: "[optional commit message]"
+description: 'Stage, commit, push. One command.'
+argument-hint: '[optional commit message]'
 allowed-tools: Bash, Read, Glob
 ---
 

@@ -9,12 +9,14 @@
 **Model**: Host the service and charge based on consumption metrics.
 
 **Pricing Tiers**:
+
 - **Free Tier**: 10,000 tokens/month, basic routing, community support
 - **Pro**: $49/month - 1M tokens, advanced routing, A/B testing, email support
 - **Business**: $299/month - 10M tokens, priority routing, custom models, Slack support
 - **Enterprise**: Custom pricing - Unlimited tokens, dedicated infrastructure, SLA, white-glove support
 
 **Why This Works**:
+
 - Multi-tenancy already built (Supabase RLS)
 - Real-time metrics dashboard shows immediate value
 - Low customer acquisition cost (developers can try free tier)
@@ -30,6 +32,7 @@
 **Model**: Charge 10-20% of the actual cost savings delivered.
 
 **Example**:
+
 ```
 Customer spends $10,000/month on AI APIs without optimization
 → Your system reduces it to $3,000/month ($7,000 saved)
@@ -38,6 +41,7 @@ Customer spends $10,000/month on AI APIs without optimization
 ```
 
 **Why This Works**:
+
 - Zero risk for customers (only pay if they save money)
 - You're already tracking every penny (MetricsCollector)
 - Perfect alignment of incentives
@@ -53,16 +57,19 @@ Customer spends $10,000/month on AI APIs without optimization
 **Model**: Sell annual licenses for companies to run on their own infrastructure.
 
 **Pricing Structure**:
+
 - **Startup License**: $10,000/year - Up to 50 users, community support
 - **Enterprise License**: $50,000/year - Unlimited users, dedicated support, custom integrations
 - **Enterprise Plus**: $150,000/year - Source code access, custom features, SLA, dedicated account manager
 
 **Add-Ons**:
+
 - Implementation services: $25,000-$100,000 one-time
 - Custom model integrations: $10,000-$50,000 per provider
 - Annual support contract: 20% of license fee
 
 **Why This Works**:
+
 - Large enterprises need on-premise for security/compliance
 - Financial services, healthcare, government can't use SaaS
 - High contract values (5-6 figures)
@@ -89,30 +96,35 @@ Start with **#1 (SaaS)** to build initial traction and validate the market, then
 **Target Market**: AI-heavy startups burning $5K-$50K/month on OpenAI/Anthropic APIs
 
 **Why They're Perfect**:
+
 - Cost-conscious (seeking optimization)
 - Technically sophisticated (easy integration)
 - Desperate for cost reduction (immediate need)
 - Quick decision-making (no long sales cycles)
 
 **Example Customer Value**:
+
 - Customer saving $20K/month on a revenue share model = $3,600/month to you (18% of $20K)
 - 10 customers at this level = $36K MRR = $432K ARR
 
 ## Implementation Phases
 
 ### Phase 1: MVP Monetization
+
 1. **Add Stripe Integration** - Subscription billing with usage metering
 2. **Usage Tracking & Quotas** - Enforce tier limits by token count
 3. **Landing Page with ROI Calculator** - Show potential savings before signup
 4. **Self-Service Signup Flow** - User registration → Stripe checkout → API key provisioning
 
 ### Phase 2: Beta Program
+
 1. **Recruit 5 Beta Customers** - Offer 50% off first 3 months
 2. **Gather Testimonials** - Document actual cost savings
 3. **Refine Pricing** - Validate willingness to pay
 4. **Build Case Studies** - Show real-world ROI
 
 ### Phase 3: Scale
+
 1. **Content Marketing** - Blog posts on AI cost optimization
 2. **Integration Marketplace** - Pre-built connectors for popular frameworks
 3. **Referral Program** - 20% commission for customer referrals

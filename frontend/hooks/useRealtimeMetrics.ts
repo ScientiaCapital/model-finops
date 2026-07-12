@@ -43,28 +43,32 @@ export function useRealtimeMetrics(options: UseRealtimeMetricsOptions = {}) {
     recentMetrics: [],
   })
 
-  const updateStats = useCallback((newMetric: RealtimeMetric) => {
-    setStats((prev) => {
-      const newRecentMetrics = [newMetric, ...prev.recentMetrics].slice(0, maxRecentItems)
-      const newTotalRequests = prev.totalRequests + 1
-      const newTotalCost = prev.totalCost + (newMetric.cost_usd || 0)
-      const newCacheHits = prev.cacheHits + (newMetric.was_cache_hit ? 1 : 0)
+  const updateStats = useCallback(
+    (newMetric: RealtimeMetric) => {
+      setStats(prev => {
+        const newRecentMetrics = [newMetric, ...prev.recentMetrics].slice(0, maxRecentItems)
+        const newTotalRequests = prev.totalRequests + 1
+        const newTotalCost = prev.totalCost + (newMetric.cost_usd || 0)
+        const newCacheHits = prev.cacheHits + (newMetric.was_cache_hit ? 1 : 0)
 
-      // Calculate running average response time
-      const newAvgResponseTime =
-        (prev.avgResponseTime * prev.totalRequests + newMetric.response_time_ms) / newTotalRequests
+        // Calculate running average response time
+        const newAvgResponseTime =
+          (prev.avgResponseTime * prev.totalRequests + newMetric.response_time_ms) /
+          newTotalRequests
 
-      return {
-        totalCost: newTotalCost,
-        totalRequests: newTotalRequests,
-        cacheHits: newCacheHits,
-        avgResponseTime: newAvgResponseTime,
-        recentMetrics: newRecentMetrics,
-      }
-    })
+        return {
+          totalCost: newTotalCost,
+          totalRequests: newTotalRequests,
+          cacheHits: newCacheHits,
+          avgResponseTime: newAvgResponseTime,
+          recentMetrics: newRecentMetrics,
+        }
+      })
 
-    onNewMetric?.(newMetric)
-  }, [maxRecentItems, onNewMetric])
+      onNewMetric?.(newMetric)
+    },
+    [maxRecentItems, onNewMetric]
+  )
 
   useEffect(() => {
     const supabase = createClient()
@@ -81,12 +85,12 @@ export function useRealtimeMetrics(options: UseRealtimeMetricsOptions = {}) {
               schema: 'public',
               table: 'routing_metrics',
             },
-            (payload) => {
+            payload => {
               const newMetric = payload.new as RealtimeMetric
               updateStats(newMetric)
             }
           )
-          .subscribe((status) => {
+          .subscribe(status => {
             if (status === 'SUBSCRIBED') {
               setIsConnected(true)
               setError(null)
@@ -128,8 +132,6 @@ export function useRealtimeMetrics(options: UseRealtimeMetricsOptions = {}) {
     error,
     stats,
     resetStats,
-    cacheHitRate: stats.totalRequests > 0
-      ? (stats.cacheHits / stats.totalRequests) * 100
-      : 0,
+    cacheHitRate: stats.totalRequests > 0 ? (stats.cacheHits / stats.totalRequests) * 100 : 0,
   }
 }

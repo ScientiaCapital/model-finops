@@ -1,6 +1,6 @@
 ---
-description: "End of day — verify everything is clean and shipped."
-argument-hint: ""
+description: 'End of day — verify everything is clean and shipped.'
+argument-hint: ''
 allowed-tools: Read, Bash, Glob
 ---
 
@@ -9,6 +9,7 @@ allowed-tools: Read, Bash, Glob
 ## Instructions
 
 1. Check git state:
+
    ```bash
    git status --short
    git log --oneline -5
@@ -19,6 +20,7 @@ allowed-tools: Read, Bash, Glob
    - Ask: "Want me to /ship these or discard?"
 
 3. Quick security check (5 seconds, not a full sweep):
+
    ```bash
    grep -r "sk-\|AKIA\|ghp_" --include="*.ts" --include="*.py" --include="*.env" . 2>/dev/null | grep -v node_modules | grep -v .git | head -5
    ```

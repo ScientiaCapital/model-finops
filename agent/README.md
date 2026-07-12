@@ -7,16 +7,19 @@ An intelligent agent that analyzes your AI/LLM usage patterns, identifies cost-s
 ## Features
 
 ### 🔍 **Analysis Tools**
+
 - **Usage Statistics**: Total costs, request counts, provider breakdowns
 - **Cost Patterns**: Spending trends, peak usage times, daily analysis
 - **Recent Requests**: Query-level analysis for pattern identification
 
 ### 💰 **Optimization Tools**
+
 - **Smart Recommendations**: Prioritized opportunities with estimated savings
 - **Cache Analysis**: Hit rates, savings tracking, popular queries
 - **Provider Comparison**: Cost and quality metrics across providers
 
 ### 🎯 **Key Capabilities**
+
 - Natural language queries ("How much did I spend this week?")
 - Actionable, data-driven recommendations
 - Business-friendly explanations with specific metrics
@@ -94,6 +97,7 @@ python cost_optimizer_agent.py "Compare provider costs"
 ## Example Queries
 
 ### Cost Analysis
+
 ```
 "How much have I spent this week?"
 "What's my average cost per request?"
@@ -102,6 +106,7 @@ python cost_optimizer_agent.py "Compare provider costs"
 ```
 
 ### Optimization
+
 ```
 "Where can I save money?"
 "Generate cost optimization recommendations"
@@ -110,6 +115,7 @@ python cost_optimizer_agent.py "Compare provider costs"
 ```
 
 ### Cache Analysis
+
 ```
 "Is my cache working well?"
 "How much am I saving with caching?"
@@ -118,6 +124,7 @@ python cost_optimizer_agent.py "Compare provider costs"
 ```
 
 ### Provider Comparison
+
 ```
 "Compare Gemini vs Claude costs"
 "Which provider am I using most?"
@@ -126,6 +133,7 @@ python cost_optimizer_agent.py "Compare provider costs"
 ```
 
 ### Deep Analysis
+
 ```
 "Analyze my last 100 queries for patterns"
 "Find inefficiencies in my recent requests"
@@ -198,6 +206,7 @@ The agent combines `query_recent_requests(50)` with provider filtering.
 ### Comprehensive Review
 
 In interactive mode:
+
 ```
 You: Give me a complete cost audit
 Agent: [Uses multiple tools]
@@ -226,6 +235,7 @@ The agent imports from `../app/`. Make sure you're running from the `agent/` dir
 ### "Database not found"
 
 The agent looks for `../optimizer.db`. Make sure:
+
 1. The FastAPI service has been run at least once
 2. You have some usage data in the database
 3. The database file exists at the project root
@@ -246,6 +256,7 @@ The agent now includes 4 powerful learning-powered tools that analyze historical
 Get AI-powered routing recommendations based on historical performance for similar queries.
 
 **Example Queries:**
+
 ```
 "What's the best model for debugging Python code?"
 "Recommend a model for code review tasks"
@@ -253,6 +264,7 @@ Get AI-powered routing recommendations based on historical performance for simil
 ```
 
 **Returns:**
+
 - Recommended tier (e.g., "Economy Tier", "Premium Tier")
 - Confidence level (high/medium/low based on sample size)
 - Quality score and estimated cost
@@ -260,6 +272,7 @@ Get AI-powered routing recommendations based on historical performance for simil
 - Reasoning based on historical data
 
 **Key Features:**
+
 - Uses black-box abstraction (shows tiers, not models)
 - Confidence levels based on sample count (high: 10+ samples, medium: 5-9, low: <5)
 - Analyzes 6 query patterns: code, analysis, creative, explanation, factual, reasoning
@@ -269,6 +282,7 @@ Get AI-powered routing recommendations based on historical performance for simil
 View learning progress and maturity across all 6 query patterns.
 
 **Example Queries:**
+
 ```
 "Show me learning progress by pattern"
 "Which patterns have high confidence?"
@@ -276,12 +290,14 @@ View learning progress and maturity across all 6 query patterns.
 ```
 
 **Returns:**
+
 - Sample count per pattern
 - Confidence level (high/medium/low)
 - Best performing tier for each pattern
 - Samples needed to reach high confidence
 
 **Use Cases:**
+
 - Identify which patterns need more training data
 - Understand learning system maturity
 - Track progress over time
@@ -291,6 +307,7 @@ View learning progress and maturity across all 6 query patterns.
 Compare model performance across quality and cost metrics.
 
 **Example Queries:**
+
 ```
 "Compare provider performance"
 "Show model rankings for code tasks"
@@ -298,16 +315,19 @@ Compare model performance across quality and cost metrics.
 ```
 
 **Parameters:**
+
 - `mode`: "internal" (shows actual models - admin only) or "external" (shows tier labels - default)
 - `complexity`: Filter by "simple" or "complex" queries
 
 **Returns:**
+
 - Performance rankings by composite score
 - Quality score (0-1 based on feedback)
 - Average cost per request
 - Request count (sample size)
 
 **Composite Score Formula:**
+
 ```
 score = (quality * 0.5) + (cost_efficiency * 0.3) + (volume * 0.2)
 ```
@@ -317,6 +337,7 @@ score = (quality * 0.5) + (cost_efficiency * 0.3) + (volume * 0.2)
 Calculate ROI of learning-powered routing vs current usage.
 
 **Example Queries:**
+
 ```
 "How much could I save with smart routing?"
 "Calculate potential savings for last 30 days"
@@ -324,10 +345,12 @@ Calculate ROI of learning-powered routing vs current usage.
 ```
 
 **Parameters:**
+
 - `days`: Number of days to analyze (default: 30)
 - `complexity`: Filter by "simple" or "complex" queries
 
 **Returns:**
+
 - Current usage cost and request count
 - Optimized routing cost (using best cost-effective model)
 - Potential savings ($ and %)
@@ -335,6 +358,7 @@ Calculate ROI of learning-powered routing vs current usage.
 - Quality impact assessment
 
 **Example Output:**
+
 ```
 Current Monthly Cost:    $2.45
 Optimized Monthly Cost:  $0.87
@@ -358,6 +382,7 @@ python customer_dashboard.py
 ```
 
 **Features:**
+
 - Training data overview (total queries, models, feedback)
 - Pattern distribution with progress bars
 - Top performing tiers (black-boxed)
@@ -365,6 +390,7 @@ python customer_dashboard.py
 - Learning progress by pattern
 
 **Security:**
+
 - ONLY shows tier labels (Economy, Premium, Standard, Specialty)
 - NO model names exposed
 - NO admin view option
@@ -382,11 +408,13 @@ python admin_dashboard.py --mode external
 ```
 
 **Features:**
+
 - Same visualizations as customer dashboard
 - Internal mode reveals actual model names (e.g., "openrouter/deepseek-coder")
 - For development and internal analysis only
 
 **Security Warning:**
+
 - Contains competitive intelligence (model selection strategy)
 - Exposes cost optimization approach
 - NEVER share with customers or external parties
@@ -396,21 +424,25 @@ python admin_dashboard.py --mode external
 The system uses a two-tier architecture for competitive protection:
 
 **Internal View (Admin Only):**
+
 - Full model names: "openrouter/deepseek-coder", "claude/claude-3-haiku", etc.
 - Used for development, debugging, and internal analysis
 - Contains competitive intelligence
 
 **External View (Customer-Facing):**
+
 - Tier labels: "Economy Tier", "Premium Tier", "Standard Tier", "Specialty Tier"
 - Protects which specific models/providers are used
 - Delivers value without exposing strategy
 
 **Why This Matters:**
+
 - Prevents competitors from copying your model selection strategy
 - Protects hard-won knowledge about which models work best for each task
 - Maintains competitive advantage while delivering customer value
 
 **File Mapping:**
+
 - `model_abstraction.py` - Tier mapping logic
 - `customer_dashboard.py` - External view only, customer-safe
 - `admin_dashboard.py` - Both views, internal use only
@@ -464,6 +496,7 @@ Build a web interface that calls the agent for cost dashboards.
 ## Support
 
 For issues related to:
+
 - **Agent functionality**: Check this README and tool implementations
 - **Claude Agent SDK**: https://docs.claude.com/en/api/agent-sdk/python
 - **AI Cost Optimizer**: See parent project README
@@ -471,6 +504,7 @@ For issues related to:
 ## What's Next?
 
 Consider these enhancements:
+
 - 📊 **Export reports** to PDF/CSV
 - 📧 **Email alerts** for budget thresholds
 - 📈 **Visualization** with charts and graphs

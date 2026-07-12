@@ -17,7 +17,10 @@ interface RecentRequestsProps {
   requests: Request[]
 }
 
-const providerVariants: Record<string, 'default' | 'secondary' | 'outline' | 'success' | 'warning'> = {
+const providerVariants: Record<
+  string,
+  'default' | 'secondary' | 'outline' | 'success' | 'warning'
+> = {
   gemini: 'default',
   claude: 'warning',
   cerebras: 'success',
@@ -48,7 +51,7 @@ export function RecentRequests({ requests }: RecentRequestsProps) {
               No requests yet. Make your first API call to see activity here.
             </p>
           ) : (
-            requests.map((request) => (
+            requests.map(request => (
               <div
                 key={request.id}
                 className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0"
@@ -71,9 +74,7 @@ export function RecentRequests({ requests }: RecentRequestsProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">
-                    ${(request.cost_cents / 100).toFixed(4)}
-                  </p>
+                  <p className="text-sm font-medium">${(request.cost_cents / 100).toFixed(4)}</p>
                   <p className="text-xs text-muted-foreground">
                     {formatTimeAgo(request.created_at)}
                   </p>

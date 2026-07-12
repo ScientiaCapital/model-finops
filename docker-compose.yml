@@ -28,14 +28,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       COST_OPTIMIZER_API_URL: ${COST_OPTIMIZER_API_URL:-http://localhost:8000}
     ports:
-      - "8000:8000"
+      - '8000:8000'
     restart: unless-stopped
     networks:
       - optimizer-network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     # Health check for the API
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 3

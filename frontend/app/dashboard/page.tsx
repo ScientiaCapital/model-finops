@@ -69,16 +69,20 @@ export default function DashboardPage() {
     error: realtimeError,
     stats: realtimeStats,
   } = useRealtimeMetrics({
-    onNewMetric: (metric) => {
+    onNewMetric: metric => {
       // Update stats when new metric arrives
-      setStats((prev) => prev ? {
-        ...prev,
-        overall: {
-          ...prev.overall,
-          total_requests: prev.overall.total_requests + 1,
-          total_cost: prev.overall.total_cost + metric.cost_usd,
-        },
-      } : prev)
+      setStats(prev =>
+        prev
+          ? {
+              ...prev,
+              overall: {
+                ...prev.overall,
+                total_requests: prev.overall.total_requests + 1,
+                total_cost: prev.overall.total_cost + metric.cost_usd,
+              },
+            }
+          : prev
+      )
     },
   })
 
@@ -90,8 +94,16 @@ export default function DashboardPage() {
 
       // Fetch core metrics and new Sprint Dec 27 features in parallel
       const [
-        statsData, cacheData, routingData, healthData, budgetData,
-        arbitrageData, savingsData, forecastData, exhaustionData, anomalyData
+        statsData,
+        cacheData,
+        routingData,
+        healthData,
+        budgetData,
+        arbitrageData,
+        savingsData,
+        forecastData,
+        exhaustionData,
+        anomalyData,
       ] = await Promise.all([
         getStats().catch(() => null),
         getCacheStats().catch(() => null),
@@ -106,7 +118,13 @@ export default function DashboardPage() {
         getAnomalies(30, 2.0).catch(() => ({ anomalies: [] })),
       ])
 
-      console.log('[Dashboard] Data fetched:', { statsData, cacheData, healthData, arbitrageData, forecastData })
+      console.log('[Dashboard] Data fetched:', {
+        statsData,
+        cacheData,
+        healthData,
+        arbitrageData,
+        forecastData,
+      })
       setStats(statsData)
       setCacheStats(cacheData)
       setRoutingMetrics(routingData)
@@ -131,9 +149,13 @@ export default function DashboardPage() {
   const handleAcknowledgeAnomaly = useCallback(async (anomalyId: string) => {
     try {
       await acknowledgeAnomaly(anomalyId, 'Acknowledged from dashboard')
-      setAnomalies(prev => prev.map(a =>
-        a.id === anomalyId ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() } : a
-      ))
+      setAnomalies(prev =>
+        prev.map(a =>
+          a.id === anomalyId
+            ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() }
+            : a
+        )
+      )
     } catch (err) {
       console.error('[Dashboard] Failed to acknowledge anomaly:', err)
     }
@@ -178,9 +200,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Real-time AI cost optimization metrics
-          </p>
+          <p className="text-muted-foreground">Real-time AI cost optimization metrics</p>
         </div>
         <div className="flex items-center gap-4">
           <RealtimeIndicator isConnected={realtimeConnected} error={realtimeError} />
@@ -205,16 +225,14 @@ export default function DashboardPage() {
                 <Badge variant="success" className="text-xs">
                   {health.status}
                 </Badge>
-                <span className="text-sm text-muted-foreground">
-                  v{health.version}
-                </span>
+                <span className="text-sm text-muted-foreground">v{health.version}</span>
                 <span className="text-sm text-muted-foreground">
                   Auto-Route: {health.auto_route_enabled ? 'On' : 'Off'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Providers:</span>
-                {health.providers_available?.map((provider) => (
+                {health.providers_available?.map(provider => (
                   <Badge key={provider} variant="outline" className="capitalize">
                     {provider}
                   </Badge>
@@ -241,26 +259,28 @@ export default function DashboardPage() {
         />
         <MetricsCard
           title="Cache Hit Rate"
-          value={cacheStats && cacheStats.total_entries > 0
-            ? `${((cacheStats.total_hits / cacheStats.total_entries) * 100).toFixed(1)}%`
-            : '0%'}
+          value={
+            cacheStats && cacheStats.total_entries > 0
+              ? `${((cacheStats.total_hits / cacheStats.total_entries) * 100).toFixed(1)}%`
+              : '0%'
+          }
           description={`${cacheStats?.total_hits.toLocaleString() || 0} cache hits`}
           icon={Zap}
           badge={
-            cacheStats && cacheStats.total_entries > 0 && (cacheStats.total_hits / cacheStats.total_entries) > 0.7
+            cacheStats &&
+            cacheStats.total_entries > 0 &&
+            cacheStats.total_hits / cacheStats.total_entries > 0.7
               ? { text: 'Excellent', variant: 'success' }
-              : cacheStats && cacheStats.total_entries > 0 && (cacheStats.total_hits / cacheStats.total_entries) > 0.4
-              ? { text: 'Good', variant: 'warning' }
-              : { text: 'Low', variant: 'destructive' }
+              : cacheStats &&
+                  cacheStats.total_entries > 0 &&
+                  cacheStats.total_hits / cacheStats.total_entries > 0.4
+                ? { text: 'Good', variant: 'warning' }
+                : { text: 'Low', variant: 'destructive' }
           }
         />
         <MetricsCard
           title="Cost Savings"
-          value={
-            routingMetrics
-              ? `${routingMetrics.cost_savings.percent_saved.toFixed(1)}%`
-              : '0%'
-          }
+          value={routingMetrics ? `${routingMetrics.cost_savings.percent_saved.toFixed(1)}%` : '0%'}
           description={`${routingMetrics?.total_decisions.toLocaleString() || 0} decisions`}
           icon={Brain}
         />
@@ -270,7 +290,11 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Total Tokens"
-          value={stats ? (stats.overall.total_tokens_in + stats.overall.total_tokens_out).toLocaleString() : '0'}
+          value={
+            stats
+              ? (stats.overall.total_tokens_in + stats.overall.total_tokens_out).toLocaleString()
+              : '0'
+          }
           description="Tokens processed"
           icon={Database}
         />
@@ -288,11 +312,7 @@ export default function DashboardPage() {
         />
         <MetricsCard
           title="High Confidence"
-          value={
-            routingMetrics
-              ? `${routingMetrics.confidence_distribution.high}%`
-              : 'N/A'
-          }
+          value={routingMetrics ? `${routingMetrics.confidence_distribution.high}%` : 'N/A'}
           description="High confidence decisions"
           icon={Brain}
         />
@@ -335,10 +355,7 @@ export default function DashboardPage() {
         </h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Arbitrage Opportunities */}
-          <ArbitrageOpportunities
-            opportunities={arbitrageOpportunities}
-            loading={loading}
-          />
+          <ArbitrageOpportunities opportunities={arbitrageOpportunities} loading={loading} />
 
           {/* Cost Forecast */}
           <ForecastChart
@@ -390,7 +407,7 @@ export default function DashboardPage() {
 
       {/* Recent Activity - Now with real-time data */}
       <RecentRequests
-        requests={realtimeStats.recentMetrics.map((m) => ({
+        requests={realtimeStats.recentMetrics.map(m => ({
           id: m.id,
           prompt_text: `${m.selected_provider} request`,
           provider: m.selected_provider,

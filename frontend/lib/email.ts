@@ -5,32 +5,29 @@
  * Uses lazy initialization to avoid build-time errors.
  */
 
-import { Resend } from 'resend';
+import { Resend } from 'resend'
 
-let resendInstance: Resend | null = null;
+let resendInstance: Resend | null = null
 
 function getResend(): Resend {
   if (!resendInstance) {
-    const apiKey = process.env.RESEND_API_KEY;
+    const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY environment variable is not set');
+      throw new Error('RESEND_API_KEY environment variable is not set')
     }
-    resendInstance = new Resend(apiKey);
+    resendInstance = new Resend(apiKey)
   }
-  return resendInstance;
+  return resendInstance
 }
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Model FinOps <noreply@modelfinops.com>';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://modelfinops.com';
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Model FinOps <noreply@modelfinops.com>'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://modelfinops.com'
 
 /**
  * Send payment failure notification email
  */
-export async function sendPaymentFailedEmail(
-  email: string,
-  customerName?: string
-): Promise<void> {
-  const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
+export async function sendPaymentFailedEmail(email: string, customerName?: string): Promise<void> {
+  const greeting = customerName ? `Hi ${customerName},` : 'Hi,'
 
   await getResend().emails.send({
     from: FROM_EMAIL,
@@ -54,7 +51,7 @@ export async function sendPaymentFailedEmail(
         </p>
       </div>
     `,
-  });
+  })
 }
 
 /**
@@ -64,7 +61,7 @@ export async function sendSubscriptionCancelledEmail(
   email: string,
   customerName?: string
 ): Promise<void> {
-  const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
+  const greeting = customerName ? `Hi ${customerName},` : 'Hi,'
 
   await getResend().emails.send({
     from: FROM_EMAIL,
@@ -92,7 +89,7 @@ export async function sendSubscriptionCancelledEmail(
         </p>
       </div>
     `,
-  });
+  })
 }
 
 /**
@@ -103,8 +100,8 @@ export async function sendWelcomeEmail(
   customerName?: string,
   planName?: string
 ): Promise<void> {
-  const greeting = customerName ? `Hi ${customerName},` : 'Hi,';
-  const plan = planName || 'your new plan';
+  const greeting = customerName ? `Hi ${customerName},` : 'Hi,'
+  const plan = planName || 'your new plan'
 
   await getResend().emails.send({
     from: FROM_EMAIL,
@@ -133,5 +130,5 @@ export async function sendWelcomeEmail(
         </p>
       </div>
     `,
-  });
+  })
 }

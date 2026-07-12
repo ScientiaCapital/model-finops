@@ -1,6 +1,6 @@
 ---
-description: "Quick start — deps check, git state, last commits. 30 seconds."
-argument-hint: ""
+description: 'Quick start — deps check, git state, last commits. 30 seconds.'
+argument-hint: ''
 allowed-tools: Read, Bash, Glob
 ---
 

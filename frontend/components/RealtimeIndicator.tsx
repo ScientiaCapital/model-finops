@@ -19,10 +19,7 @@ export function RealtimeIndicator({ isConnected, error }: RealtimeIndicatorProps
   }
 
   return (
-    <Badge
-      variant={isConnected ? 'success' : 'secondary'}
-      className="gap-1"
-    >
+    <Badge variant={isConnected ? 'success' : 'secondary'} className="gap-1">
       {isConnected ? (
         <>
           <Wifi className="h-3 w-3" />

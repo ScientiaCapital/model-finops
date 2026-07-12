@@ -3,6 +3,7 @@
 Intelligent LLM router that reduces AI API costs by routing prompts to the most cost-efficient model — FastAPI backend with semantic caching (pgvector), multi-tenant RLS, MCP integration for Claude Desktop, and a Next.js cost dashboard.
 
 ## Stack
+
 - Backend: FastAPI + Python 3.10+
 - Frontend: Next.js 15 + Tailwind CSS + shadcn/ui
 - Database: Supabase (PostgreSQL + pgvector for semantic caching)
@@ -11,11 +12,13 @@ Intelligent LLM router that reduces AI API costs by routing prompts to the most 
 - Infrastructure: Docker, MCP server for Claude Desktop
 
 ## Quick Start
+
 ```bash
 ./init.sh
 ```
 
 ## Key Files
+
 - `app/main.py` — FastAPI entry point
 - `app/routing/engine.py` — RoutingEngine with ComplexityStrategy / LearningStrategy / HybridStrategy
 - `app/database/cost_tracker_async.py` — Semantic cache with 95% similarity threshold
@@ -29,6 +32,7 @@ Intelligent LLM router that reduces AI API costs by routing prompts to the most 
 - `requirements.txt` — Python deps
 
 ## Development
+
 ```bash
 # Backend
 python app/main.py
@@ -42,9 +46,11 @@ pytest tests/
 ```
 
 ## Environment
+
 Requires: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`
 
 ## Policy
+
 - No OpenAI as primary provider — Anthropic Claude or OpenRouter only
 - Routing logic lives exclusively in `app/routing/`
 - All cost calculations in USD cents for precision

@@ -4,14 +4,14 @@ services:
       file: docker-compose.yml
       service: postgres
     ports:
-      - "5433:5432"  # Different port for dev
+      - '5433:5432' # Different port for dev
 
   api:
     extends:
       file: docker-compose.yml
       service: api
     volumes:
-      - ./app:/app/app  # Mount for hot reload
+      - ./app:/app/app # Mount for hot reload
       - ./tests:/app/tests
     environment:
       LOG_LEVEL: DEBUG

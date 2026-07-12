@@ -35,12 +35,8 @@ export function ProviderChart({ data, title, type }: ProviderChartProps) {
                 <div className="flex items-center justify-between text-sm">
                   <span className="capitalize font-medium">{provider}</span>
                   <span className="text-muted-foreground">
-                    {type === 'cost'
-                      ? `$${(value / 100).toFixed(2)}`
-                      : value.toLocaleString()}
-                    <span className="ml-1 text-xs">
-                      ({percentage.toFixed(1)}%)
-                    </span>
+                    {type === 'cost' ? `$${(value / 100).toFixed(2)}` : value.toLocaleString()}
+                    <span className="ml-1 text-xs">({percentage.toFixed(1)}%)</span>
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-secondary overflow-hidden">

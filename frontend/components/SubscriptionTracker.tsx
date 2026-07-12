@@ -65,7 +65,10 @@ const categoryIcons: Record<SubscriptionCategory, React.ReactNode> = {
   Other: <Package className="h-4 w-4" />,
 }
 
-const statusConfig: Record<SubscriptionStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string }> = {
+const statusConfig: Record<
+  SubscriptionStatus,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string }
+> = {
   active: { label: 'Active', variant: 'default', color: 'text-green-500' },
   trial: { label: 'Trial', variant: 'secondary', color: 'text-blue-500' },
   cancelled: { label: 'Cancelled', variant: 'destructive', color: 'text-red-500' },
@@ -124,9 +127,7 @@ function SubscriptionCard({ subscription, onEdit, onDelete }: SubscriptionCardPr
       )}
     >
       <div className="flex items-start gap-3 flex-1">
-        <div className={cn('mt-1', statusInfo.color)}>
-          {categoryIcons[subscription.category]}
-        </div>
+        <div className={cn('mt-1', statusInfo.color)}>{categoryIcons[subscription.category]}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <p className="font-medium text-sm truncate">{subscription.service_name}</p>
@@ -139,8 +140,7 @@ function SubscriptionCard({ subscription, onEdit, onDelete }: SubscriptionCardPr
           )}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <DollarSign className="h-3 w-3" />
-              ${subscription.monthly_cost.toFixed(2)}/mo
+              <DollarSign className="h-3 w-3" />${subscription.monthly_cost.toFixed(2)}/mo
             </span>
             {subscription.next_billing_date && (
               <span className="flex items-center gap-1">
@@ -207,7 +207,7 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
           <Input
             id="service_name"
             value={formData.service_name}
-            onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+            onChange={e => setFormData({ ...formData, service_name: e.target.value })}
             placeholder="e.g., OpenAI API"
             required
           />
@@ -217,7 +217,7 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
           <Input
             id="service_provider"
             value={formData.service_provider || ''}
-            onChange={(e) => setFormData({ ...formData, service_provider: e.target.value })}
+            onChange={e => setFormData({ ...formData, service_provider: e.target.value })}
             placeholder="e.g., OpenAI"
           />
         </div>
@@ -229,10 +229,12 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
           <select
             id="category"
             value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value as SubscriptionCategory })}
+            onChange={e =>
+              setFormData({ ...formData, category: e.target.value as SubscriptionCategory })
+            }
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {categoryOptions.map((cat) => (
+            {categoryOptions.map(cat => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
@@ -247,7 +249,9 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
             step="0.01"
             min="0"
             value={formData.monthly_cost}
-            onChange={(e) => setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })}
+            onChange={e =>
+              setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })
+            }
             required
           />
         </div>
@@ -262,7 +266,9 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
             min="1"
             max="31"
             value={formData.billing_day || ''}
-            onChange={(e) => setFormData({ ...formData, billing_day: parseInt(e.target.value) || undefined })}
+            onChange={e =>
+              setFormData({ ...formData, billing_day: parseInt(e.target.value) || undefined })
+            }
             placeholder="1-31"
           />
         </div>
@@ -274,7 +280,9 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
             min="1"
             max="30"
             value={formData.alert_days_before}
-            onChange={(e) => setFormData({ ...formData, alert_days_before: parseInt(e.target.value) || 3 })}
+            onChange={e =>
+              setFormData({ ...formData, alert_days_before: parseInt(e.target.value) || 3 })
+            }
           />
         </div>
       </div>
@@ -284,7 +292,11 @@ function AddSubscriptionForm({ onSubmit, onCancel }: AddSubscriptionFormProps) {
           Cancel
         </Button>
         <Button type="submit" disabled={submitting}>
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+          {submitting ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Check className="h-4 w-4 mr-2" />
+          )}
           Add Subscription
         </Button>
       </div>
@@ -299,7 +311,12 @@ interface EditSubscriptionDialogProps {
   onSave: (id: string, data: UpdateSubscriptionData) => Promise<void>
 }
 
-function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: EditSubscriptionDialogProps) {
+function EditSubscriptionDialog({
+  subscription,
+  open,
+  onOpenChange,
+  onSave,
+}: EditSubscriptionDialogProps) {
   const [formData, setFormData] = useState<UpdateSubscriptionData>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -339,9 +356,7 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Edit Subscription</DialogTitle>
-          <DialogDescription>
-            Update the details for {subscription.service_name}
-          </DialogDescription>
+          <DialogDescription>Update the details for {subscription.service_name}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -350,7 +365,7 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
               <Input
                 id="edit_service_name"
                 value={formData.service_name || ''}
-                onChange={(e) => setFormData({ ...formData, service_name: e.target.value })}
+                onChange={e => setFormData({ ...formData, service_name: e.target.value })}
                 required
               />
             </div>
@@ -359,7 +374,7 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
               <Input
                 id="edit_service_provider"
                 value={formData.service_provider || ''}
-                onChange={(e) => setFormData({ ...formData, service_provider: e.target.value })}
+                onChange={e => setFormData({ ...formData, service_provider: e.target.value })}
               />
             </div>
           </div>
@@ -370,10 +385,12 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
               <select
                 id="edit_category"
                 value={formData.category || 'Other'}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value as SubscriptionCategory })}
+                onChange={e =>
+                  setFormData({ ...formData, category: e.target.value as SubscriptionCategory })
+                }
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {categoryOptions.map((cat) => (
+                {categoryOptions.map(cat => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -388,7 +405,9 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
                 step="0.01"
                 min="0"
                 value={formData.monthly_cost || 0}
-                onChange={(e) => setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })}
+                onChange={e =>
+                  setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })
+                }
               />
             </div>
           </div>
@@ -399,7 +418,9 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
               <select
                 id="edit_status"
                 value={formData.status || 'active'}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as SubscriptionStatus })}
+                onChange={e =>
+                  setFormData({ ...formData, status: e.target.value as SubscriptionStatus })
+                }
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="active">Active</option>
@@ -416,7 +437,9 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
                 min="1"
                 max="31"
                 value={formData.billing_day || ''}
-                onChange={(e) => setFormData({ ...formData, billing_day: parseInt(e.target.value) || undefined })}
+                onChange={e =>
+                  setFormData({ ...formData, billing_day: parseInt(e.target.value) || undefined })
+                }
                 placeholder="1-31"
               />
             </div>
@@ -428,7 +451,7 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
                 type="checkbox"
                 id="edit_alert_enabled"
                 checked={formData.alert_enabled ?? true}
-                onChange={(e) => setFormData({ ...formData, alert_enabled: e.target.checked })}
+                onChange={e => setFormData({ ...formData, alert_enabled: e.target.checked })}
                 className="h-4 w-4 rounded border-gray-300"
               />
               <Label htmlFor="edit_alert_enabled">Enable Alerts</Label>
@@ -441,18 +464,29 @@ function EditSubscriptionDialog({ subscription, open, onOpenChange, onSave }: Ed
                 min="1"
                 max="30"
                 value={formData.alert_days_before || 3}
-                onChange={(e) => setFormData({ ...formData, alert_days_before: parseInt(e.target.value) || 3 })}
+                onChange={e =>
+                  setFormData({ ...formData, alert_days_before: parseInt(e.target.value) || 3 })
+                }
                 disabled={!formData.alert_enabled}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
               Save Changes
             </Button>
           </DialogFooter>
@@ -555,7 +589,9 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Spend</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Monthly Spend
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">
@@ -570,7 +606,9 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Subscriptions</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Active Subscriptions
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">
@@ -585,16 +623,16 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Billing</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Upcoming Billing
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{alerts.length}</span>
                 <span className="text-sm text-muted-foreground">alerts</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Next 7 days
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Next 7 days</p>
             </CardContent>
           </Card>
         </div>
@@ -610,7 +648,7 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {alerts.map((alert) => {
+            {alerts.map(alert => {
               const urgencyColors = {
                 low: 'border-green-500/20 bg-green-500/5',
                 medium: 'border-yellow-500/20 bg-yellow-500/5',
@@ -619,12 +657,16 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
               return (
                 <div
                   key={alert.subscription_id}
-                  className={cn('flex items-center justify-between p-3 rounded-lg border', urgencyColors[alert.urgency])}
+                  className={cn(
+                    'flex items-center justify-between p-3 rounded-lg border',
+                    urgencyColors[alert.urgency]
+                  )}
                 >
                   <div>
                     <p className="font-medium text-sm">{alert.service_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      Bills in {alert.days_until_billing} day{alert.days_until_billing !== 1 ? 's' : ''}
+                      Bills in {alert.days_until_billing} day
+                      {alert.days_until_billing !== 1 ? 's' : ''}
                     </p>
                   </div>
                   <div className="text-right">
@@ -699,7 +741,7 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
                     <span className="text-xs">({subs.length})</span>
                   </div>
                   <div className="space-y-2">
-                    {subs.map((sub) => (
+                    {subs.map(sub => (
                       <SubscriptionCard
                         key={sub.id}
                         subscription={sub}
@@ -719,7 +761,7 @@ export function SubscriptionTracker({ className }: SubscriptionTrackerProps) {
       <EditSubscriptionDialog
         subscription={editingSubscription}
         open={!!editingSubscription}
-        onOpenChange={(open) => !open && setEditingSubscription(null)}
+        onOpenChange={open => !open && setEditingSubscription(null)}
         onSave={handleUpdateSubscription}
       />
     </div>

@@ -19,6 +19,7 @@ The MCP server acts as a bridge between Claude Desktop and the AI Cost Optimizer
 The main AI Cost Optimizer service must be running (either locally or deployed to RunPod).
 
 **Local Setup:**
+
 ```bash
 # From the parent directory
 cd ..
@@ -85,6 +86,7 @@ COST_OPTIMIZER_API_KEY=your-api-key-here
 ```
 
 **For RunPod deployment:**
+
 ```bash
 COST_OPTIMIZER_API_URL=https://your-pod-id.runpod.io
 ```
@@ -108,9 +110,7 @@ Edit the config file and add the MCP server:
   "mcpServers": {
     "ai-cost-optimizer": {
       "command": "python",
-      "args": [
-        "/absolute/path/to/ai-cost-optimizer/mcp/server.py"
-      ],
+      "args": ["/absolute/path/to/ai-cost-optimizer/mcp/server.py"],
       "env": {
         "COST_OPTIMIZER_API_URL": "http://localhost:8000",
         "COST_OPTIMIZER_API_KEY": ""
@@ -121,17 +121,13 @@ Edit the config file and add the MCP server:
 ```
 
 **Using UV:**
+
 ```json
 {
   "mcpServers": {
     "ai-cost-optimizer": {
       "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "/absolute/path/to/ai-cost-optimizer/mcp",
-        "server.py"
-      ],
+      "args": ["run", "--directory", "/absolute/path/to/ai-cost-optimizer/mcp", "server.py"],
       "env": {
         "COST_OPTIMIZER_API_URL": "http://localhost:8000"
       }
@@ -153,6 +149,7 @@ Once configured, Claude will have access to these tools:
 Route a prompt through the cost optimizer with automatic model selection.
 
 **Parameters:**
+
 - `prompt` (required): The prompt to complete
 - `max_tokens` (optional): Maximum response length (default: 1000)
 - `budget_limit` (optional): Maximum cost in USD
@@ -161,6 +158,7 @@ Route a prompt through the cost optimizer with automatic model selection.
 - `force_model` (optional): Force specific model
 
 **Example:**
+
 ```
 Please use the cost optimizer to complete this prompt:
 "Explain quantum entanglement in simple terms"
@@ -171,6 +169,7 @@ Please use the cost optimizer to complete this prompt:
 Get pricing for all available models across all providers.
 
 **Example:**
+
 ```
 Show me all available models and their costs
 ```
@@ -180,11 +179,13 @@ Show me all available models and their costs
 Analyze prompt complexity and get model recommendation without executing.
 
 **Parameters:**
+
 - `prompt` (required): The prompt to analyze
 - `max_tokens` (optional): Expected response length
 - `budget_limit` (optional): Budget constraint
 
 **Example:**
+
 ```
 Analyze this prompt and recommend a model:
 "Write a comprehensive research paper on climate change"
@@ -195,10 +196,12 @@ Analyze this prompt and recommend a model:
 Get usage statistics and spending information.
 
 **Parameters:**
+
 - `user_id` (optional): User ID to query (default: "default")
 - `days` (optional): Lookback period (default: 30)
 
 **Example:**
+
 ```
 What's my AI spending this month?
 ```
@@ -208,11 +211,13 @@ What's my AI spending this month?
 Configure monthly budget limits and alert thresholds.
 
 **Parameters:**
+
 - `monthly_limit` (required): Monthly budget in USD
 - `user_id` (optional): User ID (default: "default")
 - `alert_thresholds` (optional): Alert percentages (default: [0.5, 0.8, 0.9])
 
 **Example:**
+
 ```
 Set my monthly AI budget to $50 with alerts at 50%, 80%, and 90%
 ```
@@ -222,12 +227,14 @@ Set my monthly AI budget to $50 with alerts at 50%, 80%, and 90%
 ### "Cannot connect to AI Cost Optimizer service"
 
 **Solution:** Ensure the FastAPI service is running:
+
 ```bash
 cd ..
 python main.py
 ```
 
 Verify it's accessible:
+
 ```bash
 curl http://localhost:8000/
 ```
@@ -235,6 +242,7 @@ curl http://localhost:8000/
 ### "MCP server not appearing in Claude Desktop"
 
 **Solutions:**
+
 1. Check the config file path is correct
 2. Ensure the `server.py` path is absolute, not relative
 3. Verify Python is in your PATH
@@ -244,6 +252,7 @@ curl http://localhost:8000/
 ### "No providers available"
 
 **Solution:** Configure at least one provider API key in the main service's `.env` file:
+
 ```bash
 cd ..
 nano .env  # or your preferred editor
@@ -258,6 +267,7 @@ Restart the service after updating environment variables.
 ### "Permission denied" when running server.py
 
 **Solution:** Make the script executable:
+
 ```bash
 chmod +x server.py
 ```

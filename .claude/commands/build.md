@@ -1,6 +1,6 @@
 ---
-description: "Build workflow — contract setup, execute, polish, security gate, ship"
-argument-hint: "[feature-name]"
+description: 'Build workflow — contract setup, execute, polish, security gate, ship'
+argument-hint: '[feature-name]'
 allowed-tools: Read, Glob, Grep, Bash, Write, Edit, Agent
 ---
 
@@ -42,7 +42,7 @@ Existing contracts:
 ## Build Assignment — $ARGUMENTS
 
 | Task | Agent | Skill | Worktree | Model | Est Cost |
-|------|-------|-------|----------|-------|----------|
+| ---- | ----- | ----- | -------- | ----- | -------- |
 
 Contract: .claude/contracts/$1.ts
 ```
@@ -52,6 +52,7 @@ Contract: .claude/contracts/$1.ts
 ### Phase 2: Execute (~variable)
 
 **Builders** — each receives a task with:
+
 - Task description (< 50 words)
 - Contract file path
 - Scope boundary (what this agent owns / does NOT touch)
@@ -62,11 +63,13 @@ Builders run tests inline. Commit only when checklist is green. Push branch — 
 Use conventional commits: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`
 
 **Observers** — run at commit boundaries (point-in-time, not persistent):
+
 - Code Quality Observer: audit `git diff` across builder work
 - Architecture Observer: check for contract drift, scope creep, duplicate logic
 - Devil's Advocate: at each gate, challenge both teams per §Roles
 
 **Rollback Protocol** — if something breaks:
+
 1. `git stash` current work
 2. `git log --oneline -10` — find last known good commit
 3. `git diff [good]..HEAD` — identify what broke
@@ -134,6 +137,7 @@ git worktree list
 ```
 
 Capture portfolio metrics for End Day:
+
 - Lines shipped (backend / frontend / tests / hardening)
 - Observer findings resolved
 - Tech debt prevented

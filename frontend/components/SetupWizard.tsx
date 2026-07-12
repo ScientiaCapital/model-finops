@@ -1,7 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -77,7 +84,11 @@ function ProviderSelectCard({ link, selected, onToggle }: ProviderCardProps) {
         selected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/50'
       )}
     >
-      <Checkbox checked={selected} onCheckedChange={() => onToggle()} className="pointer-events-none" />
+      <Checkbox
+        checked={selected}
+        onCheckedChange={() => onToggle()}
+        className="pointer-events-none"
+      />
       <div className="flex-1">
         <p className="font-medium">{link.display_name}</p>
         <p className="text-xs text-muted-foreground">{link.instructions}</p>
@@ -156,7 +167,7 @@ function ProviderConfigCard({ link, onValidated }: ProviderConfigCardProps) {
             type="password"
             placeholder="sk-..."
             value={apiKey}
-            onChange={(e) => {
+            onChange={e => {
               setApiKey(e.target.value)
               setStatus('idle')
             }}
@@ -208,7 +219,7 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
   }, [])
 
   const toggleProvider = (provider: string) => {
-    setSelectedProviders((prev) => {
+    setSelectedProviders(prev => {
       const next = new Set(prev)
       if (next.has(provider)) {
         next.delete(provider)
@@ -220,7 +231,7 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
   }
 
   const handleProviderValidated = (provider: string, valid: boolean) => {
-    setValidatedProviders((prev) => {
+    setValidatedProviders(prev => {
       const next = new Set(prev)
       if (valid) {
         next.add(provider)
@@ -231,7 +242,7 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
     })
   }
 
-  const selectedLinks = links.filter((l) => selectedProviders.has(l.provider))
+  const selectedLinks = links.filter(l => selectedProviders.has(l.provider))
   const progress =
     selectedProviders.size > 0 ? (validatedProviders.size / selectedProviders.size) * 100 : 0
 
@@ -274,7 +285,7 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
         {step === 'select' && (
           <Tabs defaultValue={categories.categories[0]} className="space-y-4">
             <TabsList className="flex flex-wrap h-auto gap-1">
-              {categories.categories.map((category) => (
+              {categories.categories.map(category => (
                 <TabsTrigger key={category} value={category} className="gap-2">
                   {categoryIcons[category]}
                   <span className="hidden sm:inline">{category}</span>
@@ -282,14 +293,14 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
               ))}
             </TabsList>
 
-            {categories.categories.map((category) => (
+            {categories.categories.map(category => (
               <TabsContent key={category} value={category} className="space-y-3">
                 <p className="text-sm text-muted-foreground mb-4">
                   {categoryDescriptions[category]}
                 </p>
                 {links
-                  .filter((l) => l.category === category)
-                  .map((link) => (
+                  .filter(l => l.category === category)
+                  .map(link => (
                     <ProviderSelectCard
                       key={link.provider}
                       link={link}
@@ -315,11 +326,11 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
             </div>
 
             <div className="space-y-4">
-              {selectedLinks.map((link) => (
+              {selectedLinks.map(link => (
                 <ProviderConfigCard
                   key={link.provider}
                   link={link}
-                  onValidated={(valid) => handleProviderValidated(link.provider, valid)}
+                  onValidated={valid => handleProviderValidated(link.provider, valid)}
                 />
               ))}
             </div>
@@ -338,9 +349,9 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
-              {Array.from(validatedProviders).map((provider) => (
+              {Array.from(validatedProviders).map(provider => (
                 <Badge key={provider} variant="secondary">
-                  {links.find((l) => l.provider === provider)?.display_name || provider}
+                  {links.find(l => l.provider === provider)?.display_name || provider}
                 </Badge>
               ))}
             </div>
@@ -351,13 +362,8 @@ export function SetupWizard({ className, onComplete }: SetupWizardProps) {
       <CardFooter className="flex justify-between">
         {step === 'select' && (
           <>
-            <div className="text-sm text-muted-foreground">
-              {selectedProviders.size} selected
-            </div>
-            <Button
-              onClick={() => setStep('configure')}
-              disabled={selectedProviders.size === 0}
-            >
+            <div className="text-sm text-muted-foreground">{selectedProviders.size} selected</div>
+            <Button onClick={() => setStep('configure')} disabled={selectedProviders.size === 0}>
               Continue <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
           </>

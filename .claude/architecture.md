@@ -44,28 +44,31 @@
 ## Key Components
 
 ### Backend (FastAPI)
-| Component | File | Purpose |
-|-----------|------|---------|
-| Main API | `app/main.py` | 18 REST endpoints |
-| Auth | `app/auth.py` | JWT validation, 3 auth modes |
-| Routing Engine | `app/routing/engine.py` | Strategy pattern |
-| Strategies | `app/routing/strategy.py` | Complexity, Learning, Hybrid |
-| Semantic Cache | `app/database/cost_tracker_async.py` | pgvector caching |
-| Embeddings | `app/embeddings/generator.py` | sentence-transformers |
+
+| Component      | File                                 | Purpose                      |
+| -------------- | ------------------------------------ | ---------------------------- |
+| Main API       | `app/main.py`                        | 18 REST endpoints            |
+| Auth           | `app/auth.py`                        | JWT validation, 3 auth modes |
+| Routing Engine | `app/routing/engine.py`              | Strategy pattern             |
+| Strategies     | `app/routing/strategy.py`            | Complexity, Learning, Hybrid |
+| Semantic Cache | `app/database/cost_tracker_async.py` | pgvector caching             |
+| Embeddings     | `app/embeddings/generator.py`        | sentence-transformers        |
 
 ### Frontend (Next.js 15)
-| Component | File | Purpose |
-|-----------|------|---------|
+
+| Component | File                              | Purpose         |
+| --------- | --------------------------------- | --------------- |
 | Dashboard | `frontend/app/dashboard/page.tsx` | Metrics display |
-| API Keys | `frontend/app/api-keys/page.tsx` | Key management |
-| Settings | `frontend/app/settings/page.tsx` | Configuration |
-| API Utils | `frontend/lib/api.ts` | Backend calls |
+| API Keys  | `frontend/app/api-keys/page.tsx`  | Key management  |
+| Settings  | `frontend/app/settings/page.tsx`  | Configuration   |
+| API Utils | `frontend/lib/api.ts`             | Backend calls   |
 
 ---
 
 ## Routing Strategies
 
 ### HybridStrategy (Default for auto_route=true)
+
 ```
 1. Query learning for recommendation
 2. Check confidence:
@@ -75,17 +78,19 @@
 ```
 
 ### Provider Selection
-| Complexity | Provider | Cost |
-|------------|----------|------|
-| Simple | Gemini/Cerebras | FREE-$0.10/1M |
-| Complex | Claude Haiku | $0.25/1M |
-| Fallback | OpenRouter | Varies |
+
+| Complexity | Provider        | Cost          |
+| ---------- | --------------- | ------------- |
+| Simple     | Gemini/Cerebras | FREE-$0.10/1M |
+| Complex    | Claude Haiku    | $0.25/1M      |
+| Fallback   | OpenRouter      | Varies        |
 
 ---
 
 ## Database Schema (Supabase)
 
 ### Core Tables
+
 - `requests` - Request logs with embeddings
 - `response_cache` - Semantic cache entries
 - `routing_metrics` - Decision tracking
@@ -93,6 +98,7 @@
 - `experiments` - A/B test definitions
 
 ### Security
+
 - 18 RLS policies across 7 tables
 - Automatic user_id filtering
 - JWT claims → Supabase context
@@ -101,26 +107,26 @@
 
 ## API Endpoints
 
-| Endpoint | Method | Auth | Purpose |
-|----------|--------|------|---------|
-| `/complete` | POST | Optional | Route + execute |
-| `/stats` | GET | Optional | Usage stats |
-| `/cache/stats` | GET | Optional | Cache performance |
-| `/routing/metrics` | GET | Optional | Routing analytics |
-| `/feedback` | POST | Optional | Submit feedback |
-| `/admin/learning/status` | GET | Optional | ML status |
-| `/health` | GET | None | Health check |
+| Endpoint                 | Method | Auth     | Purpose           |
+| ------------------------ | ------ | -------- | ----------------- |
+| `/complete`              | POST   | Optional | Route + execute   |
+| `/stats`                 | GET    | Optional | Usage stats       |
+| `/cache/stats`           | GET    | Optional | Cache performance |
+| `/routing/metrics`       | GET    | Optional | Routing analytics |
+| `/feedback`              | POST   | Optional | Submit feedback   |
+| `/admin/learning/status` | GET    | Optional | ML status         |
+| `/health`                | GET    | None     | Health check      |
 
 ---
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
-| Cache hit rate | 70-85% (semantic) |
-| Cold start | ~3s (ML model load) |
-| Cached request | 50-200ms |
-| Uncached request | 500-2000ms |
+| Metric           | Value               |
+| ---------------- | ------------------- |
+| Cache hit rate   | 70-85% (semantic)   |
+| Cold start       | ~3s (ML model load) |
+| Cached request   | 50-200ms            |
+| Uncached request | 500-2000ms          |
 
 ---
 

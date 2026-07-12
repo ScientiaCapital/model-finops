@@ -17,6 +17,7 @@
 **Goal:** Define RoutingDecision and RoutingContext data classes
 
 **Files:**
+
 - Create: `app/routing/models.py`
 - Test: `tests/test_routing_models.py`
 
@@ -160,6 +161,7 @@ git commit -m "feat: add RoutingDecision and RoutingContext data models
 **Goal:** Define abstract base class for routing strategies
 
 **Files:**
+
 - Create: `app/routing/strategy.py`
 - Test: `tests/test_routing_strategy.py`
 
@@ -288,6 +290,7 @@ git commit -m "feat: add RoutingStrategy abstract base class
 **Goal:** Port existing complexity-based routing logic into strategy pattern
 
 **Files:**
+
 - Modify: `app/routing/strategy.py` (add ComplexityStrategy)
 - Read: `app/routing/router.py` (for existing complexity logic)
 - Test: `tests/test_complexity_strategy.py`
@@ -441,6 +444,7 @@ git commit -m "feat: implement ComplexityStrategy
 **Goal:** Create pure learning-based routing using QueryPatternAnalyzer
 
 **Files:**
+
 - Modify: `app/routing/strategy.py` (add LearningStrategy)
 - Test: `tests/test_learning_strategy.py`
 
@@ -588,6 +592,7 @@ git commit -m "feat: implement LearningStrategy
 **Goal:** Create hybrid strategy combining learning + complexity validation
 
 **Files:**
+
 - Modify: `app/routing/strategy.py` (add HybridStrategy)
 - Test: `tests/test_hybrid_strategy.py`
 
@@ -797,6 +802,7 @@ git commit -m "feat: implement HybridStrategy with validation
 **Goal:** Create orchestrator that selects and executes strategies
 
 **Files:**
+
 - Create: `app/routing/engine.py`
 - Test: `tests/test_routing_engine.py`
 
@@ -1014,6 +1020,7 @@ git commit -m "feat: implement RoutingEngine orchestrator
 **Goal:** Create routing_metrics table and MetricsCollector class
 
 **Files:**
+
 - Create: `app/routing/metrics.py`
 - Create: `app/database/migrations/add_routing_metrics.sql`
 - Test: `tests/test_routing_metrics.py`
@@ -1434,11 +1441,13 @@ Plan complete and saved to `docs/plans/2025-01-11-phase2-auto-routing-implementa
 **Two execution options:**
 
 **1. Subagent-Driven (this session)**
+
 - I dispatch fresh subagent per task
 - Code review between tasks
 - Fast iteration with quality gates
 
 **2. Parallel Session (separate)**
+
 - Open new session with executing-plans
 - Batch execution with checkpoints
 - Independent progress

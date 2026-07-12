@@ -23,12 +23,14 @@
 ### Three-Component System
 
 **1. Production API Service** (FastAPI + PostgreSQL)
+
 - Docker container running uvicorn
 - PostgreSQL replaces SQLite for production persistence
 - New `/feedback` endpoint captures quality ratings
 - Existing endpoints unchanged: `/complete`, `/recommendation`, `/routing/metrics`
 
 **2. Learning Pipeline** (Background retraining)
+
 - Python script: `app/learning/feedback_trainer.py`
 - Runs weekly via cron or scheduler
 - Analyzes feedback, computes confidence-weighted quality scores
@@ -36,6 +38,7 @@
 - Logs all retraining runs with before/after metrics
 
 **3. Docker Compose Orchestration**
+
 - PostgreSQL container with persistent volume
 - FastAPI container with health checks and auto-restart
 - pgAdmin container for database management (optional)
@@ -163,6 +166,7 @@ Response:
 **Purpose**: Retrain routing recommendations from user feedback with confidence-based thresholds
 
 **Confidence Thresholds**:
+
 - **HIGH**: ≥10 samples, avg quality ≥4.0, correctness ≥80%
 - **MEDIUM**: ≥5 samples, avg quality ≥3.5, correctness ≥70%
 - **LOW**: <5 samples or poor metrics → No routing change
@@ -198,17 +202,20 @@ class FeedbackTrainer:
 ```
 
 **What Updates**:
+
 - `QueryPatternAnalyzer` internal weights and scores
 - `model_performance_history` table with new computed metrics
 - Routing recommendations for each pattern-model pair
 
 **Safety Mechanisms**:
+
 - Never degrade confidence without evidence
 - Keep last 3 retraining snapshots for rollback
 - Alert if quality drops >10% after retraining
 - Dry-run mode for testing before applying
 
 **Scheduling Options**:
+
 1. Cron job: `0 2 * * 0` (Sundays at 2 AM)
 2. Python APScheduler: Background thread in FastAPI
 3. Manual trigger: `/admin/retrain` endpoint for testing
@@ -234,9 +241,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-READY", "pg_isready", "-U", "optimizer_user"]
+      test: ['CMD-READY', 'pg_isready', '-U', 'optimizer_user']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -255,7 +262,7 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8000:8000"
+      - '8000:8000'
     volumes:
       - ./app:/app/app
     restart: unless-stopped
@@ -268,7 +275,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@optimizer.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "5050:80"
+      - '5050:80'
     depends_on:
       - postgres
     restart: unless-stopped
@@ -302,6 +309,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ### Environment Configuration
 
 **.env.production**:
+
 ```bash
 # Database
 DB_PASSWORD=your_secure_password
@@ -369,6 +377,7 @@ Returns: Quality trends over time by pattern/model
 **File**: `scripts/learning_dashboard.py`
 
 Displays current learning state:
+
 - Total feedback collected
 - Average quality score across all models
 - Confidence level distribution (high/medium/low)
@@ -449,23 +458,27 @@ def test_confidence_threshold_enforcement():
 ## Gradual Rollout Plan
 
 **Week 1: Deploy with collection only**
+
 - Deploy Docker setup with PostgreSQL
 - Enable `/feedback` endpoint
 - Collect feedback, no retraining yet
 - Verify feedback data looks correct
 
 **Week 2: Manual retraining**
+
 - Run first retraining in dry-run mode
 - Review proposed routing changes
 - Manually approve and apply if reasonable
 - Monitor quality metrics
 
 **Week 3: Automated retraining**
+
 - Enable weekly automated retraining
 - Monitor for quality degradation
 - Tune confidence thresholds if needed
 
 **Week 4+: Production operation**
+
 - Monitor quality improvements
 - Adjust thresholds based on data volume
 - Prepare for multi-user features
@@ -474,13 +487,13 @@ def test_confidence_threshold_enforcement():
 
 ## Success Metrics
 
-| Metric | Baseline | Target | Timeline |
-|--------|----------|--------|----------|
-| Feedback collection rate | 0% | 50%+ of requests | Week 1 |
-| High-confidence patterns | 0 | 5+ patterns | Week 3 |
-| Avg quality score | N/A | 4.0+ / 5.0 | Week 4 |
-| Learning-based cost savings | 0% | 10%+ additional | Week 6 |
-| Routing accuracy (correct model) | TBD | 80%+ | Week 8 |
+| Metric                           | Baseline | Target           | Timeline |
+| -------------------------------- | -------- | ---------------- | -------- |
+| Feedback collection rate         | 0%       | 50%+ of requests | Week 1   |
+| High-confidence patterns         | 0        | 5+ patterns      | Week 3   |
+| Avg quality score                | N/A      | 4.0+ / 5.0       | Week 4   |
+| Learning-based cost savings      | 0%       | 10%+ additional  | Week 6   |
+| Routing accuracy (correct model) | TBD      | 80%+             | Week 8   |
 
 ---
 
@@ -501,6 +514,7 @@ After initial deployment proves stable:
 ### New Python Packages
 
 Add to `requirements.txt`:
+
 ```
 psycopg2-binary>=2.9.9    # PostgreSQL adapter
 APScheduler>=3.10.4       # Background job scheduling

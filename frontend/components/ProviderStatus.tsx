@@ -42,7 +42,10 @@ const categoryIcons: Record<string, React.ReactNode> = {
   Billing: <CreditCard className="h-4 w-4" />,
 }
 
-const statusConfig: Record<ProviderStatusType, { icon: React.ReactNode; color: string; bgColor: string }> = {
+const statusConfig: Record<
+  ProviderStatusType,
+  { icon: React.ReactNode; color: string; bgColor: string }
+> = {
   connected: {
     icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
     color: 'text-green-500',
@@ -65,7 +68,13 @@ const statusConfig: Record<ProviderStatusType, { icon: React.ReactNode; color: s
   },
 }
 
-function ProviderCard({ provider, onSetupClick }: { provider: ProviderInfo; onSetupClick?: (p: ProviderInfo) => void }) {
+function ProviderCard({
+  provider,
+  onSetupClick,
+}: {
+  provider: ProviderInfo
+  onSetupClick?: (p: ProviderInfo) => void
+}) {
   const config = statusConfig[provider.status]
 
   return (
@@ -227,8 +236,12 @@ export function ProviderStatus({ className, onSetupClick }: ProviderStatusProps)
                 <span>{category}</span>
               </div>
               <div className="space-y-2">
-                {providers.map((provider) => (
-                  <ProviderCard key={provider.name} provider={provider} onSetupClick={onSetupClick} />
+                {providers.map(provider => (
+                  <ProviderCard
+                    key={provider.name}
+                    provider={provider}
+                    onSetupClick={onSetupClick}
+                  />
                 ))}
               </div>
             </div>

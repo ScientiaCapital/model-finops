@@ -7,14 +7,18 @@ Visual CLI dashboard showing learning progress and model performance.
 This project contains **TWO SEPARATE** dashboard tools with different access levels:
 
 ### 1. Customer Dashboard (`customer_dashboard.py`)
+
 **FOR EXTERNAL/CUSTOMER USE ONLY**
+
 - Shows ONLY tier labels (Economy Tier, Premium Tier, etc.)
 - NEVER exposes actual model names or providers
 - No admin view option available
 - Safe to share with customers and external users
 
 ### 2. Admin Dashboard (`admin_dashboard.py`)
+
 **FOR INTERNAL USE ONLY - DO NOT DISTRIBUTE**
+
 - Shows actual model names (e.g., `openrouter/deepseek-chat`)
 - Exposes competitive intelligence and routing logic
 - Has both admin and customer view modes
@@ -45,6 +49,7 @@ python3 admin_dashboard.py
 ```
 
 This will display an interactive menu:
+
 ```
 ╔══════════════════════════════════════════╗
 ║  Learning Intelligence Dashboard         ║
@@ -99,31 +104,36 @@ Use flags when running in scripts or automation where interactive prompts are no
 ## Composite Score Formula
 
 The ranking uses a weighted composite score:
+
 - Quality Score: 50% weight
 - Cost Efficiency: 30% weight (inverted - lower cost = higher score)
 - Request Volume: 20% weight (confidence from sample size)
 
 ## Dashboard Comparison
 
-| Feature | Customer Dashboard | Admin Dashboard |
-|---------|-------------------|-----------------|
-| **Distribution** | Safe for customers | Internal use ONLY |
-| **Model Names** | Hidden (tier labels) | Visible |
-| **Default View** | Customer (only option) | Admin (internal) |
-| **View Options** | None (locked) | Both admin + customer |
-| **Command Flags** | Not supported | `--mode internal/external` |
-| **Contains Secrets** | No | Yes |
+| Feature              | Customer Dashboard     | Admin Dashboard            |
+| -------------------- | ---------------------- | -------------------------- |
+| **Distribution**     | Safe for customers     | Internal use ONLY          |
+| **Model Names**      | Hidden (tier labels)   | Visible                    |
+| **Default View**     | Customer (only option) | Admin (internal)           |
+| **View Options**     | None (locked)          | Both admin + customer      |
+| **Command Flags**    | Not supported          | `--mode internal/external` |
+| **Contains Secrets** | No                     | Yes                        |
 
 ## View Modes Explained
 
 ### External/Customer View
+
 Shows tier labels (Economy Tier, Premium Tier, etc.) to protect competitive intelligence.
+
 - Suitable for customer-facing reports and external presentations
 - Hides all internal model names and providers
 - No way to access internal information
 
 ### Internal/Admin View
+
 Shows actual model names (openrouter/deepseek-chat, etc.) for internal analysis.
+
 - Only available in `admin_dashboard.py`
 - Use for development and debugging
 - Contains proprietary competitive intelligence

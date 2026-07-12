@@ -15,6 +15,7 @@
 ### Task 1.1: Set Up Testing Framework
 
 **Files:**
+
 - Create: `tests/__init__.py`
 - Create: `tests/conftest.py`
 - Create: `tests/test_router.py`
@@ -34,6 +35,7 @@ httpx>=0.24.1  # for async test client
 **Step 2: Create pytest configuration and fixtures**
 
 Create `tests/conftest.py`:
+
 ```python
 import pytest
 import asyncio
@@ -81,6 +83,7 @@ def event_loop():
 **Step 3: Write first TDD test for router**
 
 Create `tests/test_router.py`:
+
 ```python
 import pytest
 from app.router import Router
@@ -133,6 +136,7 @@ git commit -m "test: add pytest framework and initial router tests"
 ### Task 1.2: Add Performance Testing Suite
 
 **Files:**
+
 - Create: `tests/performance/__init__.py`
 - Create: `tests/performance/locustfile.py`
 - Create: `tests/performance/test_benchmarks.py`
@@ -149,6 +153,7 @@ pytest-benchmark>=4.0.0
 **Step 2: Create Locust load testing file**
 
 Create `tests/performance/locustfile.py`:
+
 ```python
 from locust import HttpUser, task, between
 import random
@@ -203,6 +208,7 @@ class CostOptimizerUser(HttpUser):
 **Step 3: Create benchmark tests**
 
 Create `tests/performance/test_benchmarks.py`:
+
 ```python
 import pytest
 from app.router import Router
@@ -256,6 +262,7 @@ git commit -m "test: add locust load testing and performance benchmarks"
 ### Task 1.3: Database Migrations System
 
 **Files:**
+
 - Create: `migrations/` directory via alembic
 - Create: `migrations/versions/001_initial_schema.py`
 - Create: `migrations/versions/002_add_value_metrics.py`
@@ -277,6 +284,7 @@ alembic init migrations
 **Step 3: Configure alembic**
 
 Modify `migrations/env.py`:
+
 ```python
 from app.database import Base
 from app.models import *  # Import all models
@@ -285,6 +293,7 @@ target_metadata = Base.metadata
 ```
 
 Modify `alembic.ini`:
+
 ```ini
 sqlalchemy.url = sqlite:///./optimizer.db
 ```
@@ -296,6 +305,7 @@ alembic revision -m "initial schema" --autogenerate
 ```
 
 Edit the generated migration to include all current tables:
+
 - requests
 - response_cache
 - response_feedback
@@ -351,6 +361,7 @@ git commit -m "feat: add alembic database migration system"
 ### Task 2.1: Value Metrics Tracking System
 
 **Files:**
+
 - Create: `app/value_metrics.py`
 - Create: `app/models/value_metric.py`
 - Modify: `app/database.py`
@@ -359,6 +370,7 @@ git commit -m "feat: add alembic database migration system"
 **Step 1: Write test for value metrics tracking**
 
 Create `tests/test_value_metrics.py`:
+
 ```python
 import pytest
 from decimal import Decimal
@@ -412,6 +424,7 @@ Expected: FAIL - module not found
 **Step 3: Implement value metrics model**
 
 Create `app/models/value_metric.py`:
+
 ```python
 from sqlalchemy import Column, Integer, String, Float, DateTime
 from datetime import datetime
@@ -437,6 +450,7 @@ class ValueMetric(Base):
 **Step 4: Implement value metrics tracker**
 
 Create `app/value_metrics.py`:
+
 ```python
 from decimal import Decimal
 from typing import Dict, Optional
@@ -550,6 +564,7 @@ Expected: PASS
 **Step 6: Integrate with router**
 
 Modify `app/router.py` to record value metrics after each request:
+
 ```python
 from app.value_metrics import ValueMetricsTracker
 
@@ -588,6 +603,7 @@ git commit -m "feat: add value metrics tracking system with ROI calculation"
 ### Task 2.2: Usage Analytics Dashboard (Streamlit)
 
 **Files:**
+
 - Create: `dashboard/app.py`
 - Create: `dashboard/components/roi_chart.py`
 - Create: `dashboard/components/provider_comparison.py`
@@ -603,6 +619,7 @@ mkdir -p dashboard/components
 **Step 2: Add Streamlit dependencies**
 
 Create `dashboard/requirements.txt`:
+
 ```txt
 streamlit>=1.28.0
 plotly>=5.17.0
@@ -612,6 +629,7 @@ pandas>=2.1.0
 **Step 3: Create main dashboard app**
 
 Create `dashboard/app.py`:
+
 ```python
 import streamlit as st
 import plotly.express as px
@@ -697,6 +715,7 @@ st.subheader("Query Complexity Distribution")
 **Step 4: Create ROI chart component**
 
 Create `dashboard/components/roi_chart.py`:
+
 ```python
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
@@ -762,6 +781,7 @@ git commit -m "feat: add Streamlit analytics dashboard with ROI visualization"
 ### Task 2.3: Cost Reports & Export
 
 **Files:**
+
 - Create: `app/reports.py`
 - Create: `templates/cost_report.html`
 - Modify: `app/main.py` (add report endpoints)
@@ -770,6 +790,7 @@ git commit -m "feat: add Streamlit analytics dashboard with ROI visualization"
 **Step 1: Write test for report generation**
 
 Create `tests/test_reports.py`:
+
 ```python
 import pytest
 from app.reports import ReportGenerator
@@ -806,6 +827,7 @@ def test_export_report_csv():
 **Step 2: Implement report generator**
 
 Create `app/reports.py`:
+
 ```python
 import csv
 from io import StringIO
@@ -904,6 +926,7 @@ class ReportGenerator:
 **Step 3: Add report endpoints**
 
 Modify `app/main.py`:
+
 ```python
 from app.reports import ReportGenerator
 
@@ -970,6 +993,7 @@ git commit -m "feat: add cost reports with CSV export"
 ## Success Metrics
 
 **Revenue Validation:**
+
 - ✅ Track real cost savings (baseline vs actual)
 - ✅ Generate monthly value reports
 - ✅ Support 3 pricing tiers with rate limiting
@@ -977,6 +1001,7 @@ git commit -m "feat: add cost reports with CSV export"
 - ✅ Dashboard shows ROI clearly
 
 **Production Ready:**
+
 - ✅ Test coverage > 80%
 - ✅ Load testing passes (100 req/sec, p95 < 500ms)
 - ✅ CI/CD pipeline green

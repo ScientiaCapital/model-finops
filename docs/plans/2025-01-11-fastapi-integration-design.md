@@ -1,4 +1,5 @@
 # FastAPI Integration Design - Phase 2 Auto-Routing
+
 **Date:** 2025-01-11
 **Status:** Design Complete - Ready for Implementation
 **Author:** AI Cost Optimizer Team
@@ -8,6 +9,7 @@
 This design integrates Phase 2 Auto-Routing (RoutingEngine + MetricsCollector) into the FastAPI application. We replace the legacy Router class with a clean three-layer architecture: FastAPI endpoints, RoutingService business logic, and RoutingEngine core. This enables intelligent model selection via the `auto_route` parameter while maintaining backward compatibility.
 
 **Key Benefits:**
+
 - Intelligent routing with learning-based optimization
 - Comprehensive metrics tracking for ROI analysis
 - Clean separation of concerns (HTTP, business logic, routing)
@@ -74,6 +76,7 @@ This design integrates Phase 2 Auto-Routing (RoutingEngine + MetricsCollector) i
 **Purpose:** Bridge between FastAPI and RoutingEngine. Handles FastAPI-specific concerns without polluting core routing logic.
 
 **Class Definition:**
+
 ```python
 class RoutingService:
     """FastAPI service layer for intelligent routing."""
@@ -114,6 +117,7 @@ class RoutingService:
 ```
 
 **Key Responsibilities:**
+
 - **Cache Integration** - Reuse existing CostTracker cache logic
 - **Provider Execution** - Get decision from engine, call provider API
 - **Cost Tracking** - Log requests to database (preserve existing behavior)
@@ -121,6 +125,7 @@ class RoutingService:
 - **Response Formatting** - Convert RoutingDecision to FastAPI models
 
 **Error Handling:**
+
 - Catch all exceptions from RoutingEngine
 - Convert to HTTPException with appropriate status codes
 - RoutingEngine already has fallback to complexity (internal safety)
@@ -132,6 +137,7 @@ class RoutingService:
 #### Modified: POST /complete
 
 **Request Model:**
+
 ```python
 class CompleteRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
@@ -141,6 +147,7 @@ class CompleteRequest(BaseModel):
 ```
 
 **Response Model Changes:**
+
 ```python
 class CompleteResponse(BaseModel):
     # Existing fields preserved
@@ -160,6 +167,7 @@ class CompleteResponse(BaseModel):
 ```
 
 **Implementation:**
+
 ```python
 @app.post("/complete", response_model=CompleteResponse)
 async def complete_prompt(request: CompleteRequest):
@@ -174,11 +182,13 @@ async def complete_prompt(request: CompleteRequest):
 #### Modified: GET /recommendation
 
 **Changes:**
+
 - Always uses `auto_route=true` (hybrid strategy)
 - Returns RoutingDecision with full metadata
 - No longer uses legacy complexity scoring
 
 **Response:**
+
 ```json
 {
   "provider": "openrouter",
@@ -201,9 +211,11 @@ async def complete_prompt(request: CompleteRequest):
 **Purpose:** Auto-routing analytics for monitoring and ROI tracking.
 
 **Query Parameters:**
+
 - `days` (optional, default=7): Days of history to analyze
 
 **Response:**
+
 ```json
 {
   "cost_savings": {
@@ -223,18 +235,19 @@ async def complete_prompt(request: CompleteRequest):
     {
       "strategy": "complexity",
       "count": 58,
-      "avg_cost": 0.00120,
+      "avg_cost": 0.0012,
       "high_confidence_pct": 0
     }
   ],
   "by_confidence": [
-    {"confidence": "high", "count": 111, "avg_cost": 0.00082},
-    {"confidence": "medium", "count": 89, "avg_cost": 0.00095}
+    { "confidence": "high", "count": 111, "avg_cost": 0.00082 },
+    { "confidence": "medium", "count": 89, "avg_cost": 0.00095 }
   ]
 }
 ```
 
 **Implementation:**
+
 ```python
 @app.get("/routing/metrics")
 async def get_routing_metrics(days: int = 7):
@@ -246,10 +259,12 @@ async def get_routing_metrics(days: int = 7):
 **Purpose:** Detailed routing explanation for debugging and transparency.
 
 **Query Parameters:**
+
 - `prompt` (required): Prompt to analyze
 - `auto_route` (optional, default=true): Use intelligent routing
 
 **Response:**
+
 ```json
 {
   "decision": {
@@ -264,7 +279,7 @@ async def get_routing_metrics(days: int = 7):
     "pattern": "analysis",
     "complexity": 0.78,
     "quality_score": 0.92,
-    "cost_estimate": 0.00300,
+    "cost_estimate": 0.003,
     "validation": "validated",
     "complexity_score": 0.78
   }
@@ -278,12 +293,14 @@ async def get_routing_metrics(days: int = 7):
 ### File Operations
 
 **Remove (Legacy):**
+
 ```bash
 rm app/router.py          # Old Router class
 rm app/complexity.py      # Replaced by app/routing/complexity.py
 ```
 
 **Keep (Existing):**
+
 ```bash
 app/database.py           # CostTracker, response_cache
 app/providers.py          # Provider clients (unchanged)
@@ -291,6 +308,7 @@ app/learning.py           # QueryPatternAnalyzer (Phase 1)
 ```
 
 **Add (Phase 2):**
+
 ```bash
 app/routing/models.py     # RoutingDecision, RoutingContext
 app/routing/strategy.py   # ComplexityStrategy, LearningStrategy, HybridStrategy
@@ -300,11 +318,13 @@ app/routing/metrics.py    # MetricsCollector
 ```
 
 **Create (Integration):**
+
 ```bash
 app/services/routing_service.py  # NEW service layer
 ```
 
 **Modify:**
+
 ```bash
 app/main.py               # Update imports, initialize RoutingService
 ```
@@ -312,6 +332,7 @@ app/main.py               # Update imports, initialize RoutingService
 ### Database Schema
 
 **No changes required!**
+
 - `routing_metrics` table exists (created by Phase 2)
 - `response_cache` table exists (Phase 1)
 - All indexes already in place
@@ -319,6 +340,7 @@ app/main.py               # Update imports, initialize RoutingService
 ### Code Changes in main.py
 
 **Imports:**
+
 ```python
 # Remove
 from .router import Router, RoutingError
@@ -330,6 +352,7 @@ from app.routing.models import RoutingDecision
 ```
 
 **Initialization:**
+
 ```python
 # OLD
 providers = init_providers()
@@ -345,6 +368,7 @@ routing_service = RoutingService(
 ```
 
 **Endpoint Updates:**
+
 ```python
 # /complete endpoint
 @app.post("/complete", response_model=CompleteResponse)
@@ -371,6 +395,7 @@ async def get_recommendation(prompt: str):
 **Key Decision:** `auto_route: bool = False` by default.
 
 **Result:** Existing behavior preserved:
+
 - No clients exist (user is sole client)
 - Default uses complexity-based routing (safe, predictable)
 - Clients opt into intelligent routing explicitly
@@ -378,20 +403,24 @@ async def get_recommendation(prompt: str):
 ### API Compatibility
 
 **POST /complete:**
+
 - All existing fields remain
 - `auto_route` is optional (defaults to false)
 - Response adds new fields but preserves all existing fields
 
 **GET /recommendation:**
+
 - Query parameter unchanged (still accepts `?prompt=...`)
 - Response structure enhanced but backward compatible
 
 **All other endpoints:**
+
 - No changes to `/health`, `/stats`, `/providers`, `/cache/stats`, `/feedback`, `/quality/stats`, `/insights`
 
 ### Migration Risk: LOW
 
 **Why low risk:**
+
 1. No breaking changes to existing APIs
 2. Default behavior matches legacy system
 3. New features are opt-in
@@ -405,6 +434,7 @@ async def get_recommendation(prompt: str):
 ### Three Layers of Safety
 
 **1. RoutingEngine Internal Fallback**
+
 ```python
 # RoutingEngine already handles:
 - Invalid decisions → fallback to complexity
@@ -413,6 +443,7 @@ async def get_recommendation(prompt: str):
 ```
 
 **2. RoutingService Exception Handling**
+
 ```python
 # RoutingService wraps all operations:
 try:
@@ -425,6 +456,7 @@ except Exception as e:
 ```
 
 **3. FastAPI Error Responses**
+
 ```python
 # Preserve existing error format:
 {
@@ -435,13 +467,13 @@ except Exception as e:
 
 ### Error Scenarios
 
-| Scenario | RoutingEngine Behavior | RoutingService Behavior | Client Impact |
-|----------|------------------------|-------------------------|---------------|
-| Database locked | Fallback to complexity | Log warning, continue | None (gets response) |
-| Learning unavailable | Use complexity strategy | Continue normally | None (transparent fallback) |
-| Invalid provider | Use fallback chain | Continue normally | None (automatic retry) |
-| All providers down | Raise exception | HTTPException 503 | Error response |
-| Invalid prompt | N/A | HTTPException 400 | Error response |
+| Scenario             | RoutingEngine Behavior  | RoutingService Behavior | Client Impact               |
+| -------------------- | ----------------------- | ----------------------- | --------------------------- |
+| Database locked      | Fallback to complexity  | Log warning, continue   | None (gets response)        |
+| Learning unavailable | Use complexity strategy | Continue normally       | None (transparent fallback) |
+| Invalid provider     | Use fallback chain      | Continue normally       | None (automatic retry)      |
+| All providers down   | Raise exception         | HTTPException 503       | Error response              |
+| Invalid prompt       | N/A                     | HTTPException 400       | Error response              |
 
 ---
 
@@ -452,6 +484,7 @@ except Exception as e:
 **File:** `tests/test_routing_service.py`
 
 **Coverage:**
+
 1. `test_route_and_complete_cache_hit` - Verify cache integration
 2. `test_route_and_complete_cache_miss` - Full routing flow
 3. `test_route_and_complete_with_auto_route_false` - Complexity routing
@@ -465,6 +498,7 @@ except Exception as e:
 **File:** `tests/test_main_integration.py`
 
 **Coverage:**
+
 1. `test_complete_endpoint_default_behavior` - Backward compatibility
 2. `test_complete_endpoint_with_auto_route` - New feature
 3. `test_recommendation_endpoint` - Hybrid recommendations
@@ -490,6 +524,7 @@ except Exception as e:
 ## Implementation Plan Overview
 
 ### Phase 1: Core Service (1 hour)
+
 1. Create `app/services/routing_service.py`
 2. Implement `route_and_complete()` with cache integration
 3. Implement `get_recommendation()`
@@ -497,6 +532,7 @@ except Exception as e:
 5. Unit tests for RoutingService
 
 ### Phase 2: FastAPI Integration (1 hour)
+
 1. Update `app/main.py` imports and initialization
 2. Modify `/complete` endpoint to use RoutingService
 3. Modify `/recommendation` endpoint
@@ -505,6 +541,7 @@ except Exception as e:
 6. Update request/response models
 
 ### Phase 3: Cleanup & Testing (1 hour)
+
 1. Remove `app/router.py` and `app/complexity.py`
 2. Run full test suite
 3. Manual testing of all endpoints
@@ -518,6 +555,7 @@ except Exception as e:
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ POST /complete supports `auto_route` parameter
 - ✅ auto_route=false uses complexity routing (backward compatible)
 - ✅ auto_route=true uses hybrid routing (intelligent)
@@ -527,6 +565,7 @@ except Exception as e:
 - ✅ New analytics endpoints return accurate data
 
 ### Non-Functional Requirements
+
 - ✅ Zero breaking changes to existing API
 - ✅ All existing tests pass
 - ✅ New unit tests for RoutingService (7+ tests)
@@ -535,6 +574,7 @@ except Exception as e:
 - ✅ Logging at appropriate levels
 
 ### Business Requirements
+
 - ✅ Can measure ROI via /routing/metrics
 - ✅ Can debug routing decisions via /routing/decision
 - ✅ Can preview recommendations via /recommendation
@@ -545,6 +585,7 @@ except Exception as e:
 ## Future Enhancements
 
 ### Phase 3: Advanced Features (Not in Scope)
+
 1. **Per-User Routing Preferences** - Store user preferences for auto_route
 2. **A/B Testing Framework** - Automatically split traffic for testing
 3. **Cost Budget Limits** - Reject requests exceeding budget
@@ -552,6 +593,7 @@ except Exception as e:
 5. **Custom Routing Rules** - Allow users to define routing preferences
 
 ### Phase 4: Production Optimizations (Not in Scope)
+
 1. **Connection Pooling** - Reuse database connections
 2. **Caching Layer** - Redis for hot path optimization
 3. **Async Metrics** - Background task for metrics writing
@@ -566,6 +608,7 @@ except Exception as e:
 **Decision:** Add `app/services/routing_service.py` instead of putting logic in `main.py`.
 
 **Rationale:**
+
 - Separation of concerns (HTTP vs business logic)
 - RoutingEngine stays pure (no FastAPI dependencies)
 - Easy to test business logic in isolation
@@ -578,6 +621,7 @@ except Exception as e:
 **Decision:** Default to complexity-based routing, not intelligent routing.
 
 **Rationale:**
+
 - Safe, predictable behavior
 - Users opt into learning-based routing explicitly
 - Allows gradual rollout and A/B testing
@@ -590,6 +634,7 @@ except Exception as e:
 **Decision:** GET /recommendation always uses `auto_route=true`.
 
 **Rationale:**
+
 - Recommendations should show "best" routing, not baseline
 - Users expect intelligent suggestions
 - Complexity-based routing is boring for previews
@@ -601,6 +646,7 @@ except Exception as e:
 **Decision:** Complete replacement, not gradual migration.
 
 **Rationale:**
+
 - Single client (no backward compatibility needs)
 - Reduces code complexity and confusion
 - Forces commitment to new architecture
@@ -615,6 +661,7 @@ except Exception as e:
 ### POST /complete (auto_route=false)
 
 **Request:**
+
 ```json
 {
   "prompt": "What is Python?",
@@ -624,6 +671,7 @@ except Exception as e:
 ```
 
 **Response:**
+
 ```json
 {
   "response": "Python is a high-level programming language...",
@@ -631,7 +679,7 @@ except Exception as e:
   "model": "gemini-1.5-flash",
   "strategy_used": "complexity",
   "confidence": "medium",
-  "complexity_metadata": {"complexity": 0.2, "token_count": 15},
+  "complexity_metadata": { "complexity": 0.2, "token_count": 15 },
   "tokens_in": 15,
   "tokens_out": 87,
   "cost": 0.000012,
@@ -647,6 +695,7 @@ except Exception as e:
 ### POST /complete (auto_route=true)
 
 **Request:**
+
 ```json
 {
   "prompt": "Debug this Python function that's throwing a TypeError",
@@ -656,6 +705,7 @@ except Exception as e:
 ```
 
 **Response:**
+
 ```json
 {
   "response": "The TypeError is likely caused by...",
@@ -663,7 +713,7 @@ except Exception as e:
   "model": "openrouter/deepseek/deepseek-coder",
   "strategy_used": "hybrid",
   "confidence": "high",
-  "complexity_metadata": {"complexity": 0.75, "token_count": 45},
+  "complexity_metadata": { "complexity": 0.75, "token_count": 45 },
   "tokens_in": 45,
   "tokens_out": 312,
   "cost": 0.000043,
@@ -682,6 +732,7 @@ except Exception as e:
 ### GET /routing/metrics?days=30
 
 **Response:**
+
 ```json
 {
   "cost_savings": {
@@ -706,8 +757,8 @@ except Exception as e:
     }
   ],
   "by_confidence": [
-    {"confidence": "high", "count": 431, "avg_cost": 0.000712},
-    {"confidence": "medium", "count": 281, "avg_cost": 0.000891}
+    { "confidence": "high", "count": 431, "avg_cost": 0.000712 },
+    { "confidence": "medium", "count": 281, "avg_cost": 0.000891 }
   ]
 }
 ```
@@ -716,6 +767,6 @@ except Exception as e:
 
 ## Document History
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2025-01-11 | 1.0 | Initial design complete |
+| Date       | Version | Changes                 |
+| ---------- | ------- | ----------------------- |
+| 2025-01-11 | 1.0     | Initial design complete |

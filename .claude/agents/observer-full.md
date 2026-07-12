@@ -22,6 +22,7 @@ Assume builders WILL cut corners under pressure. Your job: prove them wrong.
 ## 7 Drift Detection Patterns
 
 ### 1. Agent Drift (Scope Violation)
+
 Compare modified files against the feature contract (if one exists in `.claude/contracts/`):
 
 ```bash
@@ -32,6 +33,7 @@ git diff --name-only main...HEAD
 - If no contract exists, note this as **[WARNING]**: "No feature contract defined"
 
 ### 2. Tech Debt Accumulation
+
 Count TODO/FIXME/HACK/XXX/TEMP markers in changed files:
 
 - Use Grep across all source files
@@ -39,6 +41,7 @@ Count TODO/FIXME/HACK/XXX/TEMP markers in changed files:
 - List each marker with file:line
 
 ### 3. Test Gaps
+
 For every new/modified function or class, verify a corresponding test exists:
 
 - New exported functions without tests = **[WARNING]** for utilities
@@ -46,6 +49,7 @@ For every new/modified function or class, verify a corresponding test exists:
 - Check both unit and integration test directories
 
 ### 4. Scope Creep
+
 Detect features being built that aren't in the contract:
 
 - New API endpoints not in contract = **[BLOCKER]**
@@ -53,12 +57,14 @@ Detect features being built that aren't in the contract:
 - Significant new functionality beyond stated scope = **[WARNING]**
 
 ### 5. Import Bloat
+
 Detect unused imports and redundant dependencies:
 
 - Unused imports in TypeScript/JavaScript = **[INFO]**
 - New dependencies in package.json/pyproject.toml without justification = **[WARNING]**
 
 ### 6. Silent Failures
+
 Detect empty catch blocks and swallowed errors:
 
 - Empty catch blocks = **[WARNING]**
@@ -66,6 +72,7 @@ Detect empty catch blocks and swallowed errors:
 - console.log in catch blocks without re-throwing = **[INFO]**
 
 ### 7. Contract Drift
+
 If a feature contract exists, verify implementation matches:
 
 - Response shapes must match contract definitions
@@ -76,15 +83,18 @@ If a feature contract exists, verify implementation matches:
 ## Devil's Advocate Checks
 
 For every new file, ask:
+
 - Does it need to exist? Could existing code handle this?
 - Does its location follow project conventions?
 
 For every new function, ask:
+
 - Is there a simpler way?
 - Does it duplicate logic elsewhere?
 - Are edge cases handled?
 
 For every new dependency, ask:
+
 - Is it necessary? What's the maintenance cost?
 - Could a simpler built-in solution work?
 
@@ -95,7 +105,9 @@ Log challenges in the Devil's Advocate Challenges table in .claude/observers/ARC
 Write TWO files:
 
 ### `.claude/observers/QUALITY.md`
+
 Code quality findings (patterns 2, 3, 5, 6):
+
 ```
 [SEVERITY] — file:line — description — suggested fix
 ```
@@ -103,7 +115,9 @@ Code quality findings (patterns 2, 3, 5, 6):
 Include the Metrics table with actual counts and Monitoring Runs with timestamp.
 
 ### `.claude/observers/ARCH.md`
+
 Architecture findings (patterns 1, 4, 7) + devil's advocate challenges:
+
 ```
 [SEVERITY] — file:line — description — suggested fix
 ```
@@ -111,10 +125,12 @@ Architecture findings (patterns 1, 4, 7) + devil's advocate challenges:
 Include Contract Compliance table and Devil's Advocate Challenges table.
 
 ### `.claude/observers/ALERTS.md`
+
 If ANY **[BLOCKER]** is found, append it to .claude/observers/ALERTS.md:
 
 ```markdown
 ### [BLOCKER] Description
+
 - **Found by:** Observer Full
 - **Time:** [timestamp]
 - **File:** file:line

@@ -78,7 +78,7 @@ export default function EmployeesPage() {
   }
 
   const totalEmployees = employees.length
-  const employeesWithPersonal = employees.filter((e) => e.personal_linked_at).length
+  const employeesWithPersonal = employees.filter(e => e.personal_linked_at).length
   const totalSpend = employees.reduce((sum, e) => sum + (e.usage?.total_spend_usd || 0), 0)
 
   return (
@@ -157,10 +157,7 @@ export default function EmployeesPage() {
           </Button>
         </div>
       ) : (
-        <EmployeeUsageTable
-          employees={employees}
-          onEmployeeClick={handleEmployeeClick}
-        />
+        <EmployeeUsageTable employees={employees} onEmployeeClick={handleEmployeeClick} />
       )}
 
       {/* Employee Detail Drawer (Simple Modal) */}
@@ -170,11 +167,7 @@ export default function EmployeesPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Employee Details</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedEmployee(null)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSelectedEmployee(null)}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
@@ -197,9 +190,7 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Department</p>
-                  <p className="font-medium">
-                    {selectedEmployee.department_name || 'Unassigned'}
-                  </p>
+                  <p className="font-medium">{selectedEmployee.department_name || 'Unassigned'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Work Spend</p>
@@ -220,27 +211,23 @@ export default function EmployeesPage() {
                 <h3 className="font-medium mb-3">Personal Account</h3>
                 {selectedEmployee.personal_linked_at ? (
                   <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 mb-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 text-green-700 border-green-200 mb-2"
+                    >
                       Linked
                     </Badge>
                     <p className="text-sm">
-                      <span className="font-medium">Email:</span>{' '}
-                      {selectedEmployee.personal_email}
+                      <span className="font-medium">Email:</span> {selectedEmployee.personal_email}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Linked on{' '}
-                      {new Date(selectedEmployee.personal_linked_at).toLocaleDateString()}
+                      Linked on {new Date(selectedEmployee.personal_linked_at).toLocaleDateString()}
                     </p>
                   </div>
                 ) : (
                   <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      No personal account linked
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={() => setShowLinkModal(true)}
-                    >
+                    <p className="text-sm text-muted-foreground mb-3">No personal account linked</p>
+                    <Button size="sm" onClick={() => setShowLinkModal(true)}>
                       Link Personal Account
                     </Button>
                   </div>
@@ -273,13 +260,11 @@ export default function EmployeesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Personal Email
-                </label>
+                <label className="text-sm font-medium mb-2 block">Personal Email</label>
                 <input
                   type="email"
                   value={personalEmail}
-                  onChange={(e) => setPersonalEmail(e.target.value)}
+                  onChange={e => setPersonalEmail(e.target.value)}
                   className="w-full border rounded-md px-3 py-2"
                   placeholder="employee@gmail.com"
                 />
@@ -291,12 +276,12 @@ export default function EmployeesPage() {
                   <input
                     type="checkbox"
                     checked={consent}
-                    onChange={(e) => setConsent(e.target.checked)}
+                    onChange={e => setConsent(e.target.checked)}
                     className="mt-1"
                   />
                   <span>
-                    I consent to tracking personal AI usage for expense reporting. This
-                    data will be visible to HR and department managers.
+                    I consent to tracking personal AI usage for expense reporting. This data will be
+                    visible to HR and department managers.
                   </span>
                 </label>
               </div>

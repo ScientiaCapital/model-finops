@@ -23,7 +23,7 @@ export function ComplianceAlerts({
 
   const filteredAlerts = useMemo(() => {
     if (severityFilter === 'all') return alerts
-    return alerts.filter((a) => a.severity === severityFilter)
+    return alerts.filter(a => a.severity === severityFilter)
   }, [alerts, severityFilter])
 
   const getSeverityIcon = (severity: string) => {
@@ -79,7 +79,7 @@ export function ComplianceAlerts({
     }
   }
 
-  const unacknowledgedAlerts = alerts.filter((a) => !a.resolved)
+  const unacknowledgedAlerts = alerts.filter(a => !a.resolved)
 
   return (
     <Card>
@@ -98,7 +98,7 @@ export function ComplianceAlerts({
             <Filter className="h-4 w-4 text-muted-foreground" />
             <select
               value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              onChange={e => setSeverityFilter(e.target.value)}
               className="border rounded-md px-3 py-1 text-sm"
             >
               <option value="all">All Severity</option>
@@ -112,9 +112,7 @@ export function ComplianceAlerts({
       <CardContent>
         <div className="space-y-3">
           {loading ? (
-            <div className="text-center text-muted-foreground py-8">
-              Loading alerts...
-            </div>
+            <div className="text-center text-muted-foreground py-8">Loading alerts...</div>
           ) : filteredAlerts.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-green-500" />
@@ -122,7 +120,7 @@ export function ComplianceAlerts({
               <div className="text-sm">No compliance alerts to display</div>
             </div>
           ) : (
-            filteredAlerts.map((alert) => (
+            filteredAlerts.map(alert => (
               <div
                 key={alert.id}
                 className={`border rounded-lg p-4 ${
@@ -131,8 +129,8 @@ export function ComplianceAlerts({
                   alert.severity === 'critical'
                     ? 'border-red-200'
                     : alert.severity === 'warning'
-                    ? 'border-amber-200'
-                    : 'border-gray-200'
+                      ? 'border-amber-200'
+                      : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -151,15 +149,12 @@ export function ComplianceAlerts({
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {alert.message}
-                      </div>
+                      <div className="text-sm text-muted-foreground">{alert.message}</div>
                       {alert.details && Object.keys(alert.details).length > 0 && (
                         <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded">
                           {Object.entries(alert.details).map(([key, value]) => (
                             <div key={key}>
-                              <span className="font-medium">{key}:</span>{' '}
-                              {String(value)}
+                              <span className="font-medium">{key}:</span> {String(value)}
                             </div>
                           ))}
                         </div>
@@ -200,19 +195,19 @@ export function ComplianceAlerts({
           <div className="mt-6 pt-4 border-t grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-red-600">
-                {filteredAlerts.filter((a) => !a.resolved && a.severity === 'critical').length}
+                {filteredAlerts.filter(a => !a.resolved && a.severity === 'critical').length}
               </div>
               <div className="text-xs text-muted-foreground">Critical</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-amber-600">
-                {filteredAlerts.filter((a) => !a.resolved && a.severity === 'warning').length}
+                {filteredAlerts.filter(a => !a.resolved && a.severity === 'warning').length}
               </div>
               <div className="text-xs text-muted-foreground">Warnings</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-green-600">
-                {filteredAlerts.filter((a) => a.resolved).length}
+                {filteredAlerts.filter(a => a.resolved).length}
               </div>
               <div className="text-xs text-muted-foreground">Resolved</div>
             </div>

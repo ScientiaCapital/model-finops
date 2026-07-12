@@ -15,6 +15,7 @@
 ## Prerequisites
 
 Before starting, verify:
+
 ```bash
 # Check PostgreSQL running
 docker ps | grep postgres
@@ -41,6 +42,7 @@ docker exec -it ai-cost-optimizer-postgres-1 psql -U postgres -d optimizer -c "S
 **Goal:** Get PostgreSQL running via Docker Compose and fix 6 failing connection tests
 
 **Files:**
+
 - Modify: `docker-compose.yml` (verify postgres service)
 - Test: `tests/test_postgres_migration.py`, `tests/test_integration_feedback_loop.py`
 
@@ -104,6 +106,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Add Redis service to docker-compose.yml with persistent volume
 
 **Files:**
+
 - Modify: `docker-compose.yml`
 - Modify: `requirements.txt`
 
@@ -112,6 +115,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **File:** `requirements.txt`
 
 Add at end:
+
 ```
 redis>=5.0.0
 ```
@@ -127,20 +131,21 @@ pip install redis>=5.0.0
 **File:** `docker-compose.yml`
 
 Find the `services:` section and add:
+
 ```yaml
-  redis:
-    image: redis:7-alpine
-    container_name: ai-cost-optimizer-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./data/redis:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+redis:
+  image: redis:7-alpine
+  container_name: ai-cost-optimizer-redis
+  ports:
+    - '6379:6379'
+  volumes:
+    - ./data/redis:/data
+  command: redis-server --appendonly yes
+  healthcheck:
+    test: ['CMD', 'redis-cli', 'ping']
+    interval: 5s
+    timeout: 3s
+    retries: 5
 ```
 
 **Step 4: Start Redis**
@@ -181,6 +186,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Build Redis caching layer with fallback to PostgreSQL
 
 **Files:**
+
 - Create: `app/cache/redis_cache.py`
 - Create: `app/cache/__init__.py`
 - Create: `tests/test_redis_cache.py`
@@ -415,6 +421,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Cache metrics queries with Redis for <10ms response time
 
 **Files:**
+
 - Modify: `app/main.py` (metrics endpoint)
 - Modify: `tests/test_main.py` or create `tests/test_metrics_caching.py`
 
@@ -558,6 +565,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Create WebSocket endpoint that pushes live metrics every 5 seconds
 
 **Files:**
+
 - Modify: `app/main.py`
 - Create: `tests/test_websocket_metrics.py`
 - Modify: `requirements.txt` (add websockets if needed)
@@ -567,11 +575,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **File:** `requirements.txt`
 
 Add (if not already present):
+
 ```
 websockets>=12.0
 ```
 
 Install:
+
 ```bash
 pip install websockets>=12.0
 ```
@@ -781,6 +791,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Add PostgreSQL tables for experiments and results
 
 **Files:**
+
 - Create: `migrations/004_add_experiment_tables.py` (Alembic migration)
 - Create: `app/models/experiment.py` (Pydantic models)
 - Create: `tests/test_experiment_models.py`
@@ -1049,6 +1060,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Build deterministic user assignment and experiment tracking
 
 **Files:**
+
 - Create: `app/experiments/tracker.py`
 - Create: `app/experiments/__init__.py`
 - Create: `tests/test_experiment_tracker.py`
@@ -1374,6 +1386,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Implement chi-square test for automatic winner detection
 
 **Files:**
+
 - Modify: `app/experiments/tracker.py`
 - Modify: `requirements.txt` (add scipy)
 - Create: `tests/test_statistical_analysis.py`
@@ -1383,11 +1396,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **File:** `requirements.txt`
 
 Add:
+
 ```
 scipy>=1.11.0
 ```
 
 Install:
+
 ```bash
 pip install scipy>=1.11.0
 ```
@@ -1529,12 +1544,14 @@ Expected: FAIL with "AttributeError: 'ExperimentTracker' object has no attribute
 **File:** `app/experiments/tracker.py`
 
 Add import at top:
+
 ```python
 from scipy import stats
 import numpy as np
 ```
 
 Add method to ExperimentTracker class:
+
 ```python
     def analyze_experiment(self, experiment_id: int) -> ExperimentAnalysis:
         """Analyze experiment results with statistical testing.
@@ -1670,6 +1687,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Add FastAPI endpoints for creating experiments and viewing results
 
 **Files:**
+
 - Modify: `app/main.py`
 - Create: `tests/test_experiment_endpoints.py`
 
@@ -1767,18 +1785,21 @@ Expected: FAIL with 404 errors (endpoints don't exist)
 **File:** `app/main.py`
 
 Add import at top:
+
 ```python
 from app.experiments.tracker import ExperimentTracker
 from app.models.experiment import ExperimentCreate
 ```
 
 Initialize tracker (near other initializations):
+
 ```python
 # Initialize experiment tracker
 experiment_tracker = ExperimentTracker()
 ```
 
 Add endpoints (after existing endpoints):
+
 ```python
 @app.post("/experiments")
 async def create_experiment(request: ExperimentCreate):
@@ -1910,6 +1931,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Allow /complete requests to participate in active experiments
 
 **Files:**
+
 - Modify: `app/main.py` (modify /complete endpoint)
 - Modify: `app/models/` (add experiment_id to CompleteRequest)
 - Create: `tests/test_experiment_integration.py`
@@ -1998,6 +2020,7 @@ Expected: FAIL (experiment_id not supported in /complete)
 **File:** Find the CompleteRequest model (likely in `app/main.py` or `app/models/`)
 
 Modify CompleteRequest:
+
 ```python
 class CompleteRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
@@ -2015,6 +2038,7 @@ class CompleteRequest(BaseModel):
 **File:** `app/main.py`
 
 Modify the `/complete` endpoint:
+
 ```python
 @app.post("/complete")
 async def complete_request(request: CompleteRequest):
@@ -2182,6 +2206,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Replace synchronous database connections with async pooling
 
 **Files:**
+
 - Create: `app/database/async_pool.py`
 - Modify: `requirements.txt` (add asyncpg)
 - Create: `tests/test_async_pool.py`
@@ -2191,11 +2216,13 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **File:** `requirements.txt`
 
 Add:
+
 ```
 asyncpg>=0.29.0
 ```
 
 Install:
+
 ```bash
 pip install asyncpg>=0.29.0
 ```
@@ -2448,6 +2475,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Update routing_service.py to use async/await throughout
 
 **Files:**
+
 - Modify: `app/services/routing_service.py`
 - Modify: `app/main.py` (update initialization)
 - Modify: `tests/test_routing_service.py`
@@ -2606,6 +2634,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 **Goal:** Measure performance improvements from async optimization
 
 **Files:**
+
 - Create: `scripts/benchmark_performance.py`
 - Create: `PERFORMANCE_RESULTS.md`
 
@@ -2756,6 +2785,7 @@ python scripts/benchmark_performance.py > PERFORMANCE_BEFORE.txt
 **Step 4: Apply any remaining optimizations (if time permits)**
 
 Examples:
+
 - Add Redis caching to more endpoints
 - Optimize database queries
 - Add request batching
@@ -2776,16 +2806,19 @@ python scripts/benchmark_performance.py > PERFORMANCE_AFTER.txt
 ## Metrics Endpoint (/routing/metrics)
 
 ### Before Async Optimization
+
 - Requests/sec: 45
 - Avg Latency: 220ms
 - P95 Latency: 380ms
 
 ### After Async Optimization + Redis
+
 - Requests/sec: 450 (10x improvement)
 - Avg Latency: 22ms (10x faster)
 - P95 Latency: 35ms (11x faster)
 
 ## Improvements
+
 - **10x throughput** increase
 - **10x latency** reduction
 - Redis caching operational
@@ -2793,6 +2826,7 @@ python scripts/benchmark_performance.py > PERFORMANCE_AFTER.txt
 - Connection pooling ready for PostgreSQL integration
 
 ## Next Steps for Further Optimization
+
 - Integrate AsyncConnectionPool into all database operations
 - Add request batching for similar prompts
 - Implement query result caching
@@ -2848,7 +2882,7 @@ pytest --cov=app --cov-report=html --cov-report=term
 
 **Create:** `BUSU_SESSION_COMPLETE.md`
 
-```markdown
+````markdown
 # BUSU Triple Feature Session - COMPLETE ✅
 
 **Date:** November 16, 2025
@@ -2860,6 +2894,7 @@ pytest --cov=app --cov-report=html --cov-report=term
 ## Feature 1: Real-Time Metrics Dashboard with Redis Caching ✅
 
 **Delivered:**
+
 - PostgreSQL running via Docker Compose
 - Redis running with persistent volume
 - RedisCache class with TTL support and error handling
@@ -2868,6 +2903,7 @@ pytest --cov=app --cov-report=html --cov-report=term
 - 8 new tests, all passing
 
 **Performance:**
+
 - Metrics queries: 50ms → 10ms (5x faster)
 - Cache hit rate: 95%+
 - WebSocket updates every 5 seconds
@@ -2877,6 +2913,7 @@ pytest --cov=app --cov-report=html --cov-report=term
 ## Feature 2: A/B Testing Framework ✅
 
 **Delivered:**
+
 - PostgreSQL schema with experiments and experiment_results tables
 - ExperimentTracker with deterministic user assignment
 - Statistical significance testing with scipy t-tests
@@ -2888,6 +2925,7 @@ pytest --cov=app --cov-report=html --cov-report=term
 - 15 new tests, all passing
 
 **Capabilities:**
+
 - Scientific A/B testing
 - Deterministic 50/50 user assignment
 - Automatic winner detection at 95% confidence
@@ -2898,12 +2936,14 @@ pytest --cov=app --cov-report=html --cov-report=term
 ## Feature 3: Async Optimization & Connection Pooling ✅
 
 **Delivered:**
+
 - AsyncConnectionPool for PostgreSQL with asyncpg
 - Full async/await throughout RoutingService
 - Performance benchmarking scripts
 - 5+ new tests for async operations
 
 **Performance:**
+
 - Throughput: 50 req/sec → 450 req/sec (9x improvement)
 - Avg latency: 220ms → 22ms (10x faster)
 - P95 latency: 380ms → 35ms (11x faster)
@@ -2914,17 +2954,20 @@ pytest --cov=app --cov-report=html --cov-report=term
 ## Final Metrics
 
 **Tests:**
+
 - Total: 90+ tests
 - Pass Rate: 100%
 - Coverage: ~85% (run `pytest --cov=app` for exact number)
 
 **Performance:**
+
 - 9-10x throughput improvement
 - 10x latency reduction
 - Sub-10ms cache queries
 - Real-time WebSocket metrics
 
 **Infrastructure:**
+
 - Docker Compose with PostgreSQL + Redis
 - Async connection pooling
 - Redis caching layer
@@ -2935,12 +2978,14 @@ pytest --cov=app --cov-report=html --cov-report=term
 ## What's Next
 
 **Immediate (Production Ready):**
+
 - Deploy to cloud (RunPod when ready)
 - Add authentication & rate limiting
 - Monitoring dashboard (visual metrics)
 - Documentation updates
 
 **Future Enhancements:**
+
 - Advanced ML pattern recognition
 - Multi-region deployment
 - Revenue model (usage-based pricing)
@@ -2966,13 +3011,15 @@ python scripts/benchmark_performance.py
 # Test WebSocket
 websocat ws://localhost:8000/metrics/live
 ```
+````
 
 ---
 
 **Session Status:** COMPLETE 🎉
 **Production Ready:** YES ✅
 **Team Ready for Demo:** YES ✅
-```
+
+````
 
 **Step 5: Final commit**
 
@@ -2996,7 +3043,7 @@ Achievements:
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
-```
+````
 
 **Step 6: Push to remote**
 
@@ -3025,6 +3072,7 @@ After completing all tasks, verify:
 ## Troubleshooting
 
 **PostgreSQL connection fails:**
+
 ```bash
 docker-compose down
 docker-compose up -d postgres
@@ -3032,17 +3080,20 @@ docker exec -it ai-cost-optimizer-postgres-1 psql -U postgres -c "SELECT 1"
 ```
 
 **Redis connection fails:**
+
 ```bash
 docker-compose up -d redis
 docker exec -it ai-cost-optimizer-redis redis-cli ping
 ```
 
 **Tests fail due to missing dependencies:**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 **Async tests fail:**
+
 ```bash
 pip install pytest-asyncio
 ```

@@ -73,6 +73,7 @@ These files appear to be duplicates or older versions. Review before removing:
 ### Immediate (This Week)
 
 1. **Review duplicate files:**
+
    ```bash
    # Check if root files are referenced anywhere
    grep -r "from router import\|from cost_tracker import\|from main import" .
@@ -91,17 +92,20 @@ These files appear to be duplicates or older versions. Review before removing:
 ### Short-term (Next Week)
 
 5. **Install dev dependencies:**
+
    ```bash
    pip install -r requirements-dev.txt
    cd next-app && npm install
    ```
 
 6. **Format existing code:**
+
    ```bash
    make format
    ```
 
 7. **Add test structure:**
+
    ```bash
    mkdir tests
    # Create initial test files
@@ -125,16 +129,19 @@ These files appear to be duplicates or older versions. Review before removing:
 ## 🎯 Impact Assessment
 
 ### Developer Experience
+
 - **Before**: Manual setup, inconsistent formatting, unclear commands
 - **After**: One-command setup (`make setup`), automated formatting, clear workflow
 - **Time Savings**: ~40% reduction in onboarding time
 
 ### Code Quality
+
 - **Before**: No automated checks, potential inconsistencies
 - **After**: Automated linting, formatting, type checking
 - **Quality Improvement**: Consistent code style, fewer bugs
 
 ### Team Collaboration
+
 - **Before**: Different editor settings, manual formatting discussions
 - **After**: Standardized tooling, automated checks
 - **Benefit**: Less friction in code reviews
@@ -146,6 +153,7 @@ These files appear to be duplicates or older versions. Review before removing:
 ### For New Team Members
 
 1. **Clone and setup:**
+
    ```bash
    git clone <repo>
    cd ai-cost-optimizer
@@ -153,6 +161,7 @@ These files appear to be duplicates or older versions. Review before removing:
    ```
 
 2. **Configure:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
@@ -168,6 +177,7 @@ These files appear to be duplicates or older versions. Review before removing:
 ### For Existing Developers
 
 1. **Update your environment:**
+
    ```bash
    pip install -r requirements-dev.txt
    cd next-app && npm install
@@ -196,4 +206,3 @@ These files appear to be duplicates or older versions. Review before removing:
 - Check `DEVELOPMENT.md` for detailed guides
 - Review `TECH_AUDIT.md` for technical decisions
 - Ask team for clarification on any changes
-

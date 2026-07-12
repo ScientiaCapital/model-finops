@@ -11,10 +11,7 @@ interface DepartmentSpendChartProps {
   view?: 'monthly' | 'quarterly'
 }
 
-export function DepartmentSpendChart({
-  departments,
-  view = 'monthly',
-}: DepartmentSpendChartProps) {
+export function DepartmentSpendChart({ departments, view = 'monthly' }: DepartmentSpendChartProps) {
   const [hoveredDept, setHoveredDept] = useState<string | null>(null)
 
   const totalSpend = useMemo(() => {
@@ -26,7 +23,7 @@ export function DepartmentSpendChart({
   }, [departments])
 
   const maxSpend = useMemo(() => {
-    return Math.max(...departments.map((d) => d.total_spend_usd), 1)
+    return Math.max(...departments.map(d => d.total_spend_usd), 1)
   }, [departments])
 
   const getPercentage = (spend: number) => {
@@ -74,9 +71,7 @@ export function DepartmentSpendChart({
             <Building2 className="h-5 w-5" />
             Department Spend
           </CardTitle>
-          <Badge variant="outline">
-            {view === 'monthly' ? 'Monthly' : 'Quarterly'}
-          </Badge>
+          <Badge variant="outline">{view === 'monthly' ? 'Monthly' : 'Quarterly'}</Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -104,17 +99,14 @@ export function DepartmentSpendChart({
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded ${color}`} />
-                        <span className="font-medium">
-                          {dept.department_name}
-                        </span>
+                        <span className="font-medium">{dept.department_name}</span>
                         <span className="text-muted-foreground text-xs">
-                          ({dept.employee_count} {dept.employee_count === 1 ? 'employee' : 'employees'})
+                          ({dept.employee_count}{' '}
+                          {dept.employee_count === 1 ? 'employee' : 'employees'})
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold">
-                          ${dept.total_spend_usd.toFixed(2)}
-                        </span>
+                        <span className="font-semibold">${dept.total_spend_usd.toFixed(2)}</span>
                         <span className="text-muted-foreground text-xs w-12 text-right">
                           {percentage.toFixed(1)}%
                         </span>
@@ -130,12 +122,11 @@ export function DepartmentSpendChart({
                       {isHovered && (
                         <div className="absolute inset-0 flex items-center px-3 text-xs text-white font-medium">
                           <div className="flex items-center justify-between w-full">
-                            <span>
-                              {dept.top_provider && `Top: ${dept.top_provider}`}
-                            </span>
+                            <span>{dept.top_provider && `Top: ${dept.top_provider}`}</span>
                             {dept.budget_usd && (
                               <span>
-                                Budget: ${dept.budget_usd.toFixed(0)} ({dept.budget_percent.toFixed(0)}%)
+                                Budget: ${dept.budget_usd.toFixed(0)} (
+                                {dept.budget_percent.toFixed(0)}%)
                               </span>
                             )}
                           </div>
@@ -153,9 +144,7 @@ export function DepartmentSpendChart({
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Total Spend</span>
                   </div>
-                  <span className="text-2xl font-bold">
-                    ${totalSpend.toFixed(2)}
-                  </span>
+                  <span className="text-2xl font-bold">${totalSpend.toFixed(2)}</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Across {sortedDepartments.length} departments
@@ -163,19 +152,14 @@ export function DepartmentSpendChart({
               </div>
 
               {/* Budget warnings */}
-              {sortedDepartments.filter((d) => d.budget_usd && d.budget_percent >= 80).length > 0 && (
+              {sortedDepartments.filter(d => d.budget_usd && d.budget_percent >= 80).length > 0 && (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                  <div className="text-sm font-medium text-amber-900 mb-2">
-                    Budget Warnings
-                  </div>
+                  <div className="text-sm font-medium text-amber-900 mb-2">Budget Warnings</div>
                   <div className="space-y-1">
                     {sortedDepartments
-                      .filter((d) => d.budget_usd && d.budget_percent >= 80)
-                      .map((dept) => (
-                        <div
-                          key={dept.department_name}
-                          className="text-xs text-amber-800"
-                        >
+                      .filter(d => d.budget_usd && d.budget_percent >= 80)
+                      .map(dept => (
+                        <div key={dept.department_name} className="text-xs text-amber-800">
                           {dept.department_name}: {dept.budget_percent.toFixed(0)}% of budget used
                         </div>
                       ))}

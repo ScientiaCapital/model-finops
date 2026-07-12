@@ -13,6 +13,7 @@
 ## Task 1: Create RoutingService Foundation
 
 **Files:**
+
 - Create: `app/services/__init__.py`
 - Create: `app/services/routing_service.py`
 - Create: `tests/test_routing_service.py`
@@ -118,6 +119,7 @@ git commit -m "feat: create RoutingService foundation with initialization"
 ## Task 2: Implement route_and_complete Method (TDD)
 
 **Files:**
+
 - Modify: `app/services/routing_service.py`
 - Modify: `tests/test_routing_service.py`
 
@@ -313,6 +315,7 @@ git commit -m "feat: implement route_and_complete with cache integration"
 ## Task 3: Implement get_recommendation Method
 
 **Files:**
+
 - Modify: `app/services/routing_service.py`
 - Modify: `tests/test_routing_service.py`
 
@@ -388,6 +391,7 @@ git commit -m "feat: implement get_recommendation for routing preview"
 ## Task 4: Implement get_routing_metrics Method
 
 **Files:**
+
 - Modify: `app/services/routing_service.py`
 - Modify: `tests/test_routing_service.py`
 
@@ -457,6 +461,7 @@ git commit -m "feat: implement get_routing_metrics for analytics"
 ## Task 5: Update main.py Imports and Models
 
 **Files:**
+
 - Modify: `app/main.py:1-50`
 
 **Step 1: Update imports section**
@@ -548,6 +553,7 @@ git commit -m "refactor: update imports and models for RoutingService integratio
 ## Task 6: Update /complete Endpoint
 
 **Files:**
+
 - Modify: `app/main.py:120-292`
 
 **Step 1: Replace /complete endpoint implementation**
@@ -629,11 +635,13 @@ async def complete_prompt(request: CompleteRequest):
 **Step 2: Test endpoint manually**
 
 Run server:
+
 ```bash
 python app/main.py
 ```
 
 Test with curl:
+
 ```bash
 curl -X POST http://localhost:8000/complete \
   -H "Content-Type: application/json" \
@@ -654,6 +662,7 @@ git commit -m "refactor: update /complete endpoint to use RoutingService"
 ## Task 7: Update /recommendation Endpoint
 
 **Files:**
+
 - Modify: `app/main.py:342-368`
 
 **Step 1: Replace /recommendation endpoint**
@@ -703,6 +712,7 @@ git commit -m "refactor: update /recommendation to use hybrid routing"
 ## Task 8: Add /routing/metrics Endpoint
 
 **Files:**
+
 - Modify: `app/main.py` (add after /recommendation)
 
 **Step 1: Add new endpoint after /recommendation**
@@ -752,6 +762,7 @@ git commit -m "feat: add /routing/metrics endpoint for analytics"
 ## Task 9: Add /routing/decision Endpoint
 
 **Files:**
+
 - Modify: `app/main.py` (add after /routing/metrics)
 
 **Step 1: Add new endpoint after /routing/metrics**
@@ -811,6 +822,7 @@ git commit -m "feat: add /routing/decision endpoint for debug transparency"
 ## Task 10: Remove Legacy Files
 
 **Files:**
+
 - Delete: `app/router.py`
 - Delete: `app/complexity.py`
 
@@ -842,6 +854,7 @@ git commit -m "refactor: remove legacy Router and complexity modules"
 ## Task 11: Run Full Test Suite
 
 **Files:**
+
 - All test files
 
 **Step 1: Run complete test suite**
@@ -855,6 +868,7 @@ Expected: 39+ tests passing (new RoutingService tests added)
 **Step 2: Check for any failures**
 
 If failures occur:
+
 - Read error messages carefully
 - Fix issues one at a time
 - Re-run tests after each fix
@@ -862,6 +876,7 @@ If failures occur:
 **Step 3: Verify new endpoints work**
 
 Manual testing checklist:
+
 ```bash
 # 1. POST /complete with auto_route=false
 curl -X POST http://localhost:8000/complete \
@@ -895,6 +910,7 @@ git commit -m "test: fix integration tests for RoutingService"
 ## Task 12: Update Health Check Endpoint
 
 **Files:**
+
 - Modify: `app/main.py:110-118`
 
 **Step 1: Enhance health check with routing info**
@@ -934,6 +950,7 @@ git commit -m "feat: update health check for Phase 2 routing engine"
 ## Task 13: Final Integration Verification
 
 **Files:**
+
 - All files
 
 **Step 1: Run full test suite one more time**
@@ -951,6 +968,7 @@ python app/main.py
 ```
 
 Visit http://localhost:8000/docs and test each endpoint through Swagger UI:
+
 - ✅ POST /complete (with auto_route=false)
 - ✅ POST /complete (with auto_route=true)
 - ✅ GET /recommendation
@@ -979,6 +997,7 @@ Expected: ~13 commits showing incremental progress
 **Step 5: Final commit if needed**
 
 If any uncommitted changes:
+
 ```bash
 git add .
 git commit -m "chore: final cleanup for FastAPI integration"
@@ -989,6 +1008,7 @@ git commit -m "chore: final cleanup for FastAPI integration"
 ## Task 14: Push and Create Pull Request
 
 **Files:**
+
 - None (Git operations only)
 
 **Step 1: Push branch to remote**
@@ -1010,6 +1030,7 @@ Expected: Shows tracking relationship with origin
 **Step 3: Ready for merge**
 
 At this point:
+
 - All tests passing (39+ tests)
 - All endpoints working
 - Clean commit history
@@ -1020,6 +1041,7 @@ At this point:
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ POST /complete supports `auto_route` parameter
 - ✅ auto_route=false uses complexity routing (backward compatible)
 - ✅ auto_route=true uses hybrid routing (intelligent)
@@ -1029,6 +1051,7 @@ At this point:
 - ✅ New analytics endpoints return accurate data
 
 ### Code Quality
+
 - ✅ All existing tests pass
 - ✅ New unit tests for RoutingService (4+ tests)
 - ✅ Clean separation: FastAPI → Service → Core
@@ -1036,6 +1059,7 @@ At this point:
 - ✅ Proper error handling with HTTPException
 
 ### Integration
+
 - ✅ /health endpoint shows routing_engine="v2"
 - ✅ All endpoints accessible via Swagger UI
 - ✅ Manual testing checklist complete
@@ -1050,6 +1074,7 @@ At this point:
 **Problem:** `ModuleNotFoundError: No module named 'app.services'`
 
 **Solution:**
+
 ```bash
 # Ensure __init__.py exists
 touch app/services/__init__.py
@@ -1060,6 +1085,7 @@ touch app/services/__init__.py
 **Problem:** Tests fail with "fixture not found"
 
 **Solution:**
+
 ```bash
 # Ensure pytest is using correct Python
 python3 -m pytest -v
@@ -1076,6 +1102,7 @@ python3 -m pytest -v
 **Problem:** `sqlite3.OperationalError: no such table: routing_metrics`
 
 **Solution:**
+
 ```bash
 # Run database migrations
 python -c "from app.database import create_routing_metrics_table; create_routing_metrics_table()"
@@ -1086,10 +1113,12 @@ python -c "from app.database import create_routing_metrics_table; create_routing
 ## References
 
 ### Design Documents
+
 - Phase 2 Design: `docs/plans/2025-01-11-phase2-auto-routing-design.md`
 - FastAPI Integration Design: `docs/plans/2025-01-11-fastapi-integration-design.md`
 
 ### Key Files
+
 - `app/routing/engine.py` - RoutingEngine (Phase 2)
 - `app/routing/strategy.py` - ComplexityStrategy, LearningStrategy, HybridStrategy
 - `app/routing/metrics.py` - MetricsCollector
@@ -1097,6 +1126,7 @@ python -c "from app.database import create_routing_metrics_table; create_routing
 - `app/providers.py` - Provider clients (unchanged)
 
 ### Testing Commands
+
 ```bash
 # Run all tests
 pytest -v

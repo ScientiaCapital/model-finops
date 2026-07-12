@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Check, Zap, Shield, Sparkles, Loader2 } from 'lucide-react'
@@ -93,37 +100,41 @@ export default function PricingPage() {
             Optimize your AI costs
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the plan that fits your needs. Save up to 60% on AI API costs with
-            intelligent routing and semantic caching.
+            Choose the plan that fits your needs. Save up to 60% on AI API costs with intelligent
+            routing and semantic caching.
           </p>
         </div>
 
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <span className={cn(
-            "text-sm font-medium transition-colors",
-            interval === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
-          )}>
+          <span
+            className={cn(
+              'text-sm font-medium transition-colors',
+              interval === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
+            )}
+          >
             Monthly
           </span>
           <button
             onClick={() => setInterval(interval === 'monthly' ? 'annual' : 'monthly')}
             className={cn(
-              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
               interval === 'annual' ? 'bg-primary' : 'bg-muted'
             )}
           >
             <span
               className={cn(
-                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
                 interval === 'annual' ? 'translate-x-6' : 'translate-x-1'
               )}
             />
           </button>
-          <span className={cn(
-            "text-sm font-medium transition-colors",
-            interval === 'annual' ? 'text-foreground' : 'text-muted-foreground'
-          )}>
+          <span
+            className={cn(
+              'text-sm font-medium transition-colors',
+              interval === 'annual' ? 'text-foreground' : 'text-muted-foreground'
+            )}
+          >
             Annual
           </span>
           {interval === 'annual' && (
@@ -142,7 +153,7 @@ export default function PricingPage() {
 
         {/* Pricing Cards */}
         <div className="grid gap-6 md:grid-cols-3">
-          {displayPlans.map((planId) => {
+          {displayPlans.map(planId => {
             const plan = PLANS[planId]
             const isPopular = plan.popular
             const price = getPrice(planId)
@@ -152,7 +163,7 @@ export default function PricingPage() {
               <Card
                 key={planId}
                 className={cn(
-                  "relative flex flex-col transition-all duration-200",
+                  'relative flex flex-col transition-all duration-200',
                   isPopular
                     ? 'border-primary shadow-lg scale-[1.02] md:scale-105'
                     : 'hover:border-primary/50 hover:shadow-md'
@@ -168,17 +179,17 @@ export default function PricingPage() {
 
                 <CardHeader className="text-center pb-4">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <div className={cn(
-                      "p-2 rounded-lg",
-                      isPopular ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                    )}>
+                    <div
+                      className={cn(
+                        'p-2 rounded-lg',
+                        isPopular ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                      )}
+                    >
                       {getPlanIcon(planId)}
                     </div>
                   </div>
                   <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription className="min-h-[40px]">
-                    {plan.description}
-                  </CardDescription>
+                  <CardDescription className="min-h-[40px]">{plan.description}</CardDescription>
                 </CardHeader>
 
                 <CardContent className="flex-1 space-y-6">
@@ -209,8 +220,7 @@ export default function PricingPage() {
                     <div className="font-semibold">
                       {plan.apiCallsMonthly === -1
                         ? 'Unlimited'
-                        : plan.apiCallsMonthly.toLocaleString()
-                      }
+                        : plan.apiCallsMonthly.toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">requests/month</div>
                   </div>
@@ -279,29 +289,29 @@ export default function PricingPage() {
             <div className="space-y-2">
               <h3 className="font-semibold">What counts as a request?</h3>
               <p className="text-sm text-muted-foreground">
-                Each API call to route or optimize an AI prompt counts as one request.
-                Cached responses don't count against your limit.
+                Each API call to route or optimize an AI prompt counts as one request. Cached
+                responses don't count against your limit.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold">What is semantic caching?</h3>
               <p className="text-sm text-muted-foreground">
-                Semantic caching identifies similar prompts and returns cached responses,
-                reducing costs by up to 3x for repeated queries.
+                Semantic caching identifies similar prompts and returns cached responses, reducing
+                costs by up to 3x for repeated queries.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold">Can I change plans later?</h3>
               <p className="text-sm text-muted-foreground">
-                Yes! You can upgrade or downgrade at any time. Changes take effect
-                immediately, and billing is prorated.
+                Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and
+                billing is prorated.
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold">What AI providers are supported?</h3>
               <p className="text-sm text-muted-foreground">
-                We support Anthropic Claude, Google Gemini, Cerebras, and OpenRouter
-                for multi-model routing (no OpenAI).
+                We support Anthropic Claude, Google Gemini, Cerebras, and OpenRouter for multi-model
+                routing (no OpenAI).
               </p>
             </div>
           </div>

@@ -5,6 +5,7 @@ Complete guide for deploying the AI Cost Optimizer to production environments (R
 ## 📋 Prerequisites
 
 ### 1. Supabase Account & Configuration
+
 - Sign up at [supabase.com](https://supabase.com)
 - Create a new project
 - Run database migrations (see [Supabase Setup](#supabase-setup))
@@ -15,13 +16,16 @@ Complete guide for deploying the AI Cost Optimizer to production environments (R
   - `SUPABASE_JWT_SECRET`
 
 ### 2. AI Provider API Keys
+
 At least one provider is required:
+
 - **Google Gemini** (recommended for free tier): [makersuite.google.com](https://makersuite.google.com/app/apikey)
 - **Anthropic Claude**: [console.anthropic.com](https://console.anthropic.com)
 - **Cerebras**: [cloud.cerebras.ai](https://cloud.cerebras.ai)
 - **OpenRouter** (fallback): [openrouter.ai](https://openrouter.ai)
 
 ### 3. Docker & BuildX
+
 ```bash
 # Verify Docker is installed
 docker --version
@@ -106,18 +110,21 @@ curl http://localhost:8000/health
 3. **Run Migrations in Order**:
 
    **Migration 1: Extensions**
+
    ```bash
    # Copy contents of migrations/supabase_part1_extensions.sql
    # Paste into SQL Editor → Run
    ```
 
    **Migration 2: Tables**
+
    ```bash
    # Copy contents of migrations/supabase_create_tables.sql
    # Paste into SQL Editor → Run
    ```
 
    **Migration 3: RLS Policies**
+
    ```bash
    # Copy contents of migrations/supabase_part2_schema_fixed.sql
    # Paste into SQL Editor → Run
@@ -134,9 +141,9 @@ curl http://localhost:8000/health
    ```sql
    -- Check tables were created
    SELECT tablename FROM pg_tables WHERE schemaname = 'public';
-   
+
    -- Check RLS is enabled
-   SELECT tablename, rowsecurity FROM pg_tables 
+   SELECT tablename, rowsecurity FROM pg_tables
    WHERE schemaname = 'public' AND rowsecurity = true;
    ```
 
@@ -146,26 +153,26 @@ curl http://localhost:8000/health
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SUPABASE_URL` | Your Supabase project URL | `https://abc123.supabase.co` |
-| `SUPABASE_ANON_KEY` | Public anon key (respects RLS) | `eyJhbGc...` |
-| `SUPABASE_SERVICE_KEY` | Admin key (bypasses RLS) | `eyJhbGc...` |
-| `SUPABASE_JWT_SECRET` | JWT signing secret | `your-jwt-secret` |
-| `GOOGLE_API_KEY` | Gemini API key (at least one provider) | `AIzaSy...` |
+| Variable               | Description                            | Example                      |
+| ---------------------- | -------------------------------------- | ---------------------------- |
+| `SUPABASE_URL`         | Your Supabase project URL              | `https://abc123.supabase.co` |
+| `SUPABASE_ANON_KEY`    | Public anon key (respects RLS)         | `eyJhbGc...`                 |
+| `SUPABASE_SERVICE_KEY` | Admin key (bypasses RLS)               | `eyJhbGc...`                 |
+| `SUPABASE_JWT_SECRET`  | JWT signing secret                     | `your-jwt-secret`            |
+| `GOOGLE_API_KEY`       | Gemini API key (at least one provider) | `AIzaSy...`                  |
 
 ### Optional Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ANTHROPIC_API_KEY` | Claude API key | - |
-| `OPENROUTER_API_KEY` | OpenRouter API key | - |
-| `CEREBRAS_API_KEY` | Cerebras API key | - |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `PORT` | Server port | `8000` |
+| Variable               | Description                | Default                                  |
+| ---------------------- | -------------------------- | ---------------------------------------- |
+| `ANTHROPIC_API_KEY`    | Claude API key             | -                                        |
+| `OPENROUTER_API_KEY`   | OpenRouter API key         | -                                        |
+| `CEREBRAS_API_KEY`     | Cerebras API key           | -                                        |
+| `LOG_LEVEL`            | Logging level              | `INFO`                                   |
+| `PORT`                 | Server port                | `8000`                                   |
 | `EMBEDDING_MODEL_NAME` | Sentence transformer model | `sentence-transformers/all-MiniLM-L6-v2` |
-| `EMBEDDING_DEVICE` | Device for embeddings | `cpu` (or `cuda`) |
-| `SIMILARITY_THRESHOLD` | Cache similarity threshold | `0.95` |
+| `EMBEDDING_DEVICE`     | Device for embeddings      | `cpu` (or `cuda`)                        |
+| `SIMILARITY_THRESHOLD` | Cache similarity threshold | `0.95`                                   |
 
 ---
 
@@ -183,6 +190,7 @@ open http://localhost:8080/realtime-dashboard.html
 ```
 
 **Configuration**:
+
 1. Edit `frontend/realtime-dashboard.html`
 2. Replace `YOUR_ANON_KEY_HERE` with your Supabase anon key
 3. Deploy to any static host (Vercel, Netlify, GitHub Pages)
@@ -192,22 +200,23 @@ open http://localhost:8080/realtime-dashboard.html
 ```javascript
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  'https://your-project.supabase.co',
-  'your-anon-key'
-)
+const supabase = createClient('https://your-project.supabase.co', 'your-anon-key')
 
 // Subscribe to routing metrics
 const channel = supabase
   .channel('my-app')
-  .on('postgres_changes', {
-    event: 'INSERT',
-    schema: 'public',
-    table: 'routing_metrics'
-  }, (payload) => {
-    console.log('New metric:', payload.new)
-    // Update your UI
-  })
+  .on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'routing_metrics',
+    },
+    payload => {
+      console.log('New metric:', payload.new)
+      // Update your UI
+    }
+  )
   .subscribe()
 ```
 
@@ -218,18 +227,21 @@ See `docs/REALTIME_SETUP.md` for complete guide.
 ## 🧪 Testing Deployment
 
 ### 1. Health Check
+
 ```bash
 curl https://your-deployment-url/health
 # Expected: {"status": "healthy"}
 ```
 
 ### 2. List Providers
+
 ```bash
 curl https://your-deployment-url/providers
 # Expected: List of configured providers
 ```
 
 ### 3. Test Completion (requires authentication)
+
 ```bash
 # Get JWT token from Supabase Auth first
 curl -X POST https://your-deployment-url/complete \
@@ -243,6 +255,7 @@ curl -X POST https://your-deployment-url/complete \
 ## 📊 Monitoring & Logs
 
 ### View Logs (RunPod)
+
 ```bash
 # Via RunPod Dashboard
 # Pods → Your Pod → Logs tab
@@ -253,6 +266,7 @@ curl -X GET https://api.runpod.io/v1/pods/{POD_ID}/logs \
 ```
 
 ### Health Metrics
+
 ```bash
 # Check application health
 curl https://your-deployment-url/health
@@ -270,25 +284,33 @@ curl https://your-deployment-url/routing/metrics \
 ## 🔧 Troubleshooting
 
 ### Issue: "Module not found" errors
+
 **Solution**: Ensure all dependencies in `requirements.txt` are installed
+
 ```bash
 docker build --no-cache -t ai-cost-optimizer:latest .
 ```
 
 ### Issue: Supabase connection fails
+
 **Solution**: Verify environment variables
+
 ```bash
 docker run ai-cost-optimizer:latest env | grep SUPABASE
 ```
 
 ### Issue: "No providers configured"
+
 **Solution**: Add at least one AI provider API key
+
 ```bash
 docker run -e GOOGLE_API_KEY=your-key ai-cost-optimizer:latest
 ```
 
 ### Issue: JWT authentication fails
+
 **Solution**: Ensure `SUPABASE_JWT_SECRET` matches your Supabase project settings
+
 - Dashboard → Settings → API → JWT Secret
 
 ---
@@ -296,6 +318,7 @@ docker run -e GOOGLE_API_KEY=your-key ai-cost-optimizer:latest
 ## 🚀 Production Best Practices
 
 ### 1. Use Secrets Management
+
 ```bash
 # AWS Secrets Manager
 aws secretsmanager get-secret-value --secret-id ai-cost-optimizer/prod
@@ -308,12 +331,14 @@ gcloud secrets versions access latest --secret="ai-cost-optimizer-env"
 ```
 
 ### 2. Enable HTTPS
+
 ```bash
 # Use reverse proxy (nginx, Caddy, Traefik)
 # Or use RunPod's built-in HTTPS endpoints
 ```
 
 ### 3. Set Resource Limits
+
 ```yaml
 # docker-compose.yml
 services:
@@ -329,6 +354,7 @@ services:
 ```
 
 ### 4. Configure Auto-Scaling
+
 ```bash
 # RunPod Auto-Scaling
 # Min Pods: 1
