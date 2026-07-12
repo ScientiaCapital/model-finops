@@ -59,7 +59,13 @@ class AsyncCostTracker:
         model: str,
         tokens_in: int,
         tokens_out: int,
-        cost: float
+        cost: float,
+        project_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        task_type: Optional[str] = None,
+        latency_ms: Optional[int] = None,
+        source: Optional[str] = None,
+        timestamp: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Log a completed request to the database.
@@ -72,6 +78,13 @@ class AsyncCostTracker:
             tokens_in: Input token count
             tokens_out: Output token count
             cost: Total cost in USD
+            project_id: Optional external project identifier (e.g. silkroute's project_id)
+            session_id: Optional external session identifier
+            task_type: Optional short task/label string
+            latency_ms: Optional request latency in milliseconds
+            source: Optional origin label (e.g. "silkroute") for external callers
+            timestamp: Optional ISO timestamp of when the event actually happened
+                (defaults to now — pass this when logging an event after the fact)
 
         Returns:
             Inserted row data
@@ -80,7 +93,7 @@ class AsyncCostTracker:
         prompt_preview = prompt[:100] + "..." if len(prompt) > 100 else prompt
 
         data = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": timestamp or datetime.now().isoformat(),
             "prompt_preview": prompt_preview,
             "complexity": complexity,
             "provider": provider,
@@ -88,8 +101,22 @@ class AsyncCostTracker:
             "tokens_in": tokens_in,
             "tokens_out": tokens_out,
             "cost": cost,
-            "user_id": self.user_id  # For RLS
+            "user_id": self.user_id,  # For RLS
         }
+        # Only include the new optional columns when actually provided, so
+        # existing callers (e.g. RoutingService.route_and_complete via /complete)
+        # keep sending the exact same row shape as before this change — the
+        # `requests` table needs an additive migration for these columns to
+        # exist at all, and we must not break production traffic in the
+        # meantime for callers that never pass them.
+        extra = {
+            "project_id": project_id,
+            "session_id": session_id,
+            "task_type": task_type,
+            "latency_ms": latency_ms,
+            "source": source,
+        }
+        data.update({k: v for k, v in extra.items() if v is not None})
 
         # Use admin mode if no user_id (backward compatibility)
         use_admin = self.user_id is None
