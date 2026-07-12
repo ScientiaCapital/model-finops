@@ -3,6 +3,7 @@
 ## Start Day Protocol
 
 When user says "start day":
+
 1. Read CLAUDE.md
 2. `git status` + `git log --oneline -5`
 3. List blockers and next 3 priorities
@@ -12,12 +13,14 @@ When user says "start day":
 ## CRITICAL RULE: NO OPENAI
 
 **This project does NOT use OpenAI APIs or models. NEVER:**
+
 - Reference OpenAI SDK, GPT models, or `openai` package
 - Create OpenAI-compatible endpoints or drop-in replacements
 - Suggest OpenAI as a provider option
 - Use GPT-3.5, GPT-4, or any OpenAI model names
 
 **Use instead:**
+
 - **Claude** (Anthropic) - Primary for complex reasoning
 - **Gemini** (Google) - Cost-effective, large context
 - **DeepSeek** - Cheapest for bulk processing
@@ -38,6 +41,7 @@ This is a hard rule. No exceptions.
 The AI Cost Optimizer is a production-ready FastAPI service that intelligently routes LLM prompts to optimal AI models using **semantic caching**, **multi-tenant RLS**, and **async-first architecture**. It serves as both a standalone API and an MCP (Model Context Protocol) server for Claude Desktop integration.
 
 **🎉 MAJOR UPGRADE - Supabase Migration** (COMPLETE!):
+
 - ✅ **Semantic Caching**: pgvector-powered fuzzy matching (3x better cache hit rate!)
 - ✅ **Multi-Tenancy**: Row-Level Security (RLS) for data isolation
 - ✅ **Async-First**: All database operations non-blocking
@@ -47,12 +51,14 @@ The AI Cost Optimizer is a production-ready FastAPI service that intelligently r
 - ✅ **ML Embeddings**: Local 384D vectors (sentence-transformers)
 
 **Previous Features** (Still Active):
+
 - ✅ **A/B Testing Framework**: Experiment tracking with statistical analysis
 - ✅ **Intelligent Auto-Routing**: Learning-based model selection with hybrid validation
 - ✅ **Strategy Pattern Architecture**: Pluggable routing strategies (complexity, learning, hybrid)
 - ✅ **Metrics & Analytics**: Comprehensive routing performance tracking and ROI analysis
 
 **Core Features**:
+
 - Multi-provider support (Gemini, Claude, Cerebras, OpenRouter)
 - Semantic caching with 95% similarity threshold (fuzzy matching!)
 - Multi-tenant user isolation via RLS
@@ -64,12 +70,14 @@ The AI Cost Optimizer is a production-ready FastAPI service that intelligently r
 ## 2. Technology Stack
 
 ### Core Framework & Runtime
+
 - **Language**: Python 3.8+
 - **Web Framework**: FastAPI (with automatic OpenAPI docs)
 - **ASGI Server**: Uvicorn with standard extras
 - **Environment Management**: python-dotenv
 
 ### Database & Backend (Supabase Platform)
+
 - **Database**: Supabase PostgreSQL (managed, production-ready)
 - **Vector Extension**: pgvector for 384D embeddings (IVFFlat indexing)
 - **Authentication**: Supabase Auth with JWT (HS256)
@@ -80,6 +88,7 @@ The AI Cost Optimizer is a production-ready FastAPI service that intelligently r
 - **HTTP Client**: httpx for async API calls
 
 ### AI/ML Components
+
 - **Primary Providers**: Google Gemini, Anthropic Claude, Cerebras, OpenRouter
 - **Embeddings**: sentence-transformers (all-MiniLM-L6-v2, 384 dimensions)
 - **ML Framework**: PyTorch (GPU/CPU auto-detection)
@@ -93,6 +102,7 @@ The AI Cost Optimizer is a production-ready FastAPI service that intelligently r
 - **Token Counting**: Custom token estimation logic
 
 ### Development & Testing
+
 - **Testing**: pytest with asyncio support
 - **Containerization**: Docker & Docker Compose
 - **Migrations**: Supabase SQL migrations
@@ -101,6 +111,7 @@ The AI Cost Optimizer is a production-ready FastAPI service that intelligently r
 ## 3. Development Workflow
 
 ### Initial Setup
+
 ```bash
 # Clone and setup
 git clone <repository>
@@ -129,6 +140,7 @@ pip install -r mcp/requirements.txt
 ### Running the Application
 
 **Development Mode**:
+
 ```bash
 # Run FastAPI with auto-reload
 python app/main.py
@@ -137,6 +149,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Production Mode**:
+
 ```bash
 # Using Docker
 docker-compose up --build
@@ -146,6 +159,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Testing
+
 ```bash
 # Run all tests
 pytest
@@ -158,6 +172,7 @@ pytest tests/test_routing.py -v
 ```
 
 ### Building & Deployment
+
 ```bash
 # Build Docker image
 docker build -t ai-cost-optimizer .
@@ -171,6 +186,7 @@ docker run -p 8000:8000 --env-file .env ai-cost-optimizer
 Create a `.env` file with:
 
 ### Required - Supabase Configuration
+
 ```env
 # Supabase Backend (REQUIRED)
 SUPABASE_URL=https://your-project.supabase.co
@@ -181,6 +197,7 @@ SUPABASE_DB_PASSWORD=your-db-password  # Database password
 ```
 
 ### Required - AI Provider Keys (at least one)
+
 ```env
 # Gemini (Recommended for free tier)
 GOOGLE_API_KEY=your_gemini_key
@@ -196,6 +213,7 @@ CEREBRAS_API_KEY=your_cerebras_key
 ```
 
 ### Optional Configuration
+
 ```env
 # Service Configuration
 COST_OPTIMIZER_API_URL=http://localhost:8000
@@ -213,6 +231,7 @@ SIMILARITY_THRESHOLD=0.95  # Cache hit threshold (0-1)
 ## 5. Key Files & Their Purposes
 
 ### Core Application
+
 - `app/main.py` - FastAPI application entry point, route definitions, lifespan management
 - `app/auth.py` - JWT authentication middleware and dependencies (170 lines)
 - `app/routing/` - Prompt analysis and model routing logic
@@ -223,6 +242,7 @@ SIMILARITY_THRESHOLD=0.95  # Cache hit threshold (0-1)
 - `app/models/` - Pydantic models for request/response schemas
 
 ### Database & Backend (Supabase)
+
 - `app/database/supabase_client.py` - Async Supabase client wrapper (350 lines)
 - `app/database/cost_tracker_async.py` - AsyncCostTracker with semantic caching (900+ lines)
 - `app/embeddings/generator.py` - EmbeddingGenerator using sentence-transformers (280 lines)
@@ -232,20 +252,24 @@ SIMILARITY_THRESHOLD=0.95  # Cache hit threshold (0-1)
 - `migrations/supabase_part2_schema_fixed.sql` - RLS policies (18 policies across 7 tables)
 
 ### MCP Integration
+
 - `mcp/server.py` - MCP server implementation for Claude Desktop
 - `mcp/requirements.txt` - MCP-specific dependencies
 
 ### Configuration & Deployment
+
 - `requirements.txt` - Main application dependencies (includes Supabase, ML libs)
 - `Dockerfile` - Containerization configuration
 - `docker-compose.yml` - Multi-service setup
 - `.env.example` - Environment template with Supabase configuration
 
 ### Documentation
+
 - `.claude/CLAUDE.md` - This file (project overview for AI assistants)
 - `docs/REALTIME_SETUP.md` - Guide for Supabase Realtime integration (400+ lines)
 
 ### Testing
+
 - `tests/` - Test suite with unit and integration tests
 - `tests/conftest.py` - Shared pytest fixtures for Supabase
 - `tests/test_routing.py` - Routing logic tests
@@ -256,6 +280,7 @@ SIMILARITY_THRESHOLD=0.95  # Cache hit threshold (0-1)
 ## 6. Testing Approach
 
 ### Test Structure
+
 ```python
 # Example test pattern
 def test_prompt_routing_simple():
@@ -272,6 +297,7 @@ def test_provider_fallback():
 ```
 
 ### Running Tests
+
 ```bash
 # Complete test suite
 pytest
@@ -288,6 +314,7 @@ pytest --cov=app --cov-report=html
 ```
 
 ### Test Data
+
 - Mock API responses for providers
 - Sample prompts of varying complexity
 - Database state management with fixtures
@@ -295,6 +322,7 @@ pytest --cov=app --cov-report=html
 ## 7. Deployment
 
 ### Backend (FastAPI)
+
 ```bash
 # Local development
 python app/main.py
@@ -304,9 +332,10 @@ docker-compose up --build
 ```
 
 ### Frontend (Next.js Dashboard)
-- **Production URL**: https://ai-cost-optimizer-scientia-capital.vercel.app
-- **Vercel Project**: ai-cost-optimizer (scientia-capital)
-- **Stack**: Next.js 15, React 19, Tailwind CSS, Shadcn/ui
+
+- **Production URL**: https://modelfinops.com
+- **Vercel Project**: modelfinops (scientia-capital) — Root Directory MUST be set to `frontend`
+- **Stack**: Next.js 16, React 19, Tailwind CSS, Shadcn/ui
 
 ```bash
 cd frontend
@@ -315,6 +344,7 @@ vercel --prod    # Deploy to production
 ```
 
 ### Environment Variables (Vercel Dashboard)
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
@@ -328,6 +358,7 @@ NEXT_PUBLIC_API_URL=https://YOUR_POD_ID-8000.proxy.runpod.net
 **Solution 1: GitHub Actions (Recommended)**
 
 Push to main branch to trigger automatic build:
+
 ```bash
 git push origin main
 # Workflow triggers on changes to: app/**, requirements.txt, Dockerfile
@@ -337,6 +368,7 @@ git push origin main
 Image pushed to: `ghcr.io/scientiacapital/ai-cost-optimizer:latest`
 
 **Solution 2: Manual buildx (One-off builds)**
+
 ```bash
 # Setup buildx (one-time)
 docker buildx create --use --name multiarch
@@ -351,12 +383,14 @@ docker buildx build --platform linux/amd64 --push \
 ```
 
 ### Docker Registry Options
+
 - **GHCR**: `ghcr.io/scientiacapital/ai-cost-optimizer:latest`
 - **Docker Hub**: `docker.io/tmk74/ai-cost-optimizer:latest` (username: `tmk74`)
 
 ### RunPod Deployment
 
 **Pod Configuration**:
+
 - Container Image: `ghcr.io/scientiacapital/ai-cost-optimizer:latest`
 - Container Disk: 20GB
 - Volume Disk: 10GB (mount to `/app/model_cache`)
@@ -364,6 +398,7 @@ docker buildx build --platform linux/amd64 --push \
 - GPU: None for testing (~$0.10/hr), RTX 4090 for production (~$0.74/hr)
 
 **Environment Variables (RunPod Dashboard)**:
+
 ```
 # Required
 SUPABASE_URL=https://your-project.supabase.co
@@ -377,11 +412,12 @@ ANTHROPIC_API_KEY=your-key
 PORT=8000
 LOG_LEVEL=INFO
 EMBEDDING_DEVICE=cpu  # Change to 'cuda' for GPU pods
-CORS_ORIGINS=https://ai-cost-optimizer-scientia-capital.vercel.app
+CORS_ORIGINS=https://modelfinops.com
 TORCH_HOME=/app/model_cache
 ```
 
 **Verify Deployment**:
+
 ```bash
 curl https://YOUR_POD_ID-8000.proxy.runpod.net/health
 # Expected: {"status": "healthy"}
@@ -390,6 +426,7 @@ curl https://YOUR_POD_ID-8000.proxy.runpod.net/health
 ## 8. Coding Standards
 
 ### FastAPI Specific Standards
+
 ```python
 # Use Pydantic v2 style
 from pydantic import BaseModel, Field
@@ -406,12 +443,14 @@ async def chat_endpoint(request: PromptRequest):
 ```
 
 ### Project-Specific Conventions
+
 - Provider classes must implement `send_message()` method
 - All cost calculations in USD cents for precision
 - Use dependency injection for API clients
 - Log all routing decisions and costs
 
 ### Error Handling Pattern
+
 ```python
 try:
     response = await provider.send_message(prompt)
@@ -423,6 +462,7 @@ except ProviderError as e:
 ## 9. Common Tasks & Commands
 
 ### Development Tasks
+
 ```bash
 # Start development server
 python app/main.py
@@ -438,6 +478,7 @@ black app/ tests/
 ```
 
 ### MCP Server Management
+
 ```bash
 # Test MCP server directly
 python mcp/server.py
@@ -447,6 +488,7 @@ python mcp/server.py
 ```
 
 ### Debugging Commands
+
 ```bash
 # Check API health
 curl http://localhost:8000/health
@@ -462,20 +504,24 @@ curl -X POST http://localhost:8000/chat \
 ### Common Issues
 
 **MCP Server Not Connecting**:
+
 - Verify absolute path in Claude Desktop config
 - Check `COST_OPTIMIZER_API_URL` environment variable
 - Restart Claude Desktop completely (don't just relaunch)
 
 **Provider API Errors**:
+
 - Verify API keys in `.env` file
 - Check provider service status
 - Review API rate limits and quotas
 
 **Database Issues**:
+
 - Check Supabase credentials in `.env`
 - Verify pgvector extension is enabled
 
 ### Debug Mode
+
 ```python
 # Enable debug logging
 import logging
@@ -486,11 +532,13 @@ LOG_LEVEL=DEBUG
 ```
 
 ### Health Check Endpoints
+
 - `GET /health` - Service status
 - `GET /providers` - Available provider status
 - `GET /costs/summary` - Cost tracking summary
 
 ### Performance Monitoring
+
 - Monitor response times in logs
 - Track token usage patterns
 - Review cost per provider in database
@@ -500,5 +548,6 @@ LOG_LEVEL=DEBUG
 **Maintenance Note**: Regularly update provider API clients as LLM providers frequently change their interfaces and pricing structures.
 
 **See Also**:
+
 - `docs/COMMERCIALIZATION.md` for revenue models and go-to-market strategy
 - `docs/REALTIME_SETUP.md` for real-time metrics integration guide
