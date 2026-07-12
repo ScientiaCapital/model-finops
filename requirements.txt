@@ -6,7 +6,7 @@ uvicorn[standard]==0.24.0
 pydantic==2.5.0
 
 # HTTP client for API calls
-httpx>=0.27.0  # Needs 0.27+ for supabase/gotrue proxy support
+httpx>=0.27.0,<0.28  # 0.27+ for supabase/gotrue proxy support; <0.28 keeps Starlette TestClient's 'app=' shortcut (removed in 0.28)
 
 # Environment variables
 python-dotenv==1.0.0

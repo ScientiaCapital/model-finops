@@ -19,9 +19,14 @@ Vercel deploy fixed — real root cause was the project's Root Directory setting
 - [x] Found (not fixed) a leaked Stripe webhook secret in git history (public repo, commit 98901ed, 2025-12-31) — Tim's call: deprioritized, not using Stripe currently, wants the whole integration removed as a future task
 - [x] Committed as `78b4792`, `d6ff12a`, `d2b59a6`, `5d64c68`
 
+## Done (This Session — follow-up)
+
+- [x] Pinned `httpx>=0.27.0,<0.28` in `requirements.txt` — closes the backlog item; prevents httpx 0.28 (which removes the `'app'` shortcut Starlette's TestClient uses) from silently breaking `test_telemetry_endpoint.py`. 0.27.2 installed, satisfies the bound.
+- [x] Re-verified the telemetry ingest contract offline: `test_telemetry_endpoint.py` 5 passing (dummy Supabase creds + `--noconftest`, since `telemetry.py` builds `AsyncCostTracker` at import).
+
 ## Blockers
 
-None active. Backlog has 6 items logged (Stripe rotation/removal, DeepSeek/GLM/Qwen pricing verification, httpx version pin, flake8 config, test-infra TestClient mismatch).
+None active. Backlog now has 5 items (Stripe rotation/removal, DeepSeek/GLM/Qwen pricing verification, flake8 config, test-infra TestClient mismatch) — httpx pin resolved this session.
 
 ## Tomorrow
 
