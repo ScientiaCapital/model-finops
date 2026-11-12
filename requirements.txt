@@ -110,7 +110,7 @@ starlette==1.10.0
     # via fastapi
 storage3==2.34.1
     # via supabase
-stripe==11.6.1
+stripe==16.1.0
     # via model-finops
 supabase==2.34.1
     # via model-finops
