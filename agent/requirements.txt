@@ -2,7 +2,7 @@
 # Python >=3.10 required
 
 # Claude Agent SDK
-claude-agent-sdk==0.1.6
+claude-agent-sdk==0.2.178
 
 # Core dependencies (inherited from SDK)
 anyio>=4.0.0
