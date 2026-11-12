@@ -1,13 +1,44 @@
+import contextlib
 import os
 import sqlite3
-import pytest
-import asyncio
-import jwt
-from datetime import datetime, timedelta, timezone
-from fastapi.testclient import TestClient
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from app.main import app
+import jwt
+import pytest
+from fastapi.testclient import TestClient
+
+# app.main builds a Supabase client at import time and refuses to start without these.
+# Creating the client does not open a connection, so placeholders keep the offline suite
+# importable. Port 9 (discard) makes any accidental network call fail fast.
+for _name, _placeholder in (
+    ("SUPABASE_URL", "http://127.0.0.1:9"),
+    ("SUPABASE_ANON_KEY", "offline-test-placeholder"),
+):
+    if not os.environ.get(_name):  # unset or exported as an empty string
+        os.environ[_name] = _placeholder
+
+# The encryption service now refuses to run without a key instead of inventing one.
+os.environ.setdefault("ENCRYPTION_KEY", "offline-test-encryption-key-not-a-secret")
+
+from app.main import app  # noqa: E402  (must follow the environment defaults above)
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "integration: needs a live Supabase project; run with RUN_INTEGRATION=1 and real "
+        "SUPABASE_URL / SUPABASE_ANON_KEY",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if os.getenv("RUN_INTEGRATION") == "1":
+        return
+    skip = pytest.mark.skip(reason="integration test: set RUN_INTEGRATION=1 with a live Supabase")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -19,13 +50,13 @@ def setup_test_database():
     and manage their own database state via Alembic migrations.
     """
     # Skip if TEST_DATABASE_URL is set (indicates PostgreSQL tests)
-    if os.getenv('TEST_DATABASE_URL'):
+    if os.getenv("TEST_DATABASE_URL"):
         yield
         return
 
     # Use SQLite for tests (simpler, faster)
-    db_path = './test_feedback.db'
-    os.environ['DATABASE_URL'] = f'sqlite:///{db_path}'
+    db_path = "./test_feedback.db"
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
 
     # Create test database tables
     conn = sqlite3.connect(db_path)
@@ -139,37 +170,30 @@ def setup_test_database():
     yield
 
     # Cleanup
-    try:
+    with contextlib.suppress(FileNotFoundError):
         os.remove(db_path)
-    except:
-        pass
+
+
+@pytest.fixture
+def allow_anonymous(monkeypatch):
+    """Opt in to anonymous /complete for tests whose subject is not authentication."""
+    monkeypatch.setenv("ALLOW_ANONYMOUS", "true")
 
 
 @pytest.fixture(scope="function")
 def client():
-    """Get test client with Supabase backend.
+    """TestClient for the full app.
 
-    Current testing strategy (post-Supabase migration):
-    - Uses real Supabase backend with test credentials
-    - JWT auth fixtures provide mock tokens (see test_jwt_secret, mock_jwt_token)
-    - Database operations use actual Supabase tables (isolated by test user_id)
-    - No need for complex database mocking - Supabase handles isolation via RLS
-    - 123/123 tests passing with this approach (100% pass rate)
+    Endpoints that read or write Supabase need a live project; tests that call them
+    carry the ``integration`` marker and are skipped offline.
     """
     yield TestClient(app)
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 # ============================================================================
 # SUPABASE AUTHENTICATION FIXTURES
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def test_jwt_secret():
@@ -190,8 +214,8 @@ def mock_jwt_token(test_jwt_secret, test_user_id):
         "sub": test_user_id,  # Supabase user ID
         "email": "test@example.com",
         "aud": "authenticated",
-        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
-        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(UTC) + timedelta(hours=1),
+        "iat": datetime.now(UTC),
     }
     token = jwt.encode(payload, test_jwt_secret, algorithm="HS256")
     return token
@@ -222,6 +246,7 @@ def bypass_auth():
     """
     # Mock OptionalAuth to always return None (public access)
     from app.auth import OptionalAuth
+
     original_call = OptionalAuth.__call__
 
     def mock_call(self, request):

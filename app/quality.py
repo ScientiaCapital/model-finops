@@ -1,5 +1,4 @@
 """Quality validation and scoring for cached responses."""
-from typing import Tuple, List, Dict, Optional
 
 
 class QualityValidator:
@@ -12,7 +11,7 @@ class QualityValidator:
     GOOD_QUALITY_THRESHOLD = 0.8
 
     @staticmethod
-    def calculate_quality_score(upvotes: int, downvotes: int) -> Optional[float]:
+    def calculate_quality_score(upvotes: int, downvotes: int) -> float | None:
         """
         Calculate quality score from vote counts.
 
@@ -36,7 +35,7 @@ class QualityValidator:
         return round(score, 3)
 
     @classmethod
-    def should_invalidate(cls, quality_score: Optional[float], total_votes: int) -> bool:
+    def should_invalidate(cls, quality_score: float | None, total_votes: int) -> bool:
         """
         Determine if a cached response should be invalidated.
 
@@ -63,7 +62,7 @@ class QualityValidator:
         return quality_score < cls.POOR_QUALITY_THRESHOLD
 
     @classmethod
-    def get_quality_category(cls, quality_score: Optional[float]) -> str:
+    def get_quality_category(cls, quality_score: float | None) -> str:
         """
         Categorize quality score into human-readable labels.
 
@@ -87,9 +86,7 @@ class QualityValidator:
 
     @staticmethod
     def get_invalidation_reason(
-        quality_score: float,
-        total_votes: int,
-        feedback_comments: List[str]
+        quality_score: float, total_votes: int, feedback_comments: list[str]
     ) -> str:
         """
         Generate human-readable invalidation reason.
@@ -105,9 +102,7 @@ class QualityValidator:
         # Count negative comments
         has_comments = len(feedback_comments) > 0
         comment_summary = (
-            f" User feedback: {'; '.join(feedback_comments[:3])}"
-            if has_comments
-            else ""
+            f" User feedback: {'; '.join(feedback_comments[:3])}" if has_comments else ""
         )
 
         return (
@@ -116,10 +111,7 @@ class QualityValidator:
         )
 
     @classmethod
-    def analyze_provider_quality(
-        cls,
-        provider_stats: List[Dict]
-    ) -> Dict[str, Dict]:
+    def analyze_provider_quality(cls, provider_stats: list[dict]) -> dict[str, dict]:
         """
         Analyze quality metrics by provider.
 
@@ -140,17 +132,19 @@ class QualityValidator:
                 "quality_score": quality_score,
                 "quality_category": cls.get_quality_category(quality_score),
                 "total_votes": total_votes,
-                "confidence": "high" if total_votes >= 10 else "medium" if total_votes >= 5 else "low"
+                "confidence": "high"
+                if total_votes >= 10
+                else "medium"
+                if total_votes >= 5
+                else "low",
             }
 
         return analysis
 
     @staticmethod
     def recommend_action(
-        quality_score: Optional[float],
-        total_votes: int,
-        hit_count: int
-    ) -> Tuple[str, str]:
+        quality_score: float | None, total_votes: int, hit_count: int
+    ) -> tuple[str, str]:
         """
         Recommend action for a cached response.
 

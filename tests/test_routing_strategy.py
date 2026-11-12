@@ -1,7 +1,9 @@
 """Tests for routing strategy interface."""
+
 import pytest
+
+from app.routing.models import RoutingContext, RoutingDecision
 from app.routing.strategy import RoutingStrategy
-from app.routing.models import RoutingDecision, RoutingContext
 
 
 class ConcreteStrategy(RoutingStrategy):
@@ -15,7 +17,7 @@ class ConcreteStrategy(RoutingStrategy):
             strategy_used="test",
             reasoning="test routing",
             fallback_used=False,
-            metadata={}
+            metadata={},
         )
 
     def get_name(self) -> str:

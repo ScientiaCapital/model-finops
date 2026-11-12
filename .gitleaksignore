@@ -1,0 +1,23 @@
+# Proven false positives in git history. Each line is a gitleaks fingerprint
+# (commit:file:rule:line). Reviewed 2026-11-11; the reason is on the line above.
+
+# Empty LANGCHAIN_API_KEY= followed by the next variable name, not a value.
+1fcabdd9a93d94bcbbbbc1a9c2ff6a4846aa1596:.env.template:generic-api-key:115
+# Made-up example key ("sk-abc123def456...") in an OpenAPI response example.
+64844c319d3828c56f919baae92ec5db9223c197:app/routers/api_keys.py:generic-api-key:89
+# curl example with the literal placeholder YOUR_JWT_TOKEN.
+1dc8360d37fb8b1bdf6b9c9a507f1db2b465b4f7:frontend/app/api-keys/page.tsx:curl-auth-header:82
+# curl examples with the literal placeholders YOUR_JWT_TOKEN / YOUR_API_KEY.
+590caf039545fb696e9cacea80d3ba0da35e188f:docs/DEPLOYMENT.md:curl-auth-header:235
+590caf039545fb696e9cacea80d3ba0da35e188f:docs/DEPLOYMENT.md:curl-auth-header:251
+590caf039545fb696e9cacea80d3ba0da35e188f:docs/DEPLOYMENT.md:curl-auth-header:264
+# "Don't do this" examples: sk-123456789 and sk-or-v1-abc123... are not keys.
+d51d1f6538ee67912901b117358e20ebb8b338a7:SECURITY.md:generic-api-key:8
+d51d1f6538ee67912901b117358e20ebb8b338a7:SECURITY.md:generic-api-key:111
+d51d1f6538ee67912901b117358e20ebb8b338a7:SECURITY.md:generic-api-key:121
+
+# NOT a false positive: a real Stripe webhook signing secret was committed in
+# .claude/PROJECT_CONTEXT.md (removed from the tree since, still in history).
+# It was rotated in the Stripe dashboard on 2026-11-12, so the value in history
+# no longer works. History was not rewritten.
+98901edf071320c5648a91bdb2b53f900a5849d1:.claude/PROJECT_CONTEXT.md:generic-api-key:36

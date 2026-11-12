@@ -1,6 +1,6 @@
 """Tests for routing data models."""
-import pytest
-from app.routing.models import RoutingDecision, RoutingContext
+
+from app.routing.models import RoutingContext, RoutingDecision
 
 
 def test_routing_decision_creation():
@@ -12,7 +12,7 @@ def test_routing_decision_creation():
         strategy_used="learning",
         reasoning="Test reasoning",
         fallback_used=False,
-        metadata={"pattern": "code"}
+        metadata={"pattern": "code"},
     )
 
     assert decision.provider == "gemini"
@@ -30,17 +30,19 @@ def test_routing_context_defaults():
     assert context.prompt == "Test prompt"
     assert context.user_id is None
     assert context.available_providers == [
-        "gemini", "claude", "openrouter",
-        "ollama", "deepseek", "glm", "qwen",
+        "gemini",
+        "claude",
+        "openrouter",
+        "ollama",
+        "deepseek",
+        "glm",
+        "qwen",
     ]
     assert context.max_cost is None
 
 
 def test_routing_context_custom_providers():
     """Test RoutingContext accepts custom provider list."""
-    context = RoutingContext(
-        prompt="Test",
-        available_providers=["gemini"]
-    )
+    context = RoutingContext(prompt="Test", available_providers=["gemini"])
 
     assert context.available_providers == ["gemini"]

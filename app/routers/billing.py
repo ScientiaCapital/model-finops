@@ -17,24 +17,23 @@ Endpoints:
 - POST /billing/webhook        - Stripe webhook receiver (no auth)
 """
 
-import os
 import logging
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field, HttpUrl
+import os
+from typing import Any
 
-from app.auth import get_current_user_id, get_current_user
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
+
+from app.auth import get_current_user, get_current_user_id
+from app.billing import StripeClient, WebhookHandler, WebhookResult
+from app.database.supabase_client import SupabaseClient
 from app.services.billing_service import (
     BillingService,
-    SubscriptionInfo,
-    UsageInfo,
-    QuotaStatus,
     BillingSummary,
+    SubscriptionInfo,
     TierInfo,
+    UsageInfo,
 )
-from app.billing import StripeClient, WebhookHandler, WebhookResult
-from app.billing.stripe_client import StripeCheckoutSession, StripeBillingPortalSession, StripeInvoice
-from app.database.supabase_client import SupabaseClient
 
 logger = logging.getLogger(__name__)
 
@@ -92,16 +91,19 @@ def init_billing_router(
 # Request/Response Models
 # =============================================================================
 
+
 class CreateCheckoutRequest(BaseModel):
     """Request to create a checkout session."""
+
     tier: str = Field(..., description="Subscription tier: starter, pro, or enterprise")
-    success_url: Optional[str] = Field(None, description="URL to redirect after successful payment")
-    cancel_url: Optional[str] = Field(None, description="URL to redirect if user cancels")
-    trial_days: Optional[int] = Field(14, ge=1, le=30, description="Trial period in days")
+    success_url: str | None = Field(None, description="URL to redirect after successful payment")
+    cancel_url: str | None = Field(None, description="URL to redirect if user cancels")
+    trial_days: int | None = Field(14, ge=1, le=30, description="Trial period in days")
 
 
 class CreateCheckoutResponse(BaseModel):
     """Response with checkout session details."""
+
     session_id: str
     checkout_url: str
     mode: str = "subscription"
@@ -109,17 +111,20 @@ class CreateCheckoutResponse(BaseModel):
 
 class CreatePortalRequest(BaseModel):
     """Request to create a billing portal session."""
+
     return_url: str = Field(..., description="URL to return to after portal session")
 
 
 class CreatePortalResponse(BaseModel):
     """Response with portal session details."""
+
     session_id: str
     portal_url: str
 
 
 class QuotaCheckResponse(BaseModel):
     """Response with quota check results."""
+
     has_quota: bool
     tokens_used: int
     tokens_limit: int
@@ -127,24 +132,26 @@ class QuotaCheckResponse(BaseModel):
     usage_percentage: float
     tier: str
     period_ends_at: str
-    upgrade_url: Optional[str] = None
+    upgrade_url: str | None = None
 
 
 class InvoiceResponse(BaseModel):
     """Invoice details for API response."""
+
     id: str
     status: str
     total_cents: int
     currency: str
     created_at: str
-    paid_at: Optional[str] = None
-    hosted_url: Optional[str] = None
-    pdf_url: Optional[str] = None
+    paid_at: str | None = None
+    hosted_url: str | None = None
+    pdf_url: str | None = None
 
 
 # =============================================================================
 # Checkout & Portal Endpoints
 # =============================================================================
+
 
 @router.post(
     "/checkout",
@@ -159,7 +166,7 @@ async def create_checkout(
     request: CreateCheckoutRequest,
     user: dict = Depends(get_current_user),
     service: BillingService = Depends(get_billing_service),
-):
+) -> CreateCheckoutResponse:
     """
     Create a Stripe Checkout session for subscription purchase.
 
@@ -207,7 +214,7 @@ async def create_checkout(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create checkout session",
-        )
+        ) from e
 
 
 @router.post(
@@ -223,7 +230,7 @@ async def create_portal(
     request: CreatePortalRequest,
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> CreatePortalResponse:
     """
     Create a Stripe Billing Portal session for self-service management.
 
@@ -248,22 +255,23 @@ async def create_portal(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Failed to create portal session: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create portal session",
-        )
+        ) from e
 
 
 # =============================================================================
 # Subscription & Usage Endpoints
 # =============================================================================
 
+
 @router.get(
     "/subscription",
-    response_model=Optional[SubscriptionInfo],
+    response_model=SubscriptionInfo | None,
     summary="Get current subscription",
     responses={
         200: {"description": "Returns subscription info or null if none"},
@@ -272,7 +280,7 @@ async def create_portal(
 async def get_subscription(
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> SubscriptionInfo | None:
     """
     Get the current user's subscription details.
 
@@ -289,7 +297,7 @@ async def get_subscription(
 async def get_usage(
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> UsageInfo:
     """
     Get token and request usage for the current billing period.
 
@@ -310,7 +318,7 @@ async def get_usage(
 async def check_quota(
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> QuotaCheckResponse:
     """
     Check if user has remaining quota for the current period.
 
@@ -335,14 +343,15 @@ async def check_quota(
 # Tier & Pricing Endpoints
 # =============================================================================
 
+
 @router.get(
     "/tiers",
-    response_model=List[TierInfo],
+    response_model=list[TierInfo],
     summary="List subscription tiers",
 )
 async def list_tiers(
     service: BillingService = Depends(get_billing_service),
-):
+) -> list[TierInfo]:
     """
     List all available subscription tiers with limits and pricing.
 
@@ -362,7 +371,7 @@ async def list_tiers(
 async def get_tier(
     tier: str,
     service: BillingService = Depends(get_billing_service),
-):
+) -> TierInfo:
     """
     Get details for a specific subscription tier.
     """
@@ -379,16 +388,17 @@ async def get_tier(
 # Invoice & Summary Endpoints
 # =============================================================================
 
+
 @router.get(
     "/invoices",
-    response_model=List[InvoiceResponse],
+    response_model=list[InvoiceResponse],
     summary="Get invoice history",
 )
 async def list_invoices(
     limit: int = 10,
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> list[InvoiceResponse]:
     """
     Get invoice history for the current user.
 
@@ -419,7 +429,7 @@ async def list_invoices(
 async def get_billing_summary(
     user_id: str = Depends(get_current_user_id),
     service: BillingService = Depends(get_billing_service),
-):
+) -> BillingSummary:
     """
     Get comprehensive billing summary for dashboard display.
 
@@ -432,13 +442,14 @@ async def get_billing_summary(
 # Webhook Endpoint
 # =============================================================================
 
+
 @router.post(
     "/webhook",
     response_model=WebhookResult,
     summary="Stripe webhook receiver",
     include_in_schema=False,  # Hide from public API docs
 )
-async def stripe_webhook(request: Request):
+async def stripe_webhook(request: Request) -> WebhookResult:
     """
     Receive and process Stripe webhook events.
 
@@ -467,16 +478,19 @@ async def stripe_webhook(request: Request):
 # Utility Endpoints
 # =============================================================================
 
+
 @router.get(
     "/health",
     summary="Check billing service health",
     include_in_schema=False,
 )
-async def billing_health():
+async def billing_health() -> dict[str, Any]:
     """Check if billing services are properly initialized."""
     return {
         "billing_service": _billing_service is not None,
         "stripe_client": _stripe_client is not None,
         "supabase_client": _supabase_client is not None,
-        "status": "healthy" if all([_billing_service, _stripe_client, _supabase_client]) else "degraded",
+        "status": "healthy"
+        if all([_billing_service, _stripe_client, _supabase_client])
+        else "degraded",
     }

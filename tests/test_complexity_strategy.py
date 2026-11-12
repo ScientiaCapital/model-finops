@@ -1,7 +1,9 @@
 """Tests for ComplexityStrategy."""
+
 import pytest
-from app.routing.strategy import ComplexityStrategy
+
 from app.routing.models import RoutingContext
+from app.routing.strategy import ComplexityStrategy
 
 
 def test_complexity_strategy_simple_prompt():
@@ -48,10 +50,7 @@ def test_complexity_strategy_complex_prompt():
 def test_complexity_strategy_simple_fallback_to_openrouter():
     """Test simple prompt falls back to OpenRouter when Gemini unavailable."""
     strategy = ComplexityStrategy()
-    context = RoutingContext(
-        prompt="Hello",
-        available_providers=["openrouter"]
-    )
+    context = RoutingContext(prompt="Hello", available_providers=["openrouter"])
 
     decision = strategy.route("Hello", context)
 
@@ -63,10 +62,7 @@ def test_complexity_strategy_simple_fallback_to_openrouter():
 def test_complexity_strategy_simple_fallback_to_claude():
     """Test simple prompt falls back to Claude when Gemini and OpenRouter unavailable."""
     strategy = ComplexityStrategy()
-    context = RoutingContext(
-        prompt="Hello",
-        available_providers=["claude"]
-    )
+    context = RoutingContext(prompt="Hello", available_providers=["claude"])
 
     decision = strategy.route("Hello", context)
 
@@ -79,8 +75,7 @@ def test_complexity_strategy_moderate_fallback_to_gemini():
     """Test moderate prompt falls back to Gemini when Claude unavailable."""
     strategy = ComplexityStrategy()
     context = RoutingContext(
-        prompt="Explain how HTTP works",
-        available_providers=["gemini", "openrouter"]
+        prompt="Explain how HTTP works", available_providers=["gemini", "openrouter"]
     )
 
     decision = strategy.route("Explain how HTTP works", context)
@@ -94,10 +89,7 @@ def test_complexity_strategy_complex_fallback_to_gemini():
     """Test complex prompt falls back to Gemini when Claude unavailable."""
     strategy = ComplexityStrategy()
     long_prompt = "Analyze the architectural trade-offs between " * 10
-    context = RoutingContext(
-        prompt=long_prompt,
-        available_providers=["gemini", "openrouter"]
-    )
+    context = RoutingContext(prompt=long_prompt, available_providers=["gemini", "openrouter"])
 
     decision = strategy.route(long_prompt, context)
 
@@ -109,10 +101,7 @@ def test_complexity_strategy_complex_fallback_to_gemini():
 def test_complexity_strategy_absolute_fallback():
     """Test absolute fallback when preferred providers unavailable."""
     strategy = ComplexityStrategy()
-    context = RoutingContext(
-        prompt="Test prompt",
-        available_providers=["some_other_provider"]
-    )
+    context = RoutingContext(prompt="Test prompt", available_providers=["some_other_provider"])
 
     decision = strategy.route("Test prompt", context)
 
@@ -124,10 +113,7 @@ def test_complexity_strategy_absolute_fallback():
 def test_complexity_strategy_no_providers():
     """Test error when no providers available."""
     strategy = ComplexityStrategy()
-    context = RoutingContext(
-        prompt="Test prompt",
-        available_providers=[]
-    )
+    context = RoutingContext(prompt="Test prompt", available_providers=[])
 
     with pytest.raises(ValueError, match="No providers available"):
         strategy.route("Test prompt", context)
@@ -142,6 +128,7 @@ def test_complexity_strategy_name():
 # =============================================================================
 # New provider selectability (Ollama, DeepSeek, GLM, Qwen)
 # =============================================================================
+
 
 def test_complexity_strategy_simple_selects_ollama():
     """Simple prompt should select Ollama when it's the only provider."""
@@ -170,10 +157,7 @@ def test_complexity_strategy_simple_selects_deepseek():
 def test_complexity_strategy_moderate_selects_qwen():
     """Moderate prompt should select Qwen when it's the only provider."""
     strategy = ComplexityStrategy()
-    context = RoutingContext(
-        prompt="Explain how HTTP works",
-        available_providers=["qwen"]
-    )
+    context = RoutingContext(prompt="Explain how HTTP works", available_providers=["qwen"])
 
     decision = strategy.route("Explain how HTTP works", context)
 

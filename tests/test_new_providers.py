@@ -5,24 +5,24 @@ Tests for Mistral, Fireworks, Cohere, Ollama, and Bedrock providers.
 Uses mocked HTTP responses for unit testing.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from decimal import Decimal
+
+import pytest
 
 from app.providers import (
-    MistralProvider,
-    FireworksProvider,
-    CohereProvider,
-    OllamaProvider,
     BedrockProvider,
+    CohereProvider,
+    FireworksProvider,
+    MistralProvider,
+    OllamaProvider,
     ProviderError,
     init_providers,
 )
 
-
 # =============================================================================
 # Mistral Provider Tests
 # =============================================================================
+
 
 class TestMistralProvider:
     """Test Mistral AI provider."""
@@ -55,14 +55,13 @@ class TestMistralProvider:
 
         mock_response = {
             "choices": [{"message": {"content": "Hello from Mistral!"}}],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 5}
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -77,6 +76,7 @@ class TestMistralProvider:
 # =============================================================================
 # Fireworks Provider Tests
 # =============================================================================
+
 
 class TestFireworksProvider:
     """Test Fireworks AI provider."""
@@ -109,14 +109,13 @@ class TestFireworksProvider:
 
         mock_response = {
             "choices": [{"message": {"content": "Fireworks response!"}}],
-            "usage": {"prompt_tokens": 15, "completion_tokens": 8}
+            "usage": {"prompt_tokens": 15, "completion_tokens": 8},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -130,6 +129,7 @@ class TestFireworksProvider:
 # =============================================================================
 # Cohere Provider Tests
 # =============================================================================
+
 
 class TestCohereProvider:
     """Test Cohere provider."""
@@ -163,19 +163,13 @@ class TestCohereProvider:
         # Cohere uses different response format
         mock_response = {
             "text": "Cohere response!",
-            "meta": {
-                "tokens": {
-                    "input_tokens": 12,
-                    "output_tokens": 6
-                }
-            }
+            "meta": {"tokens": {"input_tokens": 12, "output_tokens": 6}},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -190,11 +184,13 @@ class TestCohereProvider:
 # Ollama Provider Tests
 # =============================================================================
 
+
 class TestOllamaProvider:
     """Test Ollama local provider."""
 
-    def test_init_default_host(self):
+    def test_init_default_host(self, monkeypatch):
         """Should use default localhost host."""
+        monkeypatch.delenv("OLLAMA_HOST", raising=False)
         provider = OllamaProvider()
         assert provider.base_url == "http://localhost:11434"
 
@@ -221,14 +217,13 @@ class TestOllamaProvider:
         mock_response = {
             "message": {"content": "Local Llama response!"},
             "prompt_eval_count": 20,
-            "eval_count": 10
+            "eval_count": 10,
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -261,6 +256,7 @@ class TestOllamaProvider:
 # =============================================================================
 # Bedrock Provider Tests
 # =============================================================================
+
 
 class TestBedrockProvider:
     """Test AWS Bedrock provider."""
@@ -298,9 +294,11 @@ class TestBedrockProvider:
         """Should raise error if boto3 not installed."""
         provider = BedrockProvider()
 
-        with patch.dict("sys.modules", {"boto3": None}):
-            with pytest.raises(ProviderError, match="boto3 not installed"):
-                provider._get_client()
+        with (
+            patch.dict("sys.modules", {"boto3": None}),
+            pytest.raises(ProviderError, match="boto3 not installed"),
+        ):
+            provider._get_client()
 
     @pytest.mark.asyncio
     async def test_complete_claude_model(self):
@@ -308,11 +306,12 @@ class TestBedrockProvider:
         provider = BedrockProvider()
 
         mock_response_body = MagicMock()
-        mock_response_body.read.return_value = b'{"content": [{"text": "Bedrock Claude!"}], "usage": {"input_tokens": 15, "output_tokens": 8}}'
+        mock_response_body.read.return_value = (
+            b'{"content": [{"text": "Bedrock Claude!"}], '
+            b'"usage": {"input_tokens": 15, "output_tokens": 8}}'
+        )
 
-        mock_response = {
-            "body": mock_response_body
-        }
+        mock_response = {"body": mock_response_body}
 
         with patch.object(provider, "_get_client") as mock_get_client:
             mock_client = MagicMock()
@@ -332,6 +331,7 @@ class TestBedrockProvider:
 # init_providers() Tests
 # =============================================================================
 
+
 class TestInitProviders:
     """Test provider initialization function."""
 
@@ -344,54 +344,63 @@ class TestInitProviders:
 
     def test_init_mistral(self):
         """Should initialize Mistral when key is set."""
-        with patch.dict("os.environ", {"MISTRAL_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "mistral" in providers
-                assert isinstance(providers["mistral"], MistralProvider)
+        with (
+            patch.dict("os.environ", {"MISTRAL_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "mistral" in providers
+            assert isinstance(providers["mistral"], MistralProvider)
 
     def test_init_fireworks(self):
         """Should initialize Fireworks when key is set."""
-        with patch.dict("os.environ", {"FIREWORKS_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "fireworks" in providers
-                assert isinstance(providers["fireworks"], FireworksProvider)
+        with (
+            patch.dict("os.environ", {"FIREWORKS_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "fireworks" in providers
+            assert isinstance(providers["fireworks"], FireworksProvider)
 
     def test_init_cohere(self):
         """Should initialize Cohere when key is set."""
-        with patch.dict("os.environ", {"COHERE_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "cohere" in providers
-                assert isinstance(providers["cohere"], CohereProvider)
+        with (
+            patch.dict("os.environ", {"COHERE_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "cohere" in providers
+            assert isinstance(providers["cohere"], CohereProvider)
 
     def test_init_ollama_when_available(self):
         """Should initialize Ollama when server is running."""
-        with patch.dict("os.environ", {}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=True):
-                providers = init_providers()
-                assert "ollama" in providers
-                assert isinstance(providers["ollama"], OllamaProvider)
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=True),
+        ):
+            providers = init_providers()
+            assert "ollama" in providers
+            assert isinstance(providers["ollama"], OllamaProvider)
 
     def test_init_ollama_when_unavailable(self):
         """Should not initialize Ollama when server not running."""
-        with patch.dict("os.environ", {}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "ollama" not in providers
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "ollama" not in providers
 
     def test_init_bedrock(self):
         """Should initialize Bedrock when AWS credentials are set."""
-        env = {
-            "AWS_ACCESS_KEY_ID": "test-access-key",
-            "AWS_SECRET_ACCESS_KEY": "test-secret-key"
-        }
-        with patch.dict("os.environ", env, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "bedrock" in providers
-                assert isinstance(providers["bedrock"], BedrockProvider)
+        env = {"AWS_ACCESS_KEY_ID": "test-access-key", "AWS_SECRET_ACCESS_KEY": "test-secret-key"}
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "bedrock" in providers
+            assert isinstance(providers["bedrock"], BedrockProvider)
 
     def test_init_multiple_providers(self):
         """Should initialize all configured providers."""
@@ -401,18 +410,21 @@ class TestInitProviders:
             "COHERE_API_KEY": "cohere-key",
             "GOOGLE_API_KEY": "gemini-key",
         }
-        with patch.dict("os.environ", env, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "mistral" in providers
-                assert "fireworks" in providers
-                assert "cohere" in providers
-                assert "gemini" in providers
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "mistral" in providers
+            assert "fireworks" in providers
+            assert "cohere" in providers
+            assert "gemini" in providers
 
 
 # =============================================================================
 # Error Handling Tests
 # =============================================================================
+
 
 class TestProviderErrorHandling:
     """Test error handling across providers."""
@@ -423,6 +435,7 @@ class TestProviderErrorHandling:
         provider = MistralProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")
@@ -437,6 +450,7 @@ class TestProviderErrorHandling:
         provider = FireworksProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")
@@ -451,6 +465,7 @@ class TestProviderErrorHandling:
         provider = CohereProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")
@@ -465,6 +480,7 @@ class TestProviderErrorHandling:
         provider = OllamaProvider()
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("Connection refused")

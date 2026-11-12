@@ -4,21 +4,22 @@ Tests for Subscription Tracking REST API Endpoints
 Test FastAPI router endpoints for subscription management.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import MagicMock
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.subscriptions import router
 from app.auth import get_current_user_id
+from app.routers.subscriptions import router
 from app.services.subscription_service import get_subscription_service
-
 
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def mock_supabase():
@@ -68,7 +69,7 @@ def sample_subscription_data():
         "external_subscription_id": None,
         "external_customer_id": None,
         "created_at": datetime.now().isoformat(),
-        "updated_at": None
+        "updated_at": None,
     }
 
 
@@ -103,6 +104,7 @@ def client(test_app):
 # Create Subscription Tests
 # =============================================================================
 
+
 class TestCreateSubscriptionEndpoint:
     """Test POST /subscriptions endpoint."""
 
@@ -116,8 +118,8 @@ class TestCreateSubscriptionEndpoint:
                 "service_name": "Anthropic",
                 "monthly_cost": 50.00,
                 "category": "llm_provider",
-                "billing_day": 15
-            }
+                "billing_day": 15,
+            },
         )
 
         assert response.status_code == 201
@@ -131,8 +133,8 @@ class TestCreateSubscriptionEndpoint:
             "/subscriptions",
             json={
                 "service_name": "",  # Invalid: empty string
-                "monthly_cost": -10  # Invalid: negative
-            }
+                "monthly_cost": -10,  # Invalid: negative
+            },
         )
 
         assert response.status_code == 422
@@ -142,10 +144,13 @@ class TestCreateSubscriptionEndpoint:
 # Get Subscriptions Tests
 # =============================================================================
 
+
 class TestGetSubscriptionsEndpoint:
     """Test GET /subscriptions endpoint."""
 
-    @pytest.mark.skip(reason="Requires real Supabase - mock chain not working with dependency override")
+    @pytest.mark.skip(
+        reason="Requires real Supabase - mock chain not working with dependency override"
+    )
     def test_get_subscriptions_success(self, client, mock_supabase, sample_subscription_data):
         """Should return list of subscriptions."""
         # Set up the mock chain properly
@@ -165,7 +170,9 @@ class TestGetSubscriptionsEndpoint:
         assert "subscriptions" in data
         assert len(data["subscriptions"]) == 1
 
-    def test_get_subscriptions_with_category_filter(self, client, mock_supabase, sample_subscription_data):
+    def test_get_subscriptions_with_category_filter(
+        self, client, mock_supabase, sample_subscription_data
+    ):
         """Should filter by category."""
         mock_supabase.execute.return_value.data = [sample_subscription_data]
 
@@ -188,6 +195,7 @@ class TestGetSubscriptionsEndpoint:
 # =============================================================================
 # Get Subscription by ID Tests
 # =============================================================================
+
 
 class TestGetSubscriptionByIdEndpoint:
     """Test GET /subscriptions/{id} endpoint."""
@@ -215,6 +223,7 @@ class TestGetSubscriptionByIdEndpoint:
 # Update Subscription Tests
 # =============================================================================
 
+
 class TestUpdateSubscriptionEndpoint:
     """Test PUT /subscriptions/{id} endpoint."""
 
@@ -224,10 +233,7 @@ class TestUpdateSubscriptionEndpoint:
         updated_data["monthly_cost"] = "75.00"
         mock_supabase.execute.return_value.data = [updated_data]
 
-        response = client.put(
-            "/subscriptions/sub-123",
-            json={"monthly_cost": 75.00}
-        )
+        response = client.put("/subscriptions/sub-123", json={"monthly_cost": 75.00})
 
         assert response.status_code == 200
         data = response.json()
@@ -237,10 +243,7 @@ class TestUpdateSubscriptionEndpoint:
         """Should return 404 for non-existent subscription."""
         mock_supabase.execute.return_value.data = []
 
-        response = client.put(
-            "/subscriptions/sub-nonexistent",
-            json={"monthly_cost": 75.00}
-        )
+        response = client.put("/subscriptions/sub-nonexistent", json={"monthly_cost": 75.00})
 
         assert response.status_code == 404
 
@@ -248,6 +251,7 @@ class TestUpdateSubscriptionEndpoint:
 # =============================================================================
 # Delete Subscription Tests
 # =============================================================================
+
 
 class TestDeleteSubscriptionEndpoint:
     """Test DELETE /subscriptions/{id} endpoint."""
@@ -276,17 +280,20 @@ class TestDeleteSubscriptionEndpoint:
 # Spend Summary Tests
 # =============================================================================
 
+
 class TestSpendSummaryEndpoint:
     """Test GET /subscriptions/summary endpoint."""
 
     def test_get_spend_summary_success(self, client, mock_supabase):
         """Should return spend summary."""
-        mock_supabase.rpc.return_value.execute.return_value.data = [{
-            "total_monthly_cost": "150.00",
-            "total_yearly_cost": "1800.00",
-            "active_subscriptions": 5,
-            "by_category": {"llm_provider": "100.00", "infrastructure": "50.00"}
-        }]
+        mock_supabase.rpc.return_value.execute.return_value.data = [
+            {
+                "total_monthly_cost": "150.00",
+                "total_yearly_cost": "1800.00",
+                "active_subscriptions": 5,
+                "by_category": {"llm_provider": "100.00", "infrastructure": "50.00"},
+            }
+        ]
 
         response = client.get("/subscriptions/summary")
 
@@ -299,6 +306,7 @@ class TestSpendSummaryEndpoint:
 # =============================================================================
 # Upcoming Alerts Tests
 # =============================================================================
+
 
 class TestUpcomingAlertsEndpoint:
     """Test GET /subscriptions/upcoming endpoint."""
@@ -314,7 +322,7 @@ class TestUpcomingAlertsEndpoint:
                 "monthly_cost": "50.00",
                 "next_billing_date": tomorrow,
                 "days_until_billing": 1,
-                "alert_days_before": 3
+                "alert_days_before": 3,
             }
         ]
 
@@ -339,10 +347,13 @@ class TestUpcomingAlertsEndpoint:
 # Usage Recording Tests
 # =============================================================================
 
+
 class TestRecordUsageEndpoint:
     """Test POST /subscriptions/{id}/usage endpoint."""
 
-    @pytest.mark.skip(reason="Requires real Supabase - mock chain not working with dependency override")
+    @pytest.mark.skip(
+        reason="Requires real Supabase - mock chain not working with dependency override"
+    )
     def test_record_usage_success(self, client, mock_supabase, sample_subscription_data):
         """Should record usage."""
         # Set up mock chain for subscription check and usage insert
@@ -353,7 +364,7 @@ class TestRecordUsageEndpoint:
 
         # For subscription exists check: returns subscription
         # For usage insert: returns usage record
-        usage_data = {
+        {
             "id": "usage-123",
             "subscription_id": "sub-1",
             "user_id": "test-user-123",
@@ -363,7 +374,7 @@ class TestRecordUsageEndpoint:
             "usage_unit": "tokens",
             "cost_usd": "15.50",
             "breakdown": None,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         }
 
         # Use side_effect to return different data on successive calls
@@ -377,8 +388,8 @@ class TestRecordUsageEndpoint:
                 "period_end": "2024-12-31",
                 "usage_amount": 1000000,
                 "usage_unit": "tokens",
-                "cost_usd": 15.50
-            }
+                "cost_usd": 15.50,
+            },
         )
 
         # The endpoint first checks subscription exists, then records usage
@@ -388,6 +399,7 @@ class TestRecordUsageEndpoint:
 # =============================================================================
 # Import Tests
 # =============================================================================
+
 
 class TestImportSubscriptionsEndpoint:
     """Test POST /subscriptions/import endpoint."""
@@ -403,8 +415,8 @@ class TestImportSubscriptionsEndpoint:
             "/subscriptions/import",
             json={
                 "csv_data": "service_name,monthly_cost\nAnthropic,50.00",
-                "skip_duplicates": True
-            }
+                "skip_duplicates": True,
+            },
         )
 
         assert response.status_code == 200

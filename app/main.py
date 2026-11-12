@@ -1,42 +1,55 @@
 """FastAPI service for AI Cost Optimizer."""
-import asyncio
-import os
-import logging
-import sqlite3
-from typing import Optional, List
-from contextlib import asynccontextmanager
-from datetime import datetime
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from dotenv import load_dotenv
 
-from .providers import init_providers
-from app.services.routing_service import RoutingService
-from app.auth import get_current_user_id, OptionalAuth
-from app.models.feedback import FeedbackRequest as ProductionFeedbackRequest, FeedbackResponse as ProductionFeedbackResponse
-from app.database.feedback_store import FeedbackStore
-from app.models.admin import (
-    FeedbackSummary, LearningStatus,
-    RetrainingResult, PerformanceTrends
-)
-from app.learning.feedback_trainer import FeedbackTrainer
-from app.services.admin_service import get_admin_service
-from app.scheduler import RetrainingScheduler
+import asyncio
+import logging
+import os
+import sqlite3
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
+
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+from app.auth import CompleteAuth, OptionalAuth, get_current_user_id, require_admin
+from app.billing import StripeClient
 from app.cache import create_redis_cache
-from app.routers import experiments
+from app.database.feedback_store import FeedbackStore
 from app.experiments.tracker import ExperimentTracker
+from app.learning.feedback_trainer import FeedbackTrainer
+from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
+from app.models.admin import FeedbackSummary, LearningStatus, PerformanceTrends, RetrainingResult
+from app.models.feedback import FeedbackRequest as ProductionFeedbackRequest
+from app.models.feedback import FeedbackResponse as ProductionFeedbackResponse
+from app.network.ssrf import UnsafeURLError
 
 # Monetization imports
-from app.routers import api_keys, billing, enterprise
-
 # New feature imports (Sprint Dec 27)
-from app.routers import arbitrage, forecasting, status, subscriptions, telemetry
+from app.routers import (
+    api_keys,
+    arbitrage,
+    billing,
+    enterprise,
+    experiments,
+    forecasting,
+    status,
+    subscriptions,
+    telemetry,
+)
 from app.routers.api_keys import init_api_key_service
 from app.routers.billing import init_billing_router
-from app.middleware import APIKeyMiddleware, QuotaEnforcementMiddleware
-from app.billing import StripeClient
+from app.scheduler import RetrainingScheduler
+from app.services.admin_service import get_admin_service
 from app.services.billing_service import BillingService
+from app.services.routing_service import RoutingService
+
+from .providers import NoProvidersConfiguredError, init_providers
+from .tokenizer_registry import TokenizerNotAllowedError, validate_tokenizer_id
+from .version import __version__
 
 # Load environment variables
 load_dotenv()
@@ -44,25 +57,26 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 # Initialize retraining scheduler (before lifespan)
 scheduler = None
 
-if os.getenv('ENABLE_SCHEDULER', 'true').lower() == 'true':
+if os.getenv("ENABLE_SCHEDULER", "true").lower() == "true":
     scheduler = RetrainingScheduler()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Manage application lifespan events."""
     # Startup
     logger.info("🚀 Starting AI Cost Optimizer with Supabase + Semantic Caching...")
 
     # Initialize Supabase client (singleton)
     from app.database import get_supabase_client
+
     supabase_client = get_supabase_client()
     app.state.supabase_client = supabase_client  # Store for middleware access
     logger.info("✅ Supabase client initialized")
@@ -70,6 +84,7 @@ async def lifespan(app: FastAPI):
     # Warm up embedding generator (load ML model)
     try:
         from app.embeddings import get_embedding_generator
+
         embeddings = get_embedding_generator()
         embeddings.warmup()  # Pre-load model to avoid cold start
         dim = embeddings.get_embedding_dimension()
@@ -85,6 +100,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize admin service with scheduler (for next_scheduled_run info)
     from app.services.admin_service import get_admin_service
+
     get_admin_service(scheduler=scheduler)
     logger.info("✅ Admin service initialized")
 
@@ -136,11 +152,13 @@ async def lifespan(app: FastAPI):
 
     # Close Supabase client
     from app.database import close_supabase_client
+
     await close_supabase_client()
     logger.info("✅ Supabase client closed")
 
     # Release embedding model from memory
     from app.embeddings import close_embedding_generator
+
     close_embedding_generator()
     logger.info("✅ Embedding model released")
 
@@ -151,22 +169,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Cost Optimizer",
     description="Smart multi-LLM routing for cost optimization",
-    version="1.0.0",
-    lifespan=lifespan
+    version=__version__,
+    lifespan=lifespan,
 )
 
-# Add CORS middleware (configurable via environment)
-cors_origins = os.getenv("CORS_ORIGINS", "*")
-# Parse comma-separated origins or use "*" for all
-if cors_origins == "*":
-    allow_origins = ["*"]
-else:
-    allow_origins = [origin.strip() for origin in cors_origins.split(",")]
+
+def resolve_cors_settings() -> tuple[list[str], bool]:
+    """Return (allowed origins, allow_credentials) from CORS_ORIGINS.
+
+    Unset or empty means no cross-origin access. A comma-separated list is used as given and
+    may carry credentials. A bare "*" is honored for public, credential-free use only: the
+    wildcard is never combined with credentials.
+    """
+    raw = os.getenv("CORS_ORIGINS", "").strip()
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if "*" in origins:
+        return ["*"], False
+    return origins, bool(origins)
+
+
+# CORS: no origins unless CORS_ORIGINS names them (see .env.example)
+allow_origins, allow_credentials = resolve_cors_settings()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -209,7 +237,7 @@ providers = init_providers()
 routing_service = RoutingService(
     providers=providers,
     user_id=None,  # Admin mode (no RLS filtering) for backward compatibility
-    db_path=os.getenv("DATABASE_PATH", "optimizer.db")  # Legacy parameter
+    db_path=os.getenv("DATABASE_PATH", "optimizer.db"),  # Legacy parameter
 )
 experiment_tracker = ExperimentTracker(db_path=os.getenv("DATABASE_PATH", "optimizer.db"))
 feedback_store = FeedbackStore()
@@ -219,11 +247,7 @@ feedback_trainer = FeedbackTrainer()
 metrics_cache = create_redis_cache()
 
 # Cache hit/miss statistics for monitoring (with thread-safe lock)
-metrics_cache_stats = {
-    "hits": 0,
-    "misses": 0,
-    "errors": 0
-}
+metrics_cache_stats = {"hits": 0, "misses": 0, "errors": 0}
 metrics_cache_stats_lock = asyncio.Lock()
 
 logger.info(f"AI Cost Optimizer initialized with providers: {list(providers.keys())}")
@@ -242,23 +266,34 @@ logger.info(f"Metrics cache initialized: Redis available = {metrics_cache.ping()
 # Request/Response models
 class CompleteRequest(BaseModel):
     """Request model for completion endpoint."""
+
     prompt: str = Field(..., min_length=1, description="User prompt")
-    max_tokens: Optional[int] = Field(1000, ge=1, le=4000, description="Maximum response tokens")
+    max_tokens: int | None = Field(1000, ge=1, le=4000, description="Maximum response tokens")
     auto_route: bool = Field(False, description="Enable intelligent routing (hybrid strategy)")
-    provider: Optional[str] = Field(None, description="Force specific provider (cerebras, openrouter, groq, together)")
-    tokenizer_id: Optional[str] = Field(None, description="Optional HF repo id for tokenization metrics (e.g., 'UW/OLMo2-8B-SuperBPE-t180k')")
-    user_id: Optional[str] = Field(None, description="User ID for A/B testing experiments")
+    provider: str | None = Field(
+        None, description="Force specific provider (cerebras, openrouter, groq, together)"
+    )
+    tokenizer_id: str | None = Field(
+        None,
+        description=(
+            "Optional HF repo id for tokenization metrics (e.g., 'UW/OLMo2-8B-SuperBPE-t180k')"
+        ),
+    )
+    user_id: str | None = Field(
+        None, description="Ignored. The caller is the subject of the Authorization token."
+    )
 
 
 class CompleteResponse(BaseModel):
     """Response model for completion endpoint."""
-    request_id: str     # NEW: Unique request ID for feedback tracking
+
+    request_id: str  # NEW: Unique request ID for feedback tracking
     response: str
     provider: str
     model: str
     strategy_used: str  # NEW: "complexity", "learning", "hybrid", "cached"
-    confidence: str     # NEW: "high", "medium", "low"
-    complexity: str     # DEPRECATED but kept for compatibility
+    confidence: str  # NEW: "high", "medium", "low"
+    complexity: str  # DEPRECATED but kept for compatibility
     complexity_metadata: dict
     routing_metadata: dict  # NEW: Full RoutingDecision.metadata
     tokens_in: int
@@ -266,20 +301,21 @@ class CompleteResponse(BaseModel):
     cost: float
     total_cost_today: float
     cache_hit: bool = False
-    original_cost: Optional[float] = None
+    original_cost: float | None = None
     savings: float = 0.0
-    cache_key: Optional[str] = None
-    tokenizer_id: Optional[str] = None
-    tokenizer_tokens_in: Optional[int] = None
-    tokenizer_bytes_per_token: Optional[float] = None
-    tokenizer_tokens_per_byte: Optional[float] = None
+    cache_key: str | None = None
+    tokenizer_id: str | None = None
+    tokenizer_tokens_in: int | None = None
+    tokenizer_bytes_per_token: float | None = None
+    tokenizer_tokens_per_byte: float | None = None
     # A/B Testing Experiment Fields
-    experiment_id: Optional[int] = None
-    assigned_strategy: Optional[str] = None
+    experiment_id: int | None = None
+    assigned_strategy: str | None = None
 
 
 class StatsResponse(BaseModel):
     """Response model for stats endpoint."""
+
     overall: dict
     by_provider: list
     by_complexity: list
@@ -288,44 +324,75 @@ class StatsResponse(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """Request model for feedback endpoint."""
+
     cache_key: str = Field(..., min_length=1, description="Cache key of response to rate")
     rating: int = Field(..., ge=-1, le=1, description="1 for upvote, -1 for downvote")
-    comment: Optional[str] = Field(None, max_length=500, description="Optional feedback comment")
+    comment: str | None = Field(None, max_length=500, description="Optional feedback comment")
 
 
 class FeedbackResponse(BaseModel):
     """Response model for feedback endpoint."""
+
     success: bool
     cache_key: str
-    quality_score: Optional[float]
+    quality_score: float | None
     invalidated: bool
     message: str
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Last-resort handler: log the real error, return nothing about it to the caller."""
+    request_id = uuid.uuid4().hex
+    logger.error(
+        "Unhandled error on %s %s (request_id=%s): %s",
+        request.method,
+        request.url.path,
+        request_id,
+        exc,
+        exc_info=exc,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "internal error", "request_id": request_id},
+    )
+
+
+DEFAULT_MAX_PROMPT_CHARS = 100_000
+
+
+def max_prompt_chars() -> int:
+    """MAX_PROMPT_CHARS as a positive int; unset, empty, or invalid means the default."""
+    try:
+        value = int(os.getenv("MAX_PROMPT_CHARS", ""))
+    except ValueError:
+        return DEFAULT_MAX_PROMPT_CHARS
+    return value if value > 0 else DEFAULT_MAX_PROMPT_CHARS
+
+
 # API Endpoints
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, Any]:
     """Health check endpoint."""
     return {
         "status": "healthy",
         "providers_available": list(routing_service.providers.keys()),
         "routing_engine": "v2",  # Phase 2 Auto-Routing with RoutingEngine
         "auto_route_enabled": routing_service.engine.track_metrics,
-        "version": "2.0.0"  # Phase 2 FastAPI Integration
+        "version": __version__,
     }
 
 
 @app.post("/complete", response_model=CompleteResponse)
 async def complete_prompt(
-    request: CompleteRequest,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    request: CompleteRequest, user_id: str | None = Depends(CompleteAuth())
+) -> CompleteResponse:
     """
     Route and complete a prompt using optimal provider with caching.
     NOW WITH A/B TESTING INTEGRATION.
 
     This is the main endpoint that:
-    1. Checks for active A/B experiments (if user_id provided)
+    1. Checks for active A/B experiments (for the authenticated user)
     2. Assigns user to control/test group and overrides routing strategy
     3. Checks response cache for instant results
     4. Routes using RoutingEngine (complexity or hybrid based on auto_route)
@@ -336,7 +403,7 @@ async def complete_prompt(
     9. Invalidates metrics cache on new data
 
     Args:
-        request: CompleteRequest with prompt, max_tokens, auto_route, and optional user_id
+        request: CompleteRequest with prompt, max_tokens, auto_route (a body user_id is ignored)
 
     Returns:
         CompleteResponse with response text, metadata, cost, and experiment info
@@ -344,35 +411,47 @@ async def complete_prompt(
     Raises:
         HTTPException: If routing or completion fails
     """
+    # Refuse an oversized prompt before any routing or provider spend
+    max_chars = max_prompt_chars()
+    if len(request.prompt) > max_chars:
+        too_long = f"Prompt is too long: the limit is {max_chars} characters"
+        raise HTTPException(status_code=413, detail=too_long)
+
+    # Refuse a tokenizer outside the allowlist before any routing or provider spend
+    if request.tokenizer_id:
+        try:
+            validate_tokenizer_id(request.tokenizer_id)
+        except TokenizerNotAllowedError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     # A/B Testing Integration: Initialize experiment variables
     experiment_id = None
     assigned_strategy = None
-    original_auto_route = request.auto_route  # Save original for logging
 
-    # 1. Check for active experiments if user_id provided
-    if request.user_id:
+    # 1. Check for active experiments; the subject of the verified token is the only identity
+    if user_id:
         try:
             active_experiments = experiment_tracker.get_active_experiments()
 
             if active_experiments:
                 # Use first active experiment
                 experiment = active_experiments[0]
-                experiment_id = experiment['id']
+                experiment_id = experiment["id"]
 
                 # 2. Assign user to control/test group (deterministic)
-                assigned_strategy = experiment_tracker.assign_user(experiment_id, request.user_id)
+                assigned_strategy = experiment_tracker.assign_user(experiment_id, user_id)
 
                 # 3. Override auto_route based on assigned strategy
                 # Map experiment strategy to routing configuration
                 strategy_map = {
-                    'complexity': False,   # Complexity-based routing (auto_route=False)
-                    'learning': True,      # Learning-based routing (auto_route=True)
-                    'hybrid': True         # Hybrid routing (auto_route=True)
+                    "complexity": False,  # Complexity-based routing (auto_route=False)
+                    "learning": True,  # Learning-based routing (auto_route=True)
+                    "hybrid": True,  # Hybrid routing (auto_route=True)
                 }
                 request.auto_route = strategy_map.get(assigned_strategy, request.auto_route)
 
                 logger.info(
-                    f"A/B Test: User {request.user_id} assigned to '{assigned_strategy}' "
+                    f"A/B Test: User {user_id} assigned to '{assigned_strategy}' "
                     f"(experiment {experiment_id}). Routing: auto_route={request.auto_route}"
                 )
         except Exception as e:
@@ -387,28 +466,29 @@ async def complete_prompt(
             prompt=request.prompt,
             auto_route=request.auto_route,
             max_tokens=request.max_tokens,
-            provider_override=request.provider
+            provider_override=request.provider,
+            user_id=user_id,
         )
 
         # 4. Record experiment result if in experiment
-        if experiment_id and request.user_id and assigned_strategy:
+        if experiment_id and user_id and assigned_strategy:
             try:
                 # Extract latency from routing metadata
                 latency_ms = result.get("routing_metadata", {}).get("latency_ms", 0.0)
 
                 experiment_tracker.record_result(
                     experiment_id=experiment_id,
-                    user_id=request.user_id,
+                    user_id=user_id,
                     strategy_assigned=assigned_strategy,
                     latency_ms=latency_ms,
                     cost_usd=result["cost"],
                     quality_score=None,  # Will be updated via feedback API
                     provider=result["provider"],
-                    model=result["model"]
+                    model=result["model"],
                 )
 
                 logger.info(
-                    f"A/B Test: Recorded result for user {request.user_id} "
+                    f"A/B Test: Recorded result for user {user_id} "
                     f"(experiment {experiment_id}, strategy '{assigned_strategy}')"
                 )
             except Exception as e:
@@ -432,6 +512,7 @@ async def complete_prompt(
         if tokenizer_id and not result["cache_hit"]:
             try:
                 from .tokenizer_registry import estimate_tokenization_metrics
+
                 est = estimate_tokenization_metrics(request.prompt, tokenizer_id)
                 if est is not None:
                     tokenizer_tokens_in, tokenizer_bytes_per_token, tokenizer_tokens_per_byte = est
@@ -465,15 +546,16 @@ async def complete_prompt(
             assigned_strategy=assigned_strategy,
         )
 
+    except NoProvidersConfiguredError as e:
+        logger.warning(str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        logger.error(f"Unexpected error in /complete: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/stats", response_model=StatsResponse)
-async def get_usage_stats(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_usage_stats(user_id: str | None = Depends(CompleteAuth())) -> StatsResponse:
     """
     Get usage statistics from database.
 
@@ -487,11 +569,11 @@ async def get_usage_stats(
 
     except Exception as e:
         logger.error(f"Error fetching stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/providers")
-async def list_providers():
+async def list_providers() -> dict[str, Any]:
     """
     List all available providers and their models.
 
@@ -504,27 +586,26 @@ async def list_providers():
             "gemini": {
                 "name": "gemini-1.5-flash",
                 "pricing": {"input_per_1m": "$0.075", "output_per_1m": "$0.30"},
-                "recommended_for": "Simple queries, free tier available"
+                "recommended_for": "Simple queries, free tier available",
             },
             "claude": {
                 "name": "claude-3-haiku-20240307",
                 "pricing": {"input_per_1m": "$0.25", "output_per_1m": "$1.25"},
-                "recommended_for": "Complex queries, best quality/cost balance"
+                "recommended_for": "Complex queries, best quality/cost balance",
             },
             "openrouter": {
                 "name": "multiple models",
                 "pricing": {"input_per_1m": "Varies", "output_per_1m": "Varies"},
-                "recommended_for": "Fallback aggregator for all models"
-            }
-        }
+                "recommended_for": "Fallback aggregator for all models",
+            },
+        },
     }
 
 
 @app.get("/recommendation")
 async def get_recommendation(
-    prompt: str,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    prompt: str, user_id: str | None = Depends(CompleteAuth())
+) -> dict[str, Any]:
     """
     Get routing recommendation without executing request.
 
@@ -542,13 +623,11 @@ async def get_recommendation(
 
     except Exception as e:
         logger.error(f"Error getting recommendation: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/routing/metrics")
-async def get_routing_metrics(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_routing_metrics(user_id: str | None = Depends(CompleteAuth())) -> dict[str, Any]:
     """
     Get auto-routing analytics for monitoring and ROI tracking with Redis caching.
 
@@ -599,15 +678,13 @@ async def get_routing_metrics(
 
     except Exception as e:
         logger.error(f"Error fetching routing metrics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/routing/decision")
 async def get_routing_decision(
-    prompt: str,
-    auto_route: bool = True,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    prompt: str, auto_route: bool = True, user_id: str | None = Depends(CompleteAuth())
+) -> dict[str, Any]:
     """
     Get detailed routing explanation for debugging and transparency.
 
@@ -630,20 +707,21 @@ async def get_routing_decision(
                 "model": recommendation["model"],
                 "confidence": recommendation["confidence"],
                 "strategy_used": recommendation["strategy_used"],
-                "reasoning": recommendation["reasoning"]
+                "reasoning": recommendation["reasoning"],
             },
-            "metadata": recommendation["metadata"]
+            "metadata": recommendation["metadata"],
         }
 
+    except NoProvidersConfiguredError as e:
+        logger.warning(str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Error getting routing decision: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/cache/stats")
-async def get_cache_stats(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_cache_stats(user_id: str | None = Depends(CompleteAuth())) -> dict[str, Any]:
     """
     Get response cache statistics.
 
@@ -661,13 +739,11 @@ async def get_cache_stats(
 
     except Exception as e:
         logger.error(f"Error fetching cache stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/metrics-cache/stats")
-async def get_metrics_cache_stats(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_metrics_cache_stats(user_id: str | None = Depends(CompleteAuth())) -> dict[str, Any]:
     """
     Get metrics cache performance statistics (Redis caching for /routing/metrics).
 
@@ -698,9 +774,7 @@ async def get_metrics_cache_stats(
 
     # Perform I/O AFTER releasing lock in non-blocking manner
     loop = asyncio.get_event_loop()
-    stats_snapshot["redis_available"] = await loop.run_in_executor(
-        None, metrics_cache.ping
-    )
+    stats_snapshot["redis_available"] = await loop.run_in_executor(None, metrics_cache.ping)
 
     return stats_snapshot
 
@@ -708,9 +782,9 @@ async def get_metrics_cache_stats(
 @app.post("/feedback", response_model=FeedbackResponse)
 async def submit_feedback(
     request: FeedbackRequest,
-    user_agent: Optional[str] = None,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    user_agent: str | None = None,
+    user_id: str | None = Depends(OptionalAuth()),
+) -> FeedbackResponse:
     """
     Submit user feedback (thumbs up/down) for a cached response.
 
@@ -731,23 +805,30 @@ async def submit_feedback(
             cache_key=request.cache_key,
             rating=request.rating,
             comment=request.comment,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
 
         # Update quality score (may trigger invalidation)
         quality_score = routing_service.cost_tracker.update_quality_score(request.cache_key)
 
         # Check if entry was invalidated
-        conn = routing_service.cost_tracker._CostTracker__get_connection() if hasattr(routing_service.cost_tracker, '_CostTracker__get_connection') else None
+        conn = (
+            routing_service.cost_tracker._CostTracker__get_connection()
+            if hasattr(routing_service.cost_tracker, "_CostTracker__get_connection")
+            else None
+        )
         if not conn:
             conn = sqlite3.connect(routing_service.cost_tracker.db_path)
 
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT invalidated FROM response_cache
             WHERE cache_key = ?
-        """, (request.cache_key,))
+        """,
+            (request.cache_key,),
+        )
         row = cursor.fetchone()
         invalidated = bool(row["invalidated"]) if row else False
         conn.close()
@@ -759,7 +840,10 @@ async def submit_feedback(
 
         message = "Thank you for your feedback!"
         if invalidated:
-            message = "Response invalidated due to low quality. Future requests will generate a fresh response."
+            message = (
+                "Response invalidated due to low quality. "
+                "Future requests will generate a fresh response."
+            )
         elif quality_score is not None and quality_score < 0.5:
             message = "Thank you for your feedback! This response is being monitored for quality."
 
@@ -768,22 +852,21 @@ async def submit_feedback(
             cache_key=request.cache_key,
             quality_score=quality_score,
             invalidated=invalidated,
-            message=message
+            message=message,
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     except Exception as e:
         logger.error(f"Error processing feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/production/feedback", response_model=ProductionFeedbackResponse)
 async def submit_production_feedback(
-    request: ProductionFeedbackRequest,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    request: ProductionFeedbackRequest, user_id: str = Depends(get_current_user_id)
+) -> ProductionFeedbackResponse:
     """Submit quality feedback for a request.
 
     This endpoint collects user feedback on response quality for the
@@ -804,27 +887,20 @@ async def submit_production_feedback(
             is_correct=request.is_correct,
             is_helpful=request.is_helpful,
             comment=request.comment,
-            user_id=user_id
+            user_id=user_id,
         )
 
         return ProductionFeedbackResponse(
-            status="recorded",
-            feedback_id=feedback_id,
-            message="Thank you for feedback"
+            status="recorded", feedback_id=feedback_id, message="Thank you for feedback"
         )
 
     except Exception as e:
         logger.error(f"Failed to store production feedback: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to store feedback"
-        )
+        raise HTTPException(status_code=500, detail="Failed to store feedback") from e
 
 
 @app.get("/quality/stats")
-async def get_quality_stats(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_quality_stats(user_id: str | None = Depends(CompleteAuth())) -> dict[str, Any]:
     """
     Get quality statistics across all cached responses.
 
@@ -841,18 +917,18 @@ async def get_quality_stats(
 
     except Exception as e:
         logger.error(f"Error fetching quality stats: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 # ============================================================================
 # ANALYTICS DASHBOARD ENDPOINTS
 # ============================================================================
 
+
 @app.get("/analytics/cache")
 async def get_cache_analytics(
-    days: int = 7,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    days: int = 7, user_id: str | None = Depends(CompleteAuth())
+) -> dict[str, Any]:
     """
     Get comprehensive cache analytics for the cost optimization dashboard.
 
@@ -906,20 +982,16 @@ async def get_cache_analytics(
         db = get_supabase_client()
 
         # Get per-provider analytics from Supabase
-        provider_analytics = await db.get_cache_analytics(
-            user_id=user_id,
-            days_back=days
-        )
+        provider_analytics = await db.get_cache_analytics(user_id=user_id, days_back=days)
 
         # Calculate summary metrics
-        total_entries = sum(p.get('total_entries', 0) for p in provider_analytics)
-        total_hits = sum(p.get('total_hits', 0) for p in provider_analytics)
+        total_entries = sum(p.get("total_entries", 0) for p in provider_analytics)
+        total_hits = sum(p.get("total_hits", 0) for p in provider_analytics)
         overall_hit_rate = (total_hits / total_entries) if total_entries > 0 else 0.0
 
         # Calculate weighted average quality
         weighted_quality_sum = sum(
-            p.get('avg_quality', 0) * p.get('total_entries', 0)
-            for p in provider_analytics
+            p.get("avg_quality", 0) * p.get("total_entries", 0) for p in provider_analytics
         )
         avg_quality = (weighted_quality_sum / total_entries) if total_entries > 0 else 0.0
 
@@ -933,29 +1005,31 @@ async def get_cache_analytics(
         if provider_analytics:
             # Find best and worst performing providers
             sorted_by_quality = sorted(
-                [p for p in provider_analytics if p.get('total_entries', 0) > 10],
-                key=lambda x: x.get('avg_quality', 0),
-                reverse=True
+                [p for p in provider_analytics if p.get("total_entries", 0) > 10],
+                key=lambda x: x.get("avg_quality", 0),
+                reverse=True,
             )
 
             if len(sorted_by_quality) >= 2:
                 best = sorted_by_quality[0]
                 worst = sorted_by_quality[-1]
 
-                if best.get('avg_quality', 0) - worst.get('avg_quality', 0) > 0.15:
+                if best.get("avg_quality", 0) - worst.get("avg_quality", 0) > 0.15:
                     recommendations.append(
                         f"{best['provider'].title()} has significantly higher quality "
-                        f"({best.get('avg_quality', 0):.2f} vs {worst.get('avg_quality', 0):.2f}) - "
+                        f"({best.get('avg_quality', 0):.2f} vs "
+                        f"{worst.get('avg_quality', 0):.2f}) - "
                         f"consider routing more complex queries there"
                     )
 
             # Find providers with high hit rates
             high_hit_rate = [
-                p for p in provider_analytics
-                if p.get('hit_rate', 0) > 2.0 and p.get('total_entries', 0) > 20
+                p
+                for p in provider_analytics
+                if p.get("hit_rate", 0) > 2.0 and p.get("total_entries", 0) > 20
             ]
             if high_hit_rate:
-                best_cache = max(high_hit_rate, key=lambda x: x.get('hit_rate', 0))
+                best_cache = max(high_hit_rate, key=lambda x: x.get("hit_rate", 0))
                 recommendations.append(
                     f"{best_cache['provider'].title()} has excellent cache reuse "
                     f"({best_cache.get('hit_rate', 0):.1f}x hit rate) - "
@@ -964,8 +1038,9 @@ async def get_cache_analytics(
 
             # Check for low quality providers
             low_quality = [
-                p for p in provider_analytics
-                if p.get('avg_quality', 0) < 0.5 and p.get('total_entries', 0) > 10
+                p
+                for p in provider_analytics
+                if p.get("avg_quality", 0) < 0.5 and p.get("total_entries", 0) > 10
             ]
             for p in low_quality:
                 recommendations.append(
@@ -985,22 +1060,21 @@ async def get_cache_analytics(
                 "overall_hit_rate": round(overall_hit_rate, 2),
                 "avg_quality": round(avg_quality, 2),
                 "estimated_savings_usd": round(estimated_savings, 2),
-                "days_analyzed": days
+                "days_analyzed": days,
             },
             "by_provider": provider_analytics,
-            "recommendations": recommendations
+            "recommendations": recommendations,
         }
 
     except Exception as e:
         logger.error(f"Error fetching cache analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/analytics/costs")
 async def get_cost_analytics(
-    days: int = 7,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    days: int = 7, user_id: str | None = Depends(CompleteAuth())
+) -> dict[str, Any]:
     """
     Get comprehensive cost analytics for the optimization dashboard.
 
@@ -1040,32 +1114,34 @@ async def get_cost_analytics(
         # Get cache stats for savings calculation
         cache_stats = await routing_service.cost_tracker.get_cache_stats()
 
-        overall = stats.get('overall', {})
-        total_cost = overall.get('total_cost', 0)
-        total_requests = overall.get('total_requests', 0)
+        overall = stats.get("overall", {})
+        total_cost = overall.get("total_cost", 0)
+        total_requests = overall.get("total_requests", 0)
 
         # Calculate cache savings
-        cache_hits = cache_stats.get('total_hits', 0)
+        cache_hits = cache_stats.get("total_hits", 0)
         estimated_cache_savings = cache_hits * 0.012  # ~$0.012 saved per cache hit
 
         # Calculate effective cost reduction
         original_cost = total_cost + estimated_cache_savings
         cost_reduction_percent = (
-            (estimated_cache_savings / original_cost * 100)
-            if original_cost > 0 else 0
+            (estimated_cache_savings / original_cost * 100) if original_cost > 0 else 0
         )
 
         # Calculate optimization score (0-100)
         # Based on: cache hit rate, cost efficiency, and quality
-        cache_entries = cache_stats.get('total_entries', 0)
+        cache_entries = cache_stats.get("total_entries", 0)
         cache_hit_rate = (cache_hits / cache_entries) if cache_entries > 0 else 0
-        quality_score = cache_stats.get('avg_quality_score', 0.5)
+        quality_score = cache_stats.get("avg_quality_score", 0.5)
 
-        optimization_score = min(100, int(
-            (cache_hit_rate * 30) +  # Up to 30 points for cache efficiency
-            (min(cost_reduction_percent, 50) * 1.0) +  # Up to 50 points for cost reduction
-            (quality_score * 20)  # Up to 20 points for quality
-        ))
+        optimization_score = min(
+            100,
+            int(
+                (cache_hit_rate * 30)  # Up to 30 points for cache efficiency
+                + (min(cost_reduction_percent, 50) * 1.0)  # Up to 50 points for cost reduction
+                + (quality_score * 20)  # Up to 20 points for quality
+            ),
+        )
 
         return {
             "summary": {
@@ -1076,28 +1152,26 @@ async def get_cost_analytics(
                 ),
                 "cache_savings_usd": round(estimated_cache_savings, 2),
                 "effective_cost_reduction_percent": round(cost_reduction_percent, 1),
-                "days_analyzed": days
+                "days_analyzed": days,
             },
-            "by_provider": stats.get('by_provider', []),
-            "by_complexity": stats.get('by_complexity', []),
+            "by_provider": stats.get("by_provider", []),
+            "by_complexity": stats.get("by_complexity", []),
             "optimization_score": optimization_score,
             "optimization_breakdown": {
                 "cache_efficiency_points": min(30, int(cache_hit_rate * 30)),
                 "cost_reduction_points": min(50, int(cost_reduction_percent)),
                 "quality_points": int(quality_score * 20),
-                "max_possible": 100
-            }
+                "max_possible": 100,
+            },
         }
 
     except Exception as e:
         logger.error(f"Error fetching cost analytics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 @app.get("/insights")
-async def get_learning_insights(
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+async def get_learning_insights(user_id: str | None = Depends(CompleteAuth())) -> dict[str, Any]:
     """Get intelligent routing insights from learning module.
 
     NOTE: This endpoint is being migrated to the new routing architecture.
@@ -1107,7 +1181,7 @@ async def get_learning_insights(
         "learning_active": False,
         "message": "This endpoint is deprecated. Please use /routing/metrics instead.",
         "migration_note": "Learning insights are being integrated into the new routing engine.",
-        "alternative_endpoint": "/routing/metrics"
+        "alternative_endpoint": "/routing/metrics",
     }
 
 
@@ -1115,11 +1189,11 @@ async def get_learning_insights(
 # PROVIDER USAGE TRACKING (Work vs Personal Accounts)
 # ============================================================================
 
+
 @app.get("/analytics/provider-usage")
 async def get_provider_usage(
-    days: int = 30,
-    user_id: Optional[str] = Depends(OptionalAuth())
-):
+    days: int = 30, user_id: str | None = Depends(CompleteAuth())
+) -> dict[str, Any]:
     """
     Get usage data from all configured provider accounts.
 
@@ -1143,7 +1217,12 @@ async def get_provider_usage(
                 {"provider": "openrouter", "account_label": "default", "balance_usd": 5.50}
             ],
             "usage_history": [
-                {"provider": "anthropic", "account_label": "work", "date": "2024-12-25", "cost_usd": 12.50}
+                {
+                    "provider": "anthropic",
+                    "account_label": "work",
+                    "date": "2024-12-25",
+                    "cost_usd": 12.50,
+                }
             ]
         }
     """
@@ -1154,54 +1233,62 @@ async def get_provider_usage(
         return result
     except Exception as e:
         logger.error(f"Error fetching provider usage: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="internal error") from e
 
 
 # ============================================================================
 # ADMIN ENDPOINTS
 # ============================================================================
 
-def _is_sqlite(conn) -> bool:
+
+def _is_sqlite(conn: object) -> bool:
     """Check if connection is SQLite."""
-    return hasattr(conn, 'row_factory')
+    return hasattr(conn, "row_factory")
 
 
-@app.get("/admin/feedback/summary", response_model=FeedbackSummary)
-async def get_feedback_summary(
-    current_user_id: Optional[str] = Depends(OptionalAuth())
-):
+# Every /admin/* route requires ADMIN_API_KEY (fail closed: 503 when it is unset). The admin
+# key is operator-level, so these calls read across all users (user_id=None), as before.
+@app.get(
+    "/admin/feedback/summary",
+    response_model=FeedbackSummary,
+    dependencies=[Depends(require_admin)],
+)
+async def get_feedback_summary() -> FeedbackSummary:
     """Get feedback statistics summary."""
     admin_service = get_admin_service()
-    result = await admin_service.get_feedback_summary(user_id=current_user_id)
+    result = await admin_service.get_feedback_summary(user_id=None)
 
     return FeedbackSummary(
-        total_feedback=result['total_feedback'],
-        avg_quality_score=result['avg_quality_score'],
-        models=result['models']
+        total_feedback=result["total_feedback"],
+        avg_quality_score=result["avg_quality_score"],
+        models=result["models"],
     )
 
 
-@app.get("/admin/learning/status", response_model=LearningStatus)
-async def get_learning_status(
-    current_user_id: Optional[str] = Depends(OptionalAuth())
-):
+@app.get(
+    "/admin/learning/status",
+    response_model=LearningStatus,
+    dependencies=[Depends(require_admin)],
+)
+async def get_learning_status() -> LearningStatus:
     """Get learning pipeline status."""
     admin_service = get_admin_service()
-    result = await admin_service.get_learning_status(user_id=current_user_id)
+    result = await admin_service.get_learning_status(user_id=None)
 
     return LearningStatus(
-        last_retraining_run=result['last_retraining_run'],
-        next_scheduled_run=result['next_scheduled_run'],
-        confidence_distribution=result['confidence_distribution'],
-        total_patterns=result['total_patterns']
+        last_retraining_run=result["last_retraining_run"],
+        next_scheduled_run=result["next_scheduled_run"],
+        confidence_distribution=result["confidence_distribution"],
+        total_patterns=result["total_patterns"],
     )
 
 
-@app.post("/admin/learning/retrain", response_model=RetrainingResult)
-async def trigger_retraining(
-    dry_run: bool = True,
-    current_user_id: Optional[str] = Depends(OptionalAuth())
-):
+@app.post(
+    "/admin/learning/retrain",
+    response_model=RetrainingResult,
+    dependencies=[Depends(require_admin)],
+)
+async def trigger_retraining(dry_run: bool = True) -> RetrainingResult:
     """Manually trigger retraining.
 
     Args:
@@ -1218,11 +1305,12 @@ async def trigger_retraining(
     return RetrainingResult(**result)
 
 
-@app.get("/admin/performance/trends", response_model=PerformanceTrends)
-async def get_performance_trends(
-    pattern: str,
-    current_user_id: Optional[str] = Depends(OptionalAuth())
-):
+@app.get(
+    "/admin/performance/trends",
+    response_model=PerformanceTrends,
+    dependencies=[Depends(require_admin)],
+)
+async def get_performance_trends(pattern: str) -> PerformanceTrends:
     """Get performance trends for a pattern.
 
     Args:
@@ -1232,47 +1320,47 @@ async def get_performance_trends(
         Performance trends over time
     """
     admin_service = get_admin_service()
-    trends = await admin_service.get_performance_trends(pattern=pattern, user_id=current_user_id)
+    trends = await admin_service.get_performance_trends(pattern=pattern, user_id=None)
 
-    return PerformanceTrends(
-        pattern=pattern,
-        trends=trends
-    )
+    return PerformanceTrends(pattern=pattern, trends=trends)
 
 
 # ============================================================================
 # BUDGET ALERTING ENDPOINTS
 # ============================================================================
 
+
 class BudgetConfigRequest(BaseModel):
     """Request model for budget configuration."""
+
     monthly_budget: float = Field(..., gt=0, description="Monthly budget in USD")
-    alert_thresholds: Optional[List[float]] = Field(
-        default=[0.5, 0.8, 0.9],
-        description="Alert thresholds as percentages (0.0-1.0)"
+    alert_thresholds: list[float] | None = Field(
+        default=[0.5, 0.8, 0.9], description="Alert thresholds as percentages (0.0-1.0)"
     )
-    alert_email: Optional[str] = Field(None, description="Email for alerts")
-    alert_webhook_url: Optional[str] = Field(None, description="Custom webhook URL")
-    slack_webhook_url: Optional[str] = Field(None, description="Slack webhook URL")
-    discord_webhook_url: Optional[str] = Field(None, description="Discord webhook URL")
+    alert_email: str | None = Field(None, description="Email for alerts")
+    alert_webhook_url: str | None = Field(None, description="Custom webhook URL")
+    slack_webhook_url: str | None = Field(None, description="Slack webhook URL")
+    discord_webhook_url: str | None = Field(None, description="Discord webhook URL")
     alert_cooldown_minutes: int = Field(60, ge=1, description="Cooldown between alerts")
 
 
 class BudgetConfigResponse(BaseModel):
     """Response model for budget configuration."""
+
     user_id: str
     monthly_budget: float
-    alert_thresholds: List[float]
-    alert_email: Optional[str]
-    alert_webhook_url: Optional[str]
-    slack_webhook_url: Optional[str]
-    discord_webhook_url: Optional[str]
+    alert_thresholds: list[float]
+    alert_email: str | None
+    alert_webhook_url: str | None
+    slack_webhook_url: str | None
+    discord_webhook_url: str | None
     alert_cooldown_minutes: int
     enabled: bool
 
 
 class BudgetStatusResponse(BaseModel):
     """Response model for budget status."""
+
     user_id: str
     current_spend: float
     monthly_budget: float
@@ -1282,14 +1370,14 @@ class BudgetStatusResponse(BaseModel):
     days_remaining: int
     daily_average: float
     projected_monthly: float
-    threshold_alerts: List[dict]
+    threshold_alerts: list[dict]
     status: str  # "healthy", "warning", "critical"
 
 
 @app.get("/budget/config", response_model=BudgetConfigResponse)
 async def get_budget_config(
-    current_user_id: str = Depends(get_current_user_id)
-):
+    current_user_id: str = Depends(get_current_user_id),
+) -> BudgetConfigResponse:
     """Get user's budget configuration."""
     from app.services.budget_alerting import get_budget_service
 
@@ -1314,23 +1402,26 @@ async def get_budget_config(
 
 @app.post("/budget/config", response_model=BudgetConfigResponse)
 async def set_budget_config(
-    request: BudgetConfigRequest,
-    current_user_id: str = Depends(get_current_user_id)
-):
+    request: BudgetConfigRequest, current_user_id: str = Depends(get_current_user_id)
+) -> BudgetConfigResponse:
     """Create or update budget configuration."""
     from app.services.budget_alerting import get_budget_service
 
     service = get_budget_service()
-    config = await service.set_budget_config(
-        user_id=current_user_id,
-        monthly_budget=request.monthly_budget,
-        alert_thresholds=request.alert_thresholds,
-        alert_email=request.alert_email,
-        alert_webhook_url=request.alert_webhook_url,
-        slack_webhook_url=request.slack_webhook_url,
-        discord_webhook_url=request.discord_webhook_url,
-        alert_cooldown_minutes=request.alert_cooldown_minutes,
-    )
+    try:
+        config = await service.set_budget_config(
+            user_id=current_user_id,
+            monthly_budget=request.monthly_budget,
+            alert_thresholds=request.alert_thresholds,
+            alert_email=request.alert_email,
+            alert_webhook_url=request.alert_webhook_url,
+            slack_webhook_url=request.slack_webhook_url,
+            discord_webhook_url=request.discord_webhook_url,
+            alert_cooldown_minutes=request.alert_cooldown_minutes,
+        )
+    except UnsafeURLError as e:
+        message = f"Invalid webhook URL: {e}"  # the guard's message is fixed text, safe to show
+        raise HTTPException(status_code=400, detail=message) from e
 
     return BudgetConfigResponse(
         user_id=config.user_id,
@@ -1347,8 +1438,8 @@ async def set_budget_config(
 
 @app.get("/budget/status", response_model=BudgetStatusResponse)
 async def get_budget_status(
-    current_user_id: str = Depends(get_current_user_id)
-):
+    current_user_id: str = Depends(get_current_user_id),
+) -> BudgetStatusResponse:
     """Get current budget status with projections."""
     from app.services.budget_alerting import get_budget_service
 
@@ -1383,9 +1474,8 @@ async def get_budget_status(
 
 @app.get("/budget/alerts")
 async def get_budget_alerts(
-    limit: int = 50,
-    current_user_id: str = Depends(get_current_user_id)
-):
+    limit: int = 50, current_user_id: str = Depends(get_current_user_id)
+) -> dict[str, Any]:
     """Get user's budget alert history."""
     from app.services.budget_alerting import get_budget_service
 
@@ -1397,8 +1487,8 @@ async def get_budget_alerts(
 
 @app.post("/budget/test-webhook")
 async def test_budget_webhook(
-    current_user_id: str = Depends(get_current_user_id)
-):
+    current_user_id: str = Depends(get_current_user_id),
+) -> dict[str, Any]:
     """Send a test alert to configured webhooks."""
     from app.services.budget_alerting import get_budget_service
 
@@ -1414,7 +1504,7 @@ async def test_budget_webhook(
     return {
         "success": True,
         "channels_notified": channels,
-        "message": f"Test alert sent to {len(channels)} channel(s)"
+        "message": f"Test alert sent to {len(channels)} channel(s)",
     }
 
 
@@ -1453,8 +1543,8 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host=os.getenv("HOST", "127.0.0.1"),  # dev runner; the container passes --host itself
         port=port,
         reload=True,
-        log_level=os.getenv("LOG_LEVEL", "info").lower()
+        log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )

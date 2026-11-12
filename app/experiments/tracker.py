@@ -8,11 +8,11 @@ Manages A/B test experiments for routing strategy comparison:
 - Statistical readiness detection
 """
 
-import sqlite3
 import hashlib
 import logging
-from datetime import datetime, UTC
-from typing import Dict, List, Optional, Any
+import sqlite3
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class ExperimentTracker:
     to enable scientific comparison of routing strategies.
     """
 
-    def __init__(self, db_path: str = './costs.db'):
+    def __init__(self, db_path: str = "./costs.db") -> None:
         """
         Initialize ExperimentTracker with database connection.
 
@@ -35,7 +35,7 @@ class ExperimentTracker:
         self.db_path = db_path
         self._ensure_schema()
 
-    def _ensure_schema(self):
+    def _ensure_schema(self) -> None:
         """Create experiment tables if they don't exist."""
         conn = self._get_connection()
         try:
@@ -51,7 +51,8 @@ class ExperimentTracker:
                     sample_size INTEGER NOT NULL CHECK(sample_size > 0),
                     start_date TEXT NOT NULL,
                     end_date TEXT,
-                    status TEXT NOT NULL CHECK(status IN ('pending', 'active', 'completed', 'cancelled')),
+                    status TEXT NOT NULL
+                        CHECK(status IN ('pending', 'active', 'completed', 'cancelled')),
                     created_at TEXT NOT NULL,
                     winner TEXT
                 )
@@ -106,7 +107,7 @@ class ExperimentTracker:
         control_strategy: str,
         test_strategy: str,
         sample_size: int,
-        status: str = 'active'
+        status: str = "active",
     ) -> int:
         """
         Create a new A/B test experiment.
@@ -133,28 +134,23 @@ class ExperimentTracker:
 
         if control_strategy == test_strategy:
             raise ValueError(
-                f"Control and test strategies must be different, "
-                f"both set to '{control_strategy}'"
+                f"Control and test strategies must be different, both set to '{control_strategy}'"
             )
 
-        valid_strategies = {'complexity', 'learning', 'hybrid'}
+        valid_strategies = {"complexity", "learning", "hybrid"}
         if control_strategy not in valid_strategies:
             raise ValueError(
-                f"Invalid control strategy '{control_strategy}', "
-                f"must be one of {valid_strategies}"
+                f"Invalid control strategy '{control_strategy}', must be one of {valid_strategies}"
             )
 
         if test_strategy not in valid_strategies:
             raise ValueError(
-                f"Invalid test strategy '{test_strategy}', "
-                f"must be one of {valid_strategies}"
+                f"Invalid test strategy '{test_strategy}', must be one of {valid_strategies}"
             )
 
-        valid_statuses = {'active', 'completed', 'cancelled', 'pending'}
+        valid_statuses = {"active", "completed", "cancelled", "pending"}
         if status not in valid_statuses:
-            raise ValueError(
-                f"Invalid status '{status}', must be one of {valid_statuses}"
-            )
+            raise ValueError(f"Invalid status '{status}', must be one of {valid_statuses}")
 
         logger.info(f"Creating experiment: {name} ({control_strategy} vs {test_strategy})")
 
@@ -162,19 +158,22 @@ class ExperimentTracker:
         try:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiments
                 (name, control_strategy, test_strategy, sample_size, start_date, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                name,
-                control_strategy,
-                test_strategy,
-                sample_size,
-                datetime.now(UTC).isoformat(),
-                status,
-                datetime.now(UTC).isoformat()
-            ))
+            """,
+                (
+                    name,
+                    control_strategy,
+                    test_strategy,
+                    sample_size,
+                    datetime.now(UTC).isoformat(),
+                    status,
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
 
             conn.commit()
             experiment_id = cursor.lastrowid
@@ -183,7 +182,7 @@ class ExperimentTracker:
         finally:
             conn.close()
 
-    def get_active_experiments(self) -> List[Dict[str, Any]]:
+    def get_active_experiments(self) -> list[dict[str, Any]]:
         """
         Retrieve all active experiments.
 
@@ -203,20 +202,22 @@ class ExperimentTracker:
 
             experiments = []
             for row in cursor.fetchall():
-                experiments.append({
-                    'id': row[0],
-                    'name': row[1],
-                    'control_strategy': row[2],
-                    'test_strategy': row[3],
-                    'sample_size': row[4],
-                    'start_date': row[5]
-                })
+                experiments.append(
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "control_strategy": row[2],
+                        "test_strategy": row[3],
+                        "sample_size": row[4],
+                        "start_date": row[5],
+                    }
+                )
 
             return experiments
         finally:
             conn.close()
 
-    def complete_experiment(self, experiment_id: int, winner: Optional[str] = None) -> None:
+    def complete_experiment(self, experiment_id: int, winner: str | None = None) -> None:
         """
         Mark experiment as completed.
 
@@ -228,13 +229,16 @@ class ExperimentTracker:
         try:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE experiments
                 SET status = 'completed',
                     end_date = ?,
                     winner = ?
                 WHERE id = ?
-            """, (datetime.now(UTC).isoformat(), winner, experiment_id))
+            """,
+                (datetime.now(UTC).isoformat(), winner, experiment_id),
+            )
 
             conn.commit()
             logger.info(f"Completed experiment {experiment_id} with winner: {winner}")
@@ -263,11 +267,14 @@ class ExperimentTracker:
         try:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT control_strategy, test_strategy
                 FROM experiments
                 WHERE id = ?
-            """, (experiment_id,))
+            """,
+                (experiment_id,),
+            )
 
             result = cursor.fetchone()
 
@@ -279,7 +286,7 @@ class ExperimentTracker:
             conn.close()
 
         # Deterministic hash-based assignment
-        hash_input = f"{experiment_id}:{user_id}".encode('utf-8')
+        hash_input = f"{experiment_id}:{user_id}".encode()
         hash_digest = hashlib.sha256(hash_input).hexdigest()
         assignment = int(hash_digest, 16) % 2
 
@@ -292,9 +299,9 @@ class ExperimentTracker:
         strategy_assigned: str,
         latency_ms: float,
         cost_usd: float,
-        quality_score: Optional[int],
+        quality_score: int | None,
         provider: str,
-        model: str
+        model: str,
     ) -> int:
         """
         Record an experiment result (routing decision outcome).
@@ -318,21 +325,25 @@ class ExperimentTracker:
         try:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiment_results
-                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd, quality_score, provider, model)
+                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd,
+                 quality_score, provider, model)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                experiment_id,
-                user_id,
-                strategy_assigned,
-                datetime.now(UTC).isoformat(),
-                latency_ms,
-                cost_usd,
-                quality_score,
-                provider,
-                model
-            ))
+            """,
+                (
+                    experiment_id,
+                    user_id,
+                    strategy_assigned,
+                    datetime.now(UTC).isoformat(),
+                    latency_ms,
+                    cost_usd,
+                    quality_score,
+                    provider,
+                    model,
+                ),
+            )
 
             conn.commit()
             result_id = cursor.lastrowid
@@ -340,7 +351,7 @@ class ExperimentTracker:
         finally:
             conn.close()
 
-    def get_experiment_progress(self, experiment_id: int) -> Dict[str, Any]:
+    def get_experiment_progress(self, experiment_id: int) -> dict[str, Any]:
         """
         Get progress toward sample_size goal.
 
@@ -360,23 +371,25 @@ class ExperimentTracker:
             sample_size = result[0] if result else 0
 
             # Count total results
-            cursor.execute("SELECT COUNT(*) FROM experiment_results WHERE experiment_id = ?", (experiment_id,))
+            cursor.execute(
+                "SELECT COUNT(*) FROM experiment_results WHERE experiment_id = ?", (experiment_id,)
+            )
             total_results = cursor.fetchone()[0]
 
             completion_percentage = (total_results / sample_size * 100) if sample_size > 0 else 0
             is_complete = total_results >= sample_size
 
             return {
-                'experiment_id': experiment_id,
-                'sample_size': sample_size,
-                'total_results': total_results,
-                'completion_percentage': completion_percentage,
-                'is_complete': is_complete
+                "experiment_id": experiment_id,
+                "sample_size": sample_size,
+                "total_results": total_results,
+                "completion_percentage": completion_percentage,
+                "is_complete": is_complete,
             }
         finally:
             conn.close()
 
-    def get_experiment_summary(self, experiment_id: int) -> Dict[str, Dict[str, Any]]:
+    def get_experiment_summary(self, experiment_id: int) -> dict[str, dict[str, Any]]:
         """
         Get aggregated statistics by strategy (control vs test).
 
@@ -396,20 +409,24 @@ class ExperimentTracker:
             cursor = conn.cursor()
 
             # Get experiment strategies
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT control_strategy, test_strategy
                 FROM experiments
                 WHERE id = ?
-            """, (experiment_id,))
+            """,
+                (experiment_id,),
+            )
 
             exp_result = cursor.fetchone()
             if not exp_result:
-                return {'control': {}, 'test': {}}
+                return {"control": {}, "test": {}}
 
             control_strategy, test_strategy = exp_result
 
             # Aggregate by strategy
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT
                     strategy_assigned,
                     COUNT(*) as count,
@@ -419,45 +436,51 @@ class ExperimentTracker:
                 FROM experiment_results
                 WHERE experiment_id = ?
                 GROUP BY strategy_assigned
-            """, (experiment_id,))
+            """,
+                (experiment_id,),
+            )
 
             results = cursor.fetchall()
 
             # Build summary dict
             summary = {
-                'control': {
-                    'strategy': control_strategy,
-                    'count': 0,
-                    'avg_latency_ms': 0.0,
-                    'avg_cost_usd': 0.0,
-                    'avg_quality_score': 0.0
+                "control": {
+                    "strategy": control_strategy,
+                    "count": 0,
+                    "avg_latency_ms": 0.0,
+                    "avg_cost_usd": 0.0,
+                    "avg_quality_score": 0.0,
                 },
-                'test': {
-                    'strategy': test_strategy,
-                    'count': 0,
-                    'avg_latency_ms': 0.0,
-                    'avg_cost_usd': 0.0,
-                    'avg_quality_score': 0.0
-                }
+                "test": {
+                    "strategy": test_strategy,
+                    "count": 0,
+                    "avg_latency_ms": 0.0,
+                    "avg_cost_usd": 0.0,
+                    "avg_quality_score": 0.0,
+                },
             }
 
             for row in results:
                 strategy_assigned, count, avg_latency, avg_cost, avg_quality = row
 
                 if strategy_assigned == control_strategy:
-                    summary['control'].update({
-                        'count': count,
-                        'avg_latency_ms': avg_latency or 0.0,
-                        'avg_cost_usd': avg_cost or 0.0,
-                        'avg_quality_score': avg_quality or 0.0
-                    })
+                    summary["control"].update(
+                        {
+                            "count": count,
+                            "avg_latency_ms": avg_latency or 0.0,
+                            "avg_cost_usd": avg_cost or 0.0,
+                            "avg_quality_score": avg_quality or 0.0,
+                        }
+                    )
                 elif strategy_assigned == test_strategy:
-                    summary['test'].update({
-                        'count': count,
-                        'avg_latency_ms': avg_latency or 0.0,
-                        'avg_cost_usd': avg_cost or 0.0,
-                        'avg_quality_score': avg_quality or 0.0
-                    })
+                    summary["test"].update(
+                        {
+                            "count": count,
+                            "avg_latency_ms": avg_latency or 0.0,
+                            "avg_cost_usd": avg_cost or 0.0,
+                            "avg_quality_score": avg_quality or 0.0,
+                        }
+                    )
 
             return summary
         finally:

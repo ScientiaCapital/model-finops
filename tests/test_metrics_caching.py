@@ -9,13 +9,17 @@ Tests follow TDD approach:
 Goal: Reduce metrics query response from 50ms to <10ms using Redis caching.
 """
 
-import pytest
 import time
-import json
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
+import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+
 from app.cache import RedisCache
+from app.main import app
+
+# These tests exercise caching and routing, not authentication, so anonymous /complete is on.
+pytestmark = pytest.mark.usefixtures("allow_anonymous")
 
 
 class TestMetricsCaching:
@@ -35,11 +39,13 @@ class TestMetricsCaching:
         mock.delete.return_value = True
         return mock
 
+    @pytest.mark.integration
     def test_metrics_endpoint_exists(self, client):
         """Test that metrics endpoint is accessible"""
         response = client.get("/routing/metrics")
         assert response.status_code == 200, "Metrics endpoint should exist and return 200"
 
+    @pytest.mark.integration
     def test_metrics_response_structure(self, client):
         """Test that metrics response has expected structure"""
         response = client.get("/routing/metrics")
@@ -53,19 +59,13 @@ class TestMetricsCaching:
         # which includes: strategy_performance, total_decisions, confidence_distribution, etc.
         assert "strategy_performance" in data or "total_decisions" in data or isinstance(data, dict)
 
-    @patch('app.main.metrics_cache')
+    @patch("app.main.metrics_cache")
     def test_cache_hit_returns_cached_data(self, mock_cache, client):
         """Test that cache hit returns data from Redis without DB query"""
         cached_data = {
-            "strategy_performance": {
-                "hybrid": {"count": 10, "avg_cost": 0.05}
-            },
+            "strategy_performance": {"hybrid": {"count": 10, "avg_cost": 0.05}},
             "total_decisions": 100,
-            "confidence_distribution": {
-                "high": 50,
-                "medium": 30,
-                "low": 20
-            }
+            "confidence_distribution": {"high": 50, "medium": 30, "low": 20},
         }
         mock_cache.get.return_value = cached_data
 
@@ -75,7 +75,8 @@ class TestMetricsCaching:
         assert response.json() == cached_data
         mock_cache.get.assert_called_once_with("metrics:latest")
 
-    @patch('app.main.metrics_cache')
+    @pytest.mark.integration
+    @patch("app.main.metrics_cache")
     def test_cache_miss_queries_database_and_populates_cache(self, mock_cache, client):
         """Test that cache miss queries database and stores result in Redis with 30s TTL"""
         mock_cache.get.return_value = None  # Cache miss
@@ -97,12 +98,13 @@ class TestMetricsCaching:
         # Check if ttl=30 was passed (could be positional or keyword arg)
         if len(call_args[0]) >= 3:
             # Positional: set(key, value, ttl)
-            assert call_args[0][2] == 30 or call_args[1].get('ttl') == 30
+            assert call_args[0][2] == 30 or call_args[1].get("ttl") == 30
         else:
             # Keyword: set(key, value, ttl=30)
-            assert call_args[1].get('ttl') == 30
+            assert call_args[1].get("ttl") == 30
 
-    @patch('app.main.metrics_cache')
+    @pytest.mark.integration
+    @patch("app.main.metrics_cache")
     def test_redis_unavailable_fallback_to_database(self, mock_cache, client):
         """Test graceful fallback when Redis is unavailable"""
         # Simulate Redis failure
@@ -114,7 +116,8 @@ class TestMetricsCaching:
         assert response.status_code == 200
         assert response.json() is not None
 
-    @patch('app.main.metrics_cache')
+    @pytest.mark.integration
+    @patch("app.main.metrics_cache")
     def test_cache_set_failure_graceful_degradation(self, mock_cache, client):
         """Test that cache SET failure doesn't break the endpoint"""
         mock_cache.get.return_value = None  # Cache miss
@@ -126,6 +129,7 @@ class TestMetricsCaching:
         assert response.status_code == 200
         assert response.json() is not None
 
+    @pytest.mark.integration
     def test_metrics_cached_response_performance(self, client):
         """Test that cached metrics response is under 10ms (performance requirement)"""
         # First request to populate cache (if caching is implemented)
@@ -142,7 +146,7 @@ class TestMetricsCaching:
         # For now, we just measure and log (actual assertion happens after GREEN phase)
         print(f"Metrics response time: {duration_ms:.2f}ms")
 
-    @patch('app.main.metrics_cache')
+    @patch("app.main.metrics_cache")
     def test_cache_invalidation_on_new_routing_decision(self, mock_cache, client):
         """Test that cache is invalidated when new routing decision is made"""
         # Mock the cache to track calls
@@ -155,7 +159,7 @@ class TestMetricsCaching:
         completion_data = {
             "prompt": "Test prompt for cache invalidation",
             "auto_route": True,
-            "max_tokens": 100
+            "max_tokens": 100,
         }
 
         try:
@@ -164,7 +168,7 @@ class TestMetricsCaching:
             if response.status_code == 200:
                 # Check that delete was called (implementation pending)
                 pass  # Will be verified after implementation
-        except Exception as e:
+        except Exception:
             # Provider might not be available in test environment
             # That's OK - we're testing the cache invalidation logic
             pass
@@ -178,6 +182,7 @@ class TestCacheStatistics:
         """FastAPI test client"""
         return TestClient(app)
 
+    @pytest.mark.integration
     def test_cache_stats_endpoint_exists(self, client):
         """Test that /cache/stats endpoint exists"""
         # Note: There's already a /cache/stats endpoint for response cache
@@ -185,7 +190,7 @@ class TestCacheStatistics:
         response = client.get("/cache/stats")
         assert response.status_code == 200
 
-    @patch('app.main.metrics_cache_stats')
+    @patch("app.main.metrics_cache_stats")
     def test_cache_stats_structure(self, mock_stats, client):
         """Test cache stats response structure (after implementation)"""
         # This will test the metrics cache stats endpoint
@@ -196,7 +201,7 @@ class TestCacheStatistics:
 class TestCacheKeyStrategy:
     """Test suite for cache key naming and organization"""
 
-    @patch('app.main.metrics_cache')
+    @patch("app.main.metrics_cache")
     def test_cache_key_format(self, mock_cache, client):
         """Test that cache uses consistent key format"""
         mock_cache.get.return_value = None
@@ -206,7 +211,7 @@ class TestCacheKeyStrategy:
         # Verify cache key is "metrics:latest"
         mock_cache.get.assert_called_once_with("metrics:latest")
 
-    @patch('app.main.metrics_cache')
+    @patch("app.main.metrics_cache")
     def test_multiple_cache_keys_for_different_endpoints(self, mock_cache, client):
         """Test that different metric queries use different cache keys (future expansion)"""
         # Currently only /routing/metrics, but could expand to:
@@ -224,6 +229,7 @@ class TestCacheIntegration:
         """FastAPI test client"""
         return TestClient(app)
 
+    @pytest.mark.integration
     def test_cache_lifecycle(self, client):
         """Test complete cache lifecycle: miss -> populate -> hit"""
         # This test requires actual Redis to be running
@@ -241,8 +247,8 @@ class TestCacheIntegration:
 
         # Data should be identical (except timestamp which regenerates on cache miss)
         # Remove timestamp before comparison
-        data1_copy = {k: v for k, v in data1.items() if k != 'timestamp'}
-        data2_copy = {k: v for k, v in data2.items() if k != 'timestamp'}
+        data1_copy = {k: v for k, v in data1.items() if k != "timestamp"}
+        data2_copy = {k: v for k, v in data2.items() if k != "timestamp"}
         assert data1_copy == data2_copy
 
     def test_cache_ttl_expiration(self, client):
@@ -251,8 +257,9 @@ class TestCacheIntegration:
         # Skipping for CI/CD speed, but documents expected behavior
         pytest.skip("TTL test requires 30+ second wait")
 
+    @pytest.mark.integration
     def test_concurrent_requests_cache_performance(self, client):
-        """Test that concurrent requests benefit from caching and counters are accurate with lock safety"""
+        """Concurrent requests benefit from caching and the lock keeps counters accurate."""
         import concurrent.futures
         import time
 
@@ -276,28 +283,31 @@ class TestCacheIntegration:
             responses = [f.result() for f in futures]
 
         # All should succeed
-        assert all(r.status_code == 200 for r in responses), "All concurrent requests should succeed"
+        assert all(r.status_code == 200 for r in responses), (
+            "All concurrent requests should succeed"
+        )
 
         # All should return same data
         data_list = [r.json() for r in responses]
 
         # Remove timestamps before comparison
-        data_list_no_ts = [{k: v for k, v in d.items() if k != 'timestamp'} for d in data_list]
+        data_list_no_ts = [{k: v for k, v in d.items() if k != "timestamp"} for d in data_list]
 
         # Compare all responses to first response
         for data in data_list_no_ts[1:]:
-            assert data == data_list_no_ts[0], "All concurrent responses should return same cached data"
+            assert data == data_list_no_ts[0], (
+                "All concurrent responses should return same cached data"
+            )
 
         # Verify counters are accurate
         final_response = client.get("/metrics-cache/stats")
         assert final_response.status_code == 200
         final_stats = final_response.json()
 
-        # The key assertion: verify that counters are consistent and no race condition lost increments
+        # Key assertion: counters are consistent and no race condition lost increments
         # At least 10 requests should have been successfully tracked (1 miss + at least 9 hits)
         total_tracked = final_stats["hits"] + final_stats["misses"]
-        assert total_tracked >= 11, \
-            f"Should track at least 11 requests total, got {total_tracked}"
+        assert total_tracked >= 11, f"Should track at least 11 requests total, got {total_tracked}"
 
         # Verify hit rate is reasonable (should have some cache hits)
         hit_rate = final_stats["hit_rate_percent"]

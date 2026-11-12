@@ -1,10 +1,13 @@
 """Supabase client wrapper for async database operations with RLS support."""
-import os
+
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from supabase import create_client, Client
+import os
+from typing import Any, Never
+
+from postgrest import SyncRequestBuilder, SyncRPCFilterRequestBuilder
 from postgrest.exceptions import APIError
+
+from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +25,8 @@ class SupabaseClient:
     """
 
     def __init__(
-        self,
-        url: Optional[str] = None,
-        anon_key: Optional[str] = None,
-        service_key: Optional[str] = None
-    ):
+        self, url: str | None = None, anon_key: str | None = None, service_key: str | None = None
+    ) -> None:
         """
         Initialize Supabase client.
 
@@ -49,7 +49,7 @@ class SupabaseClient:
         self.client: Client = create_client(self.url, self.anon_key)
 
         # Admin client (bypasses RLS) - only created if service key provided
-        self.admin_client: Optional[Client] = None
+        self.admin_client: Client | None = None
         if self.service_key:
             self.admin_client = create_client(self.url, self.service_key)
 
@@ -73,7 +73,7 @@ class SupabaseClient:
         self.client.auth.sign_out()
         logger.debug("User context cleared")
 
-    def table(self, table_name: str):
+    def table(self, table_name: str) -> SyncRequestBuilder:
         """
         Get a table reference for direct operations.
 
@@ -90,14 +90,28 @@ class SupabaseClient:
             return self.admin_client.table(table_name)
         return self.client.table(table_name)
 
+    def rpc(self, fn: str, params: dict[str, Any] | None = None) -> SyncRPCFilterRequestBuilder:
+        """
+        Get a stored-procedure call builder, the RPC counterpart of ``table()``.
+
+        Uses the admin client when available, otherwise the user client, exactly like
+        ``table()``. Call ``.execute()`` on the result to run it.
+
+        Args:
+            fn: Name of the PostgreSQL function
+            params: Named arguments for the function
+
+        Returns:
+            RPC request builder from supabase-py
+        """
+        client = self.admin_client or self.client
+        return client.rpc(fn, params or {})
+
     # ==================== QUERY HELPERS ====================
 
     async def insert(
-        self,
-        table: str,
-        data: Dict[str, Any],
-        use_admin: bool = False
-    ) -> Dict[str, Any]:
+        self, table: str, data: dict[str, Any], use_admin: bool = False
+    ) -> dict[str, Any]:
         """
         Insert a row into a table.
 
@@ -126,11 +140,11 @@ class SupabaseClient:
         self,
         table: str,
         columns: str = "*",
-        filters: Optional[Dict[str, Any]] = None,
-        order_by: Optional[str] = None,
-        limit: Optional[int] = None,
-        use_admin: bool = False
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
+        use_admin: bool = False,
+    ) -> list[dict[str, Any]]:
         """
         Select rows from a table.
 
@@ -171,12 +185,8 @@ class SupabaseClient:
             raise
 
     async def update(
-        self,
-        table: str,
-        data: Dict[str, Any],
-        filters: Dict[str, Any],
-        use_admin: bool = False
-    ) -> List[Dict[str, Any]]:
+        self, table: str, data: dict[str, Any], filters: dict[str, Any], use_admin: bool = False
+    ) -> list[dict[str, Any]]:
         """
         Update rows in a table.
 
@@ -205,11 +215,8 @@ class SupabaseClient:
             raise
 
     async def delete(
-        self,
-        table: str,
-        filters: Dict[str, Any],
-        use_admin: bool = False
-    ) -> List[Dict[str, Any]]:
+        self, table: str, filters: dict[str, Any], use_admin: bool = False
+    ) -> list[dict[str, Any]]:
         """
         Delete rows from a table.
 
@@ -239,10 +246,10 @@ class SupabaseClient:
     async def upsert(
         self,
         table: str,
-        data: Dict[str, Any] | List[Dict[str, Any]],
-        on_conflict: Optional[str] = None,
-        use_admin: bool = False
-    ) -> List[Dict[str, Any]]:
+        data: dict[str, Any] | list[dict[str, Any]],
+        on_conflict: str | None = None,
+        use_admin: bool = False,
+    ) -> list[dict[str, Any]]:
         """
         Insert or update rows (upsert).
 
@@ -259,10 +266,7 @@ class SupabaseClient:
 
         try:
             if on_conflict:
-                response = client.table(table).upsert(
-                    data,
-                    on_conflict=on_conflict
-                ).execute()
+                response = client.table(table).upsert(data, on_conflict=on_conflict).execute()
             else:
                 response = client.table(table).upsert(data).execute()
 
@@ -276,15 +280,15 @@ class SupabaseClient:
 
     async def semantic_search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         match_threshold: float = 0.95,
         match_count: int = 1,
-        user_id: Optional[str] = None,
-        filter_providers: Optional[List[str]] = None,
-        filter_models: Optional[List[str]] = None,
-        min_quality_score: Optional[float] = None,
-        max_age_hours: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        user_id: str | None = None,
+        filter_providers: list[str] | None = None,
+        filter_models: list[str] | None = None,
+        min_quality_score: float | None = None,
+        max_age_hours: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Perform semantic search using pgvector with optional metadata filtering.
 
@@ -316,12 +320,14 @@ class SupabaseClient:
             )
         """
         # Determine which function to use based on filters
-        has_filters = any([
-            filter_providers,
-            filter_models,
-            min_quality_score is not None,
-            max_age_hours is not None
-        ])
+        has_filters = any(
+            [
+                filter_providers,
+                filter_models,
+                min_quality_score is not None,
+                max_age_hours is not None,
+            ]
+        )
 
         try:
             if has_filters:
@@ -330,7 +336,7 @@ class SupabaseClient:
                     "query_embedding": query_embedding,
                     "match_threshold": match_threshold,
                     "match_count": match_count,
-                    "target_user_id": user_id
+                    "target_user_id": user_id,
                 }
 
                 if filter_providers:
@@ -342,10 +348,7 @@ class SupabaseClient:
                 if max_age_hours is not None:
                     params["max_age_hours"] = max_age_hours
 
-                response = self.client.rpc(
-                    "match_cache_entries_v2",
-                    params
-                ).execute()
+                response = self.client.rpc("match_cache_entries_v2", params).execute()
 
                 logger.debug(
                     f"Enhanced semantic search found {len(response.data)} results "
@@ -360,8 +363,8 @@ class SupabaseClient:
                         "query_embedding": query_embedding,
                         "match_threshold": match_threshold,
                         "match_count": match_count,
-                        "target_user_id": user_id
-                    }
+                        "target_user_id": user_id,
+                    },
                 ).execute()
 
                 logger.debug(
@@ -375,10 +378,8 @@ class SupabaseClient:
             raise
 
     async def get_cache_analytics(
-        self,
-        user_id: Optional[str] = None,
-        days_back: int = 7
-    ) -> List[Dict[str, Any]]:
+        self, user_id: str | None = None, days_back: int = 7
+    ) -> list[dict[str, Any]]:
         """
         Get cache analytics grouped by provider.
 
@@ -396,11 +397,7 @@ class SupabaseClient:
         """
         try:
             response = self.client.rpc(
-                "get_cache_analytics",
-                {
-                    "target_user_id": user_id,
-                    "days_back": days_back
-                }
+                "get_cache_analytics", {"target_user_id": user_id, "days_back": days_back}
             ).execute()
 
             return response.data
@@ -408,7 +405,7 @@ class SupabaseClient:
             logger.error(f"Failed to get cache analytics: {e}")
             raise
 
-    async def get_cache_stats(self, user_id: str) -> Dict[str, Any]:
+    async def get_cache_stats(self, user_id: str) -> dict[str, Any]:
         """
         Get cache statistics for a user.
 
@@ -422,8 +419,7 @@ class SupabaseClient:
         """
         try:
             response = self.client.rpc(
-                "get_user_cache_stats",
-                {"target_user_id": user_id}
+                "get_user_cache_stats", {"target_user_id": user_id}
             ).execute()
 
             if response.data:
@@ -432,7 +428,7 @@ class SupabaseClient:
                 "total_entries": 0,
                 "total_hits": 0,
                 "avg_quality_score": 0.0,
-                "cache_size_bytes": 0
+                "cache_size_bytes": 0,
             }
         except APIError as e:
             logger.error(f"Failed to get cache stats: {e}")
@@ -440,7 +436,7 @@ class SupabaseClient:
 
     # ==================== ADMIN OPERATIONS ====================
 
-    async def execute_sql(self, sql: str) -> Any:
+    async def execute_sql(self, sql: str) -> Never:
         """
         Execute raw SQL (admin only).
 
@@ -479,7 +475,7 @@ class SupabaseClient:
         """
         try:
             # Simple query to verify connection
-            response = self.client.table("requests").select("id").limit(1).execute()
+            self.client.table("requests").select("id").limit(1).execute()
             logger.debug("Health check passed")
             return True
         except Exception as e:
@@ -490,7 +486,7 @@ class SupabaseClient:
 # ==================== GLOBAL CLIENT INSTANCE ====================
 
 # Singleton instance (initialized once)
-_supabase_client: Optional[SupabaseClient] = None
+_supabase_client: SupabaseClient | None = None
 
 
 def get_supabase_client() -> SupabaseClient:

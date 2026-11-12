@@ -1,7 +1,6 @@
 """Pydantic models for feedback."""
+
 from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
 
 
 class FeedbackRequest(BaseModel):
@@ -10,8 +9,8 @@ class FeedbackRequest(BaseModel):
     request_id: str = Field(..., description="Request ID from routing decision")
     quality_score: int = Field(..., ge=1, le=5, description="Quality rating 1-5")
     is_correct: bool = Field(..., description="Was response factually correct")
-    is_helpful: Optional[bool] = Field(None, description="Was response helpful")
-    comment: Optional[str] = Field(None, max_length=1000, description="Optional comment")
+    is_helpful: bool | None = Field(None, description="Was response helpful")
+    comment: str | None = Field(None, max_length=1000, description="Optional comment")
 
 
 class FeedbackResponse(BaseModel):

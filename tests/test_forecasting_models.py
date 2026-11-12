@@ -2,8 +2,10 @@
 Test suite for forecasting Pydantic models.
 TDD: Tests written first, implementation follows.
 """
-import pytest
+
 from datetime import date, datetime
+
+import pytest
 from pydantic import ValidationError
 
 
@@ -51,11 +53,7 @@ class TestForecastRequest:
         """Should create valid forecast request."""
         from app.models.forecasting import ForecastRequest
 
-        request = ForecastRequest(
-            horizon_days=30,
-            provider="gemini",
-            include_confidence=True
-        )
+        request = ForecastRequest(horizon_days=30, provider="gemini", include_confidence=True)
 
         assert request.horizon_days == 30
         assert request.provider == "gemini"
@@ -94,10 +92,7 @@ class TestDailyForecast:
         from app.models.forecasting import DailyForecast
 
         forecast = DailyForecast(
-            date=date(2025, 1, 15),
-            predicted_cost=25.50,
-            lower_bound=20.00,
-            upper_bound=31.00
+            date=date(2025, 1, 15), predicted_cost=25.50, lower_bound=20.00, upper_bound=31.00
         )
 
         assert forecast.predicted_cost == 25.50
@@ -113,7 +108,7 @@ class TestDailyForecast:
                 date=date.today(),
                 predicted_cost=10.0,
                 lower_bound=15.0,  # Invalid - higher than predicted
-                upper_bound=20.0
+                upper_bound=20.0,
             )
 
     def test_non_negative_costs(self):
@@ -125,7 +120,7 @@ class TestDailyForecast:
                 date=date.today(),
                 predicted_cost=-5.0,  # Invalid
                 lower_bound=-10.0,
-                upper_bound=0.0
+                upper_bound=0.0,
             )
 
 
@@ -134,14 +129,14 @@ class TestForecastResponse:
 
     def test_valid_response(self):
         """Should create valid forecast response."""
-        from app.models.forecasting import ForecastResponse, DailyForecast, ForecastMethod
+        from app.models.forecasting import DailyForecast, ForecastMethod, ForecastResponse
 
         daily = [
             DailyForecast(
                 date=date(2025, 1, i),
                 predicted_cost=10.0 + i,
                 lower_bound=8.0 + i,
-                upper_bound=12.0 + i
+                upper_bound=12.0 + i,
             )
             for i in range(1, 8)
         ]
@@ -155,7 +150,7 @@ class TestForecastResponse:
             total_predicted_cost=sum(d.predicted_cost for d in daily),
             daily_forecasts=daily,
             confidence_level=0.95,
-            model_quality_score=0.15  # MAPE
+            model_quality_score=0.15,  # MAPE
         )
 
         assert len(response.daily_forecasts) == 7
@@ -163,11 +158,13 @@ class TestForecastResponse:
 
     def test_response_daily_count_matches_horizon(self):
         """Daily forecasts count should match horizon_days."""
-        from app.models.forecasting import ForecastResponse, DailyForecast, ForecastMethod
+        from app.models.forecasting import DailyForecast, ForecastMethod, ForecastResponse
 
         # 7-day horizon but only 3 daily forecasts - should validate
         daily = [
-            DailyForecast(date=date(2025, 1, i), predicted_cost=10.0, lower_bound=8.0, upper_bound=12.0)
+            DailyForecast(
+                date=date(2025, 1, i), predicted_cost=10.0, lower_bound=8.0, upper_bound=12.0
+            )
             for i in range(1, 4)
         ]
 
@@ -180,7 +177,7 @@ class TestForecastResponse:
                 data_points_used=10,
                 total_predicted_cost=30.0,
                 daily_forecasts=daily,  # Only 3 days
-                confidence_level=0.95
+                confidence_level=0.95,
             )
 
 
@@ -191,10 +188,7 @@ class TestAnomalyDetectionRequest:
         """Should create valid anomaly detection request."""
         from app.models.forecasting import AnomalyDetectionRequest
 
-        request = AnomalyDetectionRequest(
-            lookback_days=30,
-            sensitivity=2.5
-        )
+        request = AnomalyDetectionRequest(lookback_days=30, sensitivity=2.5)
 
         assert request.lookback_days == 30
         assert request.sensitivity == 2.5
@@ -240,7 +234,7 @@ class TestAnomalyResponse:
             z_score=3.5,
             severity=AnomalySeverity.HIGH,
             provider="anthropic",
-            acknowledged=False
+            acknowledged=False,
         )
 
         assert anomaly.severity == AnomalySeverity.HIGH
@@ -258,7 +252,7 @@ class TestAnomalyResponse:
             deviation_percent=100.0,  # (100-50)/50 * 100
             z_score=2.5,
             severity=AnomalySeverity.MEDIUM,
-            acknowledged=False
+            acknowledged=False,
         )
 
         # Verify calculation
@@ -282,7 +276,7 @@ class TestAnomalyListResponse:
                 deviation_percent=100.0,
                 z_score=2.5,
                 severity=AnomalySeverity.MEDIUM,
-                acknowledged=(i % 2 == 0)
+                acknowledged=(i % 2 == 0),
             )
             for i in range(1, 6)
         ]
@@ -290,7 +284,7 @@ class TestAnomalyListResponse:
         response = AnomalyListResponse(
             anomalies=anomalies,
             total_count=5,
-            unacknowledged_count=3  # 1, 3, 5 are unacknowledged
+            unacknowledged_count=3,  # 1, 3, 5 are unacknowledged
         )
 
         assert response.total_count == 5
@@ -314,7 +308,7 @@ class TestBudgetExhaustionResponse:
             days_until_exhaustion=10,
             confidence_percentage=85.0,
             warning_level="warning",
-            recommendation="Consider reducing usage or increasing budget."
+            recommendation="Consider reducing usage or increasing budget.",
         )
 
         assert response.percentage_used == 75.0
@@ -335,7 +329,7 @@ class TestBudgetExhaustionResponse:
                 daily_burn_rate=5.0,
                 confidence_percentage=90.0,
                 warning_level=level,
-                recommendation="Test"
+                recommendation="Test",
             )
             assert response.warning_level == level
 
@@ -353,7 +347,7 @@ class TestBudgetExhaustionResponse:
             days_until_exhaustion=None,
             confidence_percentage=95.0,
             warning_level="safe",
-            recommendation="Budget is healthy."
+            recommendation="Budget is healthy.",
         )
 
         assert response.projected_exhaustion_date is None
@@ -366,13 +360,17 @@ class TestForecastSummaryResponse:
     def test_valid_summary(self):
         """Should create valid forecast summary."""
         from app.models.forecasting import (
-            ForecastSummaryResponse, ForecastResponse,
-            BudgetExhaustionResponse, AnomalyResponse,
-            DailyForecast, ForecastMethod, AnomalySeverity
+            BudgetExhaustionResponse,
+            DailyForecast,
+            ForecastMethod,
+            ForecastResponse,
+            ForecastSummaryResponse,
         )
 
         daily = [
-            DailyForecast(date=date(2025, 1, i), predicted_cost=10.0, lower_bound=8.0, upper_bound=12.0)
+            DailyForecast(
+                date=date(2025, 1, i), predicted_cost=10.0, lower_bound=8.0, upper_bound=12.0
+            )
             for i in range(1, 8)
         ]
 
@@ -384,7 +382,7 @@ class TestForecastSummaryResponse:
             data_points_used=30,
             total_predicted_cost=70.0,
             daily_forecasts=daily,
-            confidence_level=0.95
+            confidence_level=0.95,
         )
 
         budget = BudgetExhaustionResponse(
@@ -395,14 +393,14 @@ class TestForecastSummaryResponse:
             daily_burn_rate=10.0,
             confidence_percentage=90.0,
             warning_level="safe",
-            recommendation="On track."
+            recommendation="On track.",
         )
 
         summary = ForecastSummaryResponse(
             aggregate=aggregate,
             by_provider=[],  # No per-provider breakdowns
             budget_projection=budget,
-            recent_anomalies=[]
+            recent_anomalies=[],
         )
 
         assert summary.aggregate.total_predicted_cost == 70.0
@@ -424,7 +422,7 @@ class TestWarningLevel:
             daily_burn_rate=2.0,
             confidence_percentage=90.0,
             warning_level="safe",
-            recommendation="OK"
+            recommendation="OK",
         )
         assert response.warning_level == "safe"
 
@@ -440,7 +438,7 @@ class TestWarningLevel:
             daily_burn_rate=3.0,
             confidence_percentage=90.0,
             warning_level="caution",
-            recommendation="Monitor usage"
+            recommendation="Monitor usage",
         )
         assert response.warning_level == "caution"
 
@@ -456,7 +454,7 @@ class TestWarningLevel:
             daily_burn_rate=5.0,
             confidence_percentage=90.0,
             warning_level="warning",
-            recommendation="Reduce usage"
+            recommendation="Reduce usage",
         )
         assert response.warning_level == "warning"
 
@@ -472,6 +470,6 @@ class TestWarningLevel:
             daily_burn_rate=5.0,
             confidence_percentage=90.0,
             warning_level="critical",
-            recommendation="Budget almost exhausted!"
+            recommendation="Budget almost exhausted!",
         )
         assert response.warning_level == "critical"

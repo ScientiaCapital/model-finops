@@ -3,27 +3,29 @@ Forecasting Service - Business logic for cost prediction and anomaly detection.
 
 Provides methods to forecast costs, detect anomalies, and project budget exhaustion.
 """
+
 import logging
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
 from uuid import uuid4
+
 import numpy as np
 
+from app.database.supabase_client import SupabaseClient
+from app.forecasting.algorithms import (
+    ForecastResult,
+    get_forecaster_for_data,
+)
 from app.models.forecasting import (
-    ForecastRequest,
-    ForecastResponse,
-    DailyForecast,
-    ForecastMethod,
     AnomalyDetectionRequest,
-    AnomalyResponse,
     AnomalyListResponse,
+    AnomalyResponse,
     AnomalySeverity,
     BudgetExhaustionResponse,
+    DailyForecast,
+    ForecastMethod,
+    ForecastRequest,
+    ForecastResponse,
     ForecastSummaryResponse,
-)
-from app.forecasting.algorithms import (
-    get_forecaster_for_data,
-    ForecastResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ class ForecastingService:
     based on available data.
     """
 
-    def __init__(self, supabase_client=None):
+    def __init__(self, supabase_client: SupabaseClient | None = None) -> None:
         """
         Initialize forecasting service.
 
@@ -152,7 +154,7 @@ class ForecastingService:
 
         # Detect anomalies using Z-score
         anomalies = []
-        for i, (cost, cost_date) in enumerate(zip(costs, dates)):
+        for _i, (cost, cost_date) in enumerate(zip(costs, dates, strict=False)):
             z_score = (cost - mean_cost) / std_cost
 
             if abs(z_score) > request.sensitivity:
@@ -161,7 +163,9 @@ class ForecastingService:
 
                 anomaly = AnomalyResponse(
                     id=str(uuid4()),
-                    anomaly_date=cost_date if isinstance(cost_date, date) else date.fromisoformat(cost_date),
+                    anomaly_date=cost_date
+                    if isinstance(cost_date, date)
+                    else date.fromisoformat(cost_date),
                     actual_cost=float(cost),
                     expected_cost=float(mean_cost),
                     deviation_percent=float(deviation),
@@ -311,23 +315,27 @@ class ForecastingService:
         self,
         user_id: str,
         anomaly_id: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> bool:
         """Acknowledge an anomaly."""
         if not self.supabase:
             return False
 
         try:
-            await self.supabase.table("cost_anomalies") \
-                .update({
-                    "acknowledged": True,
-                    "acknowledged_at": datetime.utcnow().isoformat(),
-                    "acknowledged_by": user_id,
-                    "notes": notes,
-                }) \
-                .eq("id", anomaly_id) \
-                .eq("user_id", user_id) \
+            await (
+                self.supabase.table("cost_anomalies")
+                .update(
+                    {
+                        "acknowledged": True,
+                        "acknowledged_at": datetime.utcnow().isoformat(),
+                        "acknowledged_by": user_id,
+                        "notes": notes,
+                    }
+                )
+                .eq("id", anomaly_id)
+                .eq("user_id", user_id)
                 .execute()
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to acknowledge anomaly: {e}")
@@ -336,25 +344,25 @@ class ForecastingService:
     async def _get_historical_costs(
         self,
         user_id: str,
-        provider: Optional[str] = None,
+        provider: str | None = None,
         days: int = 30,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Get historical cost data for forecasting."""
         if not self.supabase:
             # Return mock data for testing
             return self._generate_mock_data(days)
 
         try:
-            query = self.supabase.table("daily_cost_aggregates") \
-                .select("cost_date, total_cost, request_count") \
-                .eq("user_id", user_id) \
-                .gte("cost_date", (date.today() - timedelta(days=days)).isoformat()) \
+            query = (
+                self.supabase.table("daily_cost_aggregates")
+                .select("cost_date, total_cost, request_count")
+                .eq("user_id", user_id)
+                .gte("cost_date", (date.today() - timedelta(days=days)).isoformat())
                 .order("cost_date", desc=False)
+            )
 
-            if provider:
-                query = query.eq("provider", provider)
-            else:
-                query = query.is_("provider", None)  # Aggregate only
+            # Without a provider, read only the aggregate rows (provider IS NULL)
+            query = query.eq("provider", provider) if provider else query.is_("provider", None)
 
             result = await query.execute()
             return result.data or []
@@ -362,24 +370,26 @@ class ForecastingService:
             logger.error(f"Failed to get historical costs: {e}")
             return []
 
-    async def _get_user_providers(self, user_id: str) -> List[str]:
+    async def _get_user_providers(self, user_id: str) -> list[str]:
         """Get list of providers with cost data for a user."""
         if not self.supabase:
             return ["gemini", "claude", "openrouter"]  # Mock data for testing
 
         try:
-            result = await self.supabase.table("daily_cost_aggregates") \
-                .select("provider") \
-                .eq("user_id", user_id) \
-                .not_("provider", "is", None) \
+            result = (
+                await self.supabase.table("daily_cost_aggregates")
+                .select("provider")
+                .eq("user_id", user_id)
+                .not_("provider", "is", None)
                 .execute()
+            )
 
             return list(set(r["provider"] for r in result.data or []))
         except Exception as e:
             logger.error(f"Failed to get user providers: {e}")
             return []
 
-    def _generate_mock_data(self, days: int) -> List[Dict]:
+    def _generate_mock_data(self, days: int) -> list[dict]:
         """Generate mock data for testing without database."""
         base_cost = 10.0
         data = []
@@ -389,30 +399,34 @@ class ForecastingService:
             noise = np.random.normal(0, 2)
             trend = i * 0.1
             cost = max(0, base_cost + noise + trend)
-            data.append({
-                "cost_date": cost_date.isoformat(),
-                "total_cost": cost,
-                "request_count": int(cost * 10),
-            })
+            data.append(
+                {
+                    "cost_date": cost_date.isoformat(),
+                    "total_cost": cost,
+                    "request_count": int(cost * 10),
+                }
+            )
         return data
 
     def _build_daily_forecasts(
         self,
         result: ForecastResult,
         horizon: int,
-    ) -> List[DailyForecast]:
+    ) -> list[DailyForecast]:
         """Build daily forecast list from algorithm result."""
         forecasts = []
         today = date.today()
 
         for i in range(horizon):
             forecast_date = today + timedelta(days=i + 1)
-            forecasts.append(DailyForecast(
-                date=forecast_date,
-                predicted_cost=float(result.predictions[i]),
-                lower_bound=float(result.lower_bounds[i]),
-                upper_bound=float(result.upper_bounds[i]),
-            ))
+            forecasts.append(
+                DailyForecast(
+                    date=forecast_date,
+                    predicted_cost=float(result.predictions[i]),
+                    lower_bound=float(result.lower_bounds[i]),
+                    upper_bound=float(result.upper_bounds[i]),
+                )
+            )
 
         return forecasts
 
@@ -460,7 +474,7 @@ class ForecastingService:
     def _get_budget_warning(
         self,
         percentage_used: float,
-        days_until: Optional[int],
+        days_until: int | None,
         days_remaining: int,
     ) -> tuple:
         """Determine budget warning level and recommendation.

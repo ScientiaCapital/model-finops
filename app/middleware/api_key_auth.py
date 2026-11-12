@@ -16,17 +16,19 @@ Rate Limiting:
 - Retry-After header indicates when to retry
 """
 
+import ipaddress
+import logging
+import os
 import time
 import uuid
-import logging
-from typing import List, Optional, Callable
+from collections.abc import Callable
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app.services.api_key_service import APIKeyService
-from app.database.supabase_client import SupabaseClient
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +59,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        protected_paths: Optional[List[str]] = None,
-        exclude_paths: Optional[List[str]] = None,
-    ):
+        protected_paths: list[str] | None = None,
+        exclude_paths: list[str] | None = None,
+    ) -> None:
         """
         Initialize the API key middleware.
 
@@ -73,7 +75,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         at request time, allowing the middleware to be added at startup.
         """
         super().__init__(app)
-        self._api_key_service: Optional[APIKeyService] = None
+        self._api_key_service: APIKeyService | None = None
         self.protected_paths = protected_paths or []
         self.exclude_paths = exclude_paths or [
             "/health",
@@ -83,7 +85,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             "/favicon.ico",
         ]
 
-    def _get_api_key_service(self, request: Request) -> Optional[APIKeyService]:
+    def _get_api_key_service(self, request: Request) -> APIKeyService | None:
         """Get or create API key service (lazy loading)."""
         if self._api_key_service is not None:
             return self._api_key_service
@@ -113,11 +115,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             return True
 
         # Check if path matches any protected prefix
-        for protected in self.protected_paths:
-            if path.startswith(protected):
-                return True
-
-        return False
+        return any(path.startswith(protected) for protected in self.protected_paths)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -257,17 +255,25 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    def _get_client_ip(self, request: Request) -> Optional[str]:
-        """Extract client IP address from request headers."""
-        # Check common proxy headers first
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            # X-Forwarded-For can contain multiple IPs, use the first (client)
-            return forwarded_for.split(",")[0].strip()
+    def _get_client_ip(self, request: Request) -> str | None:
+        """Extract the client IP address.
 
-        real_ip = request.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip
+        X-Forwarded-For and X-Real-IP are client-controlled unless a proxy you run sets them,
+        so they are ignored unless TRUSTED_PROXY_COUNT (a positive integer) says how many
+        trusted proxies sit in front of the app. The client is then the entry that the
+        outermost trusted proxy appended, counted from the right of X-Forwarded-For.
+        """
+        trusted = self._trusted_proxy_count()
+        if trusted:
+            forwarded_for = request.headers.get("X-Forwarded-For")
+            if forwarded_for:
+                hops = [h.strip() for h in forwarded_for.split(",") if h.strip()]
+                if len(hops) >= trusted:
+                    hop = hops[-trusted]
+                    try:
+                        return str(ipaddress.ip_address(hop))
+                    except ValueError:
+                        logger.warning("Ignoring X-Forwarded-For hop that is not an IP address")
 
         # Fall back to direct client IP
         if request.client:
@@ -275,10 +281,19 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         return None
 
+    @staticmethod
+    def _trusted_proxy_count() -> int:
+        """TRUSTED_PROXY_COUNT as a non-negative int; unset, empty, or invalid means 0 (off)."""
+        try:
+            return max(0, int(os.getenv("TRUSTED_PROXY_COUNT", "0")))
+        except ValueError:
+            return 0
+
 
 # =============================================================================
 # Dependency for endpoints that need API key context
 # =============================================================================
+
 
 def get_api_key_context(request: Request) -> dict:
     """

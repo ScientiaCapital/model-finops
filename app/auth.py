@@ -1,10 +1,12 @@
 """Authentication middleware and dependencies for Supabase JWT validation."""
-import os
+
+import hmac
 import logging
-from typing import Optional
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import os
+
 import jwt
+from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer()
 
 
-def get_jwt_secret() -> Optional[str]:
+def get_jwt_secret() -> str | None:
     """
     Get Supabase JWT secret from environment.
 
@@ -42,8 +44,8 @@ def verify_jwt_token(token: str) -> dict:
     if not jwt_secret:
         logger.error("SUPABASE_JWT_SECRET not set in environment!")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server authentication configuration error"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Server authentication configuration error",
         )
 
     try:
@@ -52,7 +54,8 @@ def verify_jwt_token(token: str) -> dict:
             token,
             jwt_secret,
             algorithms=["HS256"],
-            audience="authenticated"  # Supabase sets aud to "authenticated"
+            audience="authenticated",  # Supabase sets aud to "authenticated"
+            options={"require": ["exp", "sub"]},  # a token without expiry or subject is refused
         )
 
         logger.debug(f"JWT verified for user: {payload.get('sub')}")
@@ -65,7 +68,7 @@ def verify_jwt_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     except jwt.InvalidAudienceError:
         logger.warning("JWT audience mismatch")
@@ -73,7 +76,7 @@ def verify_jwt_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token audience",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     except PyJWTError as e:
         logger.warning(f"JWT validation failed: {e}")
@@ -81,12 +84,10 @@ def verify_jwt_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> dict:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """
     FastAPI dependency to get current authenticated user from JWT.
 
@@ -134,47 +135,90 @@ def get_current_user_id(user: dict = Depends(get_current_user)) -> str:
     return user["sub"]  # Supabase stores user ID in "sub" claim
 
 
+_TRUE_VALUES = frozenset({"1", "true"})
+
+
+def anonymous_allowed() -> bool:
+    """True only when ALLOW_ANONYMOUS is exactly "true" or "1" (case-insensitive).
+
+    Read per call so tests and operators can change it without a restart of the import.
+    Anything else, including unset, means anonymous callers are refused on /complete.
+    """
+    return os.getenv("ALLOW_ANONYMOUS", "").strip().lower() in _TRUE_VALUES
+
+
+def _unauthenticated() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 class OptionalAuth:
     """
     Optional authentication dependency.
 
-    Returns user_id if authenticated, None if not.
-    Useful for endpoints that work in both authenticated and public modes.
+    Returns user_id if a valid token is sent, None if no Authorization header is sent.
+    An Authorization header that is present but not a valid, unexpired Bearer token is
+    refused with 401: a bad credential is never treated as anonymous.
 
     Usage:
         @app.get("/chat")
         async def chat(user_id: Optional[str] = Depends(OptionalAuth())):
-            if user_id:
-                # Authenticated: Use RLS filtering
-                tracker = AsyncCostTracker(user_id=user_id)
-            else:
-                # Public: Admin mode (no RLS)
-                tracker = AsyncCostTracker(user_id=None)
+            ...
     """
 
-    def __call__(self, request: Request) -> Optional[str]:
-        """Extract user_id from Authorization header if present."""
+    def __call__(self, request: Request) -> str | None:
+        """Extract user_id from the Authorization header, failing closed on a bad one."""
         auth_header = request.headers.get("Authorization")
 
-        if not auth_header or not auth_header.startswith("Bearer "):
-            # No auth provided - public access
+        if auth_header is None:
             return None
 
-        try:
-            token = auth_header.replace("Bearer ", "")
-            payload = verify_jwt_token(token)
-            return payload["sub"]
+        scheme, _, token = auth_header.partition(" ")
+        if scheme != "Bearer" or not token.strip():
+            raise _unauthenticated()
 
-        except HTTPException:
-            # Invalid token - public access (don't raise, just return None)
-            logger.debug("Optional auth: invalid token, falling back to public access")
-            return None
+        return verify_jwt_token(token.strip())["sub"]
+
+
+class CompleteAuth(OptionalAuth):
+    """Authentication for /complete: a valid token, or no token only if ALLOW_ANONYMOUS."""
+
+    def __call__(self, request: Request) -> str | None:
+        user_id = super().__call__(request)
+        if user_id is None and not anonymous_allowed():
+            raise _unauthenticated()
+        return user_id
+
+
+def require_admin(x_admin_key: str | None = Header(default=None)) -> None:
+    """Fail-closed gate for /admin/* routes.
+
+    ADMIN_API_KEY must be configured and the X-Admin-Key header must match it, compared in
+    constant time. With no key configured every admin route answers 503, never open.
+    """
+    configured = os.getenv("ADMIN_API_KEY", "")
+    if not configured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin API is disabled: ADMIN_API_KEY is not configured",
+        )
+    if x_admin_key is None or not hmac.compare_digest(x_admin_key.encode(), configured.encode()):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials",
+        )
 
 
 # Export commonly used dependencies
 __all__ = [
+    "CompleteAuth",
+    "OptionalAuth",
+    "anonymous_allowed",
     "get_current_user",
     "get_current_user_id",
-    "OptionalAuth",
+    "require_admin",
     "verify_jwt_token",
 ]

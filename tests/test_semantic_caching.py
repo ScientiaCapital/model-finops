@@ -18,13 +18,17 @@ Edge Cases Covered:
 - Age-based filtering (stale cache entries)
 """
 
-import pytest
 import hashlib
-from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
+# These tests exercise caching and routing, not authentication, so anonymous /complete is on.
+pytestmark = pytest.mark.usefixtures("allow_anonymous")
 
 
 class TestSemanticCacheEdgeCases:
@@ -69,14 +73,14 @@ class TestSemanticCacheEdgeCases:
         unicode_prompts = [
             "Qu'est-ce que Python?",  # French with accent
             "Python\u306f\u4f55\u3067\u3059\u304b\uff1f",  # Japanese
-            "Was ist Python? \U0001F40D",  # German + emoji
+            "Was ist Python? \U0001f40d",  # German + emoji
             "\u0427\u0442\u043e \u0442\u0430\u043a\u043e\u0435 Python?",  # Russian
         ]
 
         for prompt in unicode_prompts:
             # Each should be able to be encoded for hashing
             try:
-                hash_input = prompt.encode('utf-8')
+                hash_input = prompt.encode("utf-8")
                 cache_key = hashlib.sha256(hash_input).hexdigest()
                 assert len(cache_key) == 64, f"Valid hash for: {prompt[:20]}..."
             except Exception as e:
@@ -97,6 +101,7 @@ class TestSemanticCacheEdgeCases:
         # Should fail validation (min_length=1 in Pydantic model)
         assert response.status_code == 422, "Empty prompts should be rejected"
 
+    @pytest.mark.integration
     def test_whitespace_only_prompt_rejection(self, client):
         """Test that whitespace-only prompts are handled."""
         response = client.post("/complete", json={"prompt": "   \n\t   "})
@@ -140,7 +145,7 @@ class TestMetadataFiltering:
     def test_age_filter_hours_calculation(self):
         """Test that age filtering correctly calculates time bounds."""
         max_age_hours = 24
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(hours=max_age_hours)
 
         # Entry created 23 hours ago should pass
@@ -160,11 +165,13 @@ class TestCacheAnalyticsEndpoint:
         """FastAPI test client."""
         return TestClient(app)
 
+    @pytest.mark.integration
     def test_cache_analytics_endpoint_exists(self, client):
         """Test that the cache analytics endpoint is accessible."""
         response = client.get("/analytics/cache")
         assert response.status_code == 200, "Cache analytics endpoint should exist"
 
+    @pytest.mark.integration
     def test_cache_analytics_response_structure(self, client):
         """Test that cache analytics response has expected structure."""
         response = client.get("/analytics/cache")
@@ -179,12 +186,17 @@ class TestCacheAnalyticsEndpoint:
         # Verify summary structure
         summary = data["summary"]
         expected_summary_keys = [
-            "total_entries", "total_hits", "overall_hit_rate",
-            "avg_quality", "estimated_savings_usd", "days_analyzed"
+            "total_entries",
+            "total_hits",
+            "overall_hit_rate",
+            "avg_quality",
+            "estimated_savings_usd",
+            "days_analyzed",
         ]
         for key in expected_summary_keys:
             assert key in summary, f"Summary should have '{key}'"
 
+    @pytest.mark.integration
     def test_cache_analytics_days_parameter(self, client):
         """Test that days parameter is respected."""
         response = client.get("/analytics/cache?days=30")
@@ -193,6 +205,7 @@ class TestCacheAnalyticsEndpoint:
 
         assert data["summary"]["days_analyzed"] == 30
 
+    @pytest.mark.integration
     def test_cache_analytics_recommendations_not_empty(self, client):
         """Test that recommendations are always provided."""
         response = client.get("/analytics/cache")
@@ -211,11 +224,13 @@ class TestCostAnalyticsEndpoint:
         """FastAPI test client."""
         return TestClient(app)
 
+    @pytest.mark.integration
     def test_cost_analytics_endpoint_exists(self, client):
         """Test that the cost analytics endpoint is accessible."""
         response = client.get("/analytics/costs")
         assert response.status_code == 200, "Cost analytics endpoint should exist"
 
+    @pytest.mark.integration
     def test_cost_analytics_response_structure(self, client):
         """Test that cost analytics response has expected structure."""
         response = client.get("/analytics/costs")
@@ -229,6 +244,7 @@ class TestCostAnalyticsEndpoint:
         assert "optimization_score" in data, "Response should have 'optimization_score'"
         assert "optimization_breakdown" in data, "Response should have 'optimization_breakdown'"
 
+    @pytest.mark.integration
     def test_optimization_score_bounds(self, client):
         """Test that optimization score is within valid bounds."""
         response = client.get("/analytics/costs")
@@ -238,6 +254,7 @@ class TestCostAnalyticsEndpoint:
         score = data["optimization_score"]
         assert 0 <= score <= 100, "Optimization score should be 0-100"
 
+    @pytest.mark.integration
     def test_optimization_breakdown_adds_up(self, client):
         """Test that optimization breakdown components are consistent."""
         response = client.get("/analytics/costs")
@@ -254,6 +271,7 @@ class TestCostAnalyticsEndpoint:
         assert breakdown["cost_reduction_points"] <= 50
         assert breakdown["quality_points"] <= 20
 
+    @pytest.mark.integration
     def test_cost_analytics_days_parameter(self, client):
         """Test that days parameter is respected."""
         response = client.get("/analytics/costs?days=14")
@@ -295,10 +313,7 @@ class TestWilsonScoreQuality:
         total = upvotes + downvotes
 
         # Can't compute with no votes - should default to neutral
-        if total == 0:
-            score = 0.5  # Neutral default
-        else:
-            score = upvotes / total
+        score = 0.5 if total == 0 else upvotes / total  # neutral default with no votes
 
         assert score == 0.5, "No votes should give neutral score"
 
@@ -346,6 +361,7 @@ class TestCacheConcurrency:
         """FastAPI test client."""
         return TestClient(app)
 
+    @pytest.mark.integration
     def test_cache_analytics_concurrent_access(self, client):
         """Test that analytics endpoint handles concurrent requests."""
         import concurrent.futures
@@ -353,10 +369,7 @@ class TestCacheConcurrency:
         num_requests = 5
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_requests) as executor:
-            futures = [
-                executor.submit(client.get, "/analytics/cache")
-                for _ in range(num_requests)
-            ]
+            futures = [executor.submit(client.get, "/analytics/cache") for _ in range(num_requests)]
             responses = [f.result() for f in futures]
 
         # All should succeed
@@ -368,6 +381,7 @@ class TestCacheConcurrency:
             assert "summary" in data
             assert "recommendations" in data
 
+    @pytest.mark.integration
     def test_cost_analytics_concurrent_access(self, client):
         """Test that cost analytics endpoint handles concurrent requests."""
         import concurrent.futures
@@ -375,10 +389,7 @@ class TestCacheConcurrency:
         num_requests = 5
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_requests) as executor:
-            futures = [
-                executor.submit(client.get, "/analytics/costs")
-                for _ in range(num_requests)
-            ]
+            futures = [executor.submit(client.get, "/analytics/costs") for _ in range(num_requests)]
             responses = [f.result() for f in futures]
 
         # All should succeed

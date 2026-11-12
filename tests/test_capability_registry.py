@@ -2,8 +2,8 @@
 Test suite for CapabilityRegistry - model capabilities and pricing.
 TDD: Tests written first, implementation follows.
 """
-import pytest
-from app.models.arbitrage import ModelCapability, CapabilityLevel
+
+from app.models.arbitrage import CapabilityLevel, ModelCapability
 
 
 class TestCapabilityRegistry:
@@ -55,8 +55,7 @@ class TestCapabilityRegistry:
 
         registry = CapabilityRegistry()
         models = registry.get_models_with_capability(
-            ModelCapability.REASONING,
-            min_level=CapabilityLevel.ADVANCED
+            ModelCapability.REASONING, min_level=CapabilityLevel.ADVANCED
         )
 
         assert len(models) >= 1
@@ -70,8 +69,7 @@ class TestCapabilityRegistry:
 
         registry = CapabilityRegistry()
         alternatives = registry.get_cheaper_alternatives(
-            model_id="claude-3-5-sonnet-20241022",
-            required_capabilities=[ModelCapability.CODE_GEN]
+            model_id="claude-3-5-sonnet-20241022", required_capabilities=[ModelCapability.CODE_GEN]
         )
 
         assert len(alternatives) >= 1
@@ -85,8 +83,7 @@ class TestCapabilityRegistry:
 
         registry = CapabilityRegistry()
         alternatives = registry.get_cheaper_alternatives(
-            model_id="claude-3-5-sonnet-20241022",
-            required_capabilities=[ModelCapability.CODE_GEN]
+            model_id="claude-3-5-sonnet-20241022", required_capabilities=[ModelCapability.CODE_GEN]
         )
 
         if len(alternatives) > 1:
@@ -142,7 +139,7 @@ class TestCapabilityLevelOrdering:
             CapabilityLevel.BASIC,
             CapabilityLevel.INTERMEDIATE,
             CapabilityLevel.ADVANCED,
-            CapabilityLevel.EXPERT
+            CapabilityLevel.EXPERT,
         ]
         # They're enums with string values, so we can't directly compare
         # but the registry should use this ordering internally

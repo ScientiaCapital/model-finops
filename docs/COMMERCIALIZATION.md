@@ -37,7 +37,7 @@
 Customer spends $10,000/month on AI APIs without optimization
 → Your system reduces it to $3,000/month ($7,000 saved)
 → You charge 15% of savings = $1,050/month
-→ Customer still saves $5,950/month (60% reduction!)
+→ Customer still saves $5,950/month (illustrative numbers, not measured)
 ```
 
 **Why This Works**:
@@ -45,7 +45,7 @@ Customer spends $10,000/month on AI APIs without optimization
 - Zero risk for customers (only pay if they save money)
 - You're already tracking every penny (MetricsCollector)
 - Perfect alignment of incentives
-- Easy sales pitch: "We'll reduce your AI costs by 60%+, you only pay us 15% of what we save you"
+- Easy sales pitch: "You only pay us a share of the savings we can show in your own cost data"
 - High margins (your infrastructure costs << savings you generate)
 
 **Revenue Potential**: $50K-$500K ARR depending on customer size

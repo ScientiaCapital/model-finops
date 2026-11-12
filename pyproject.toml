@@ -1,63 +1,80 @@
-[tool.black]
-line-length = 100
-target-version = ['py310', 'py311', 'py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | venv
-  | __pycache__
-  | \.pytest_cache
-  | \.mypy_cache
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 100
-known_first_party = ["app"]
-
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
-exclude = [
-    "tests/",
-    "venv/",
-    ".venv/",
-    "build/",
-    "dist/",
-    "__pycache__/",
+[project]
+name = "model-finops"
+version = "0.1.0"
+description = "FastAPI service that routes LLM prompts across providers and records per-request token cost."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Tim Kipper", email = "tkipper@gmail.com" },
 ]
+dependencies = [
+    "fastapi>=0.162",
+    "python-multipart>=0.0.33",  # FastAPI Form() in app/routers/subscriptions.py
+    "uvicorn[standard]>=0.54",
+    "pydantic>=2.14",
+    "httpx>=0.28",
+    "python-dotenv>=1.2",
+    "supabase>=2.34",
+    "pyjwt>=2.15",
+    "stripe>=11.6,<12",  # 12.x removed Invoice.upcoming (app/billing/stripe_client.py)
+    "apscheduler>=3.11",
+    "scipy>=1.18",
+    "numpy>=2.5",
+    "cryptography>=50",
+]
+
+[project.optional-dependencies]
+# Semantic cache embeddings (app/embeddings/generator.py imports this lazily).
+# Pulls in torch, so it is kept out of the default install and the test job.
+embeddings = [
+    "sentence-transformers>=6.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2",
+    "pytest-asyncio>=1.4",
+    "pytest-cov>=7.1",
+    "ruff>=0.17",
+]
+
+[project.urls]
+Repository = "https://github.com/ScientiaCapital/model-finops"
+Issues = "https://github.com/ScientiaCapital/model-finops/issues"
+
+[tool.uv]
+# Deployable service, not a library: install dependencies only, do not build a wheel.
+package = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --strict-markers"
+addopts = "--strict-markers"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
-exclude = [
-    ".git",
-    "__pycache__",
-    ".venv",
-    "venv",
-    ".pytest_cache",
-    ".mypy_cache",
-    "build",
-    "dist",
-]
+target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP"]
-ignore = ["E501"]  # Line length handled by black
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "SIM"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN"]  # pytest functions return None and fixtures are typed by injection
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI resolves these at request time; a call in the default is the framework's API, not shared state.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]

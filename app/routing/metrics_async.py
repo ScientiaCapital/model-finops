@@ -1,12 +1,11 @@
 """Async metrics collection for routing decisions with Supabase."""
-import hashlib
-import json
+
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any
 
-from app.routing.models import RoutingDecision
 from app.database.supabase_client import get_supabase_client
+from app.routing.models import RoutingDecision
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class AsyncMetricsCollector:
     - ROI and cost savings calculations
     """
 
-    def __init__(self, user_id: Optional[str] = None):
+    def __init__(self, user_id: str | None = None) -> None:
         """
         Initialize async metrics collector.
 
@@ -49,12 +48,8 @@ class AsyncMetricsCollector:
         logger.debug(f"User context set to {user_id}")
 
     async def track_decision(
-        self,
-        prompt: str,
-        decision: RoutingDecision,
-        auto_route: bool,
-        request_id: str = None
-    ) -> Dict[str, Any]:
+        self, prompt: str, decision: RoutingDecision, auto_route: bool, request_id: str = None
+    ) -> dict[str, Any]:
         """
         Track a routing decision to the database.
 
@@ -71,8 +66,8 @@ class AsyncMetricsCollector:
         timestamp = datetime.now()
 
         # Extract metadata
-        complexity_score = decision.metadata.get('complexity')
-        pattern = decision.metadata.get('pattern')
+        decision.metadata.get("complexity")
+        decision.metadata.get("pattern")
 
         # Estimate cost
         estimated_cost = self._estimate_cost(decision.provider, decision.model)
@@ -85,13 +80,13 @@ class AsyncMetricsCollector:
             "provider": decision.provider,
             "model": decision.model,
             "confidence": decision.confidence,
-            "tokens_in": decision.metadata.get('tokens_in', 0),
-            "tokens_out": decision.metadata.get('tokens_out', 0),
+            "tokens_in": decision.metadata.get("tokens_in", 0),
+            "tokens_out": decision.metadata.get("tokens_out", 0),
             "cost": estimated_cost,
             "cache_hit": False,  # Will be updated if cache is used
             "metadata": decision.metadata,  # JSONB column
             "request_id": request_id,
-            "user_id": self.user_id  # For RLS
+            "user_id": self.user_id,  # For RLS
         }
 
         use_admin = self.user_id is None
@@ -105,7 +100,7 @@ class AsyncMetricsCollector:
 
         return result
 
-    async def get_cost_savings(self, days: int = 7) -> Dict[str, Any]:
+    async def get_cost_savings(self, days: int = 7) -> dict[str, Any]:
         """
         Calculate cost savings from intelligent routing.
 
@@ -128,10 +123,7 @@ class AsyncMetricsCollector:
 
         # Fetch all metrics for the period
         metrics = await self.db.select(
-            "routing_metrics",
-            columns="cost,metadata",
-            filters=filters,
-            use_admin=use_admin
+            "routing_metrics", columns="cost,metadata", filters=filters, use_admin=use_admin
         )
 
         # Filter by timestamp (PostgreSQL timestamp comparison)
@@ -143,7 +135,7 @@ class AsyncMetricsCollector:
                 "percent_saved": 0.0,
                 "intelligent_cost": 0.0,
                 "baseline_cost": 0.0,
-                "period_days": days
+                "period_days": days,
             }
 
         # Separate by auto_route setting (from metadata JSONB)
@@ -164,10 +156,10 @@ class AsyncMetricsCollector:
             "baseline_cost": baseline_cost,
             "period_days": days,
             "intelligent_requests": len(intelligent_metrics),
-            "baseline_requests": len(baseline_metrics)
+            "baseline_requests": len(baseline_metrics),
         }
 
-    async def aggregate_by_strategy(self, days: int = 7) -> List[Dict[str, Any]]:
+    async def aggregate_by_strategy(self, days: int = 7) -> list[dict[str, Any]]:
         """
         Aggregate metrics by strategy type.
 
@@ -190,7 +182,7 @@ class AsyncMetricsCollector:
             "routing_metrics",
             columns="strategy_used,cost,confidence,timestamp",
             filters=filters,
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         # Filter by timestamp
@@ -204,10 +196,7 @@ class AsyncMetricsCollector:
         for m in metrics:
             strategy = m.get("strategy_used", "unknown")
             if strategy not in strategy_groups:
-                strategy_groups[strategy] = {
-                    "costs": [],
-                    "confidences": []
-                }
+                strategy_groups[strategy] = {"costs": [], "confidences": []}
 
             strategy_groups[strategy]["costs"].append(m.get("cost", 0.0))
             strategy_groups[strategy]["confidences"].append(m.get("confidence", "low"))
@@ -220,19 +209,21 @@ class AsyncMetricsCollector:
             high_conf_count = sum(1 for c in data["confidences"] if c == "high")
             high_conf_pct = (high_conf_count / count * 100) if count > 0 else 0.0
 
-            results.append({
-                "strategy": strategy,
-                "count": count,
-                "avg_cost": avg_cost,
-                "high_confidence_pct": high_conf_pct
-            })
+            results.append(
+                {
+                    "strategy": strategy,
+                    "count": count,
+                    "avg_cost": avg_cost,
+                    "high_confidence_pct": high_conf_pct,
+                }
+            )
 
         # Sort by count descending
         results.sort(key=lambda x: x["count"], reverse=True)
 
         return results
 
-    async def aggregate_by_confidence(self, days: int = 7) -> List[Dict[str, Any]]:
+    async def aggregate_by_confidence(self, days: int = 7) -> list[dict[str, Any]]:
         """
         Aggregate metrics by confidence level.
 
@@ -255,7 +246,7 @@ class AsyncMetricsCollector:
             "routing_metrics",
             columns="confidence,cost,timestamp",
             filters=filters,
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         # Filter by timestamp
@@ -279,18 +270,14 @@ class AsyncMetricsCollector:
             count = len(costs)
             avg_cost = sum(costs) / count if count > 0 else 0.0
 
-            results.append({
-                "confidence": confidence,
-                "count": count,
-                "avg_cost": avg_cost
-            })
+            results.append({"confidence": confidence, "count": count, "avg_cost": avg_cost})
 
         # Sort by count descending
         results.sort(key=lambda x: x["count"], reverse=True)
 
         return results
 
-    async def get_metrics(self, days: int = 7) -> Dict[str, Any]:
+    async def get_metrics(self, days: int = 7) -> dict[str, Any]:
         """
         Get comprehensive routing metrics for analysis.
 
@@ -314,10 +301,7 @@ class AsyncMetricsCollector:
 
         # Fetch all metrics for the period
         all_metrics = await self.db.select(
-            "routing_metrics",
-            columns="*",
-            filters=filters,
-            use_admin=use_admin
+            "routing_metrics", columns="*", filters=filters, use_admin=use_admin
         )
 
         # Filter by timestamp
@@ -329,16 +313,16 @@ class AsyncMetricsCollector:
         # Strategy performance
         strategy_perf = {}
         for strategy in await self.aggregate_by_strategy(days):
-            strategy_perf[strategy['strategy']] = {
-                "count": strategy['count'],
-                "avg_cost": round(strategy['avg_cost'], 6) if strategy['avg_cost'] else 0,
-                "high_confidence_pct": round(strategy['high_confidence_pct'], 2)
+            strategy_perf[strategy["strategy"]] = {
+                "count": strategy["count"],
+                "avg_cost": round(strategy["avg_cost"], 6) if strategy["avg_cost"] else 0,
+                "high_confidence_pct": round(strategy["high_confidence_pct"], 2),
             }
 
         # Confidence distribution
         conf_dist = {"high": 0, "medium": 0, "low": 0}
         for conf in await self.aggregate_by_confidence(days):
-            conf_dist[conf['confidence']] = conf['count']
+            conf_dist[conf["confidence"]] = conf["count"]
 
         # Provider usage
         provider_groups = {}
@@ -352,10 +336,7 @@ class AsyncMetricsCollector:
         for provider, costs in provider_groups.items():
             count = len(costs)
             avg_cost = sum(costs) / count if count > 0 else 0.0
-            provider_usage[provider] = {
-                "count": count,
-                "avg_cost": round(avg_cost, 6)
-            }
+            provider_usage[provider] = {"count": count, "avg_cost": round(avg_cost, 6)}
 
         # Cost savings
         savings = await self.get_cost_savings(days)
@@ -367,7 +348,7 @@ class AsyncMetricsCollector:
             "provider_usage": provider_usage,
             "cost_savings": savings,
             "period_days": days,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     def _estimate_cost(self, provider: str, model: str) -> float:

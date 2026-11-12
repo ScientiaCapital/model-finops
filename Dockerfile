@@ -1,7 +1,7 @@
 # AI Cost Optimizer - Production Dockerfile (Supabase Edition)
 # Optimized for linux/amd64 deployment (RunPod, AWS, GCP, etc.)
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -17,13 +17,26 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
 # Copy requirements first for better Docker layer caching
-COPY --chown=appuser:appuser requirements.txt .
+COPY --chown=appuser:appuser requirements.txt requirements-embeddings.txt ./
+
+# Set to 1 to add semantic-cache embeddings (sentence-transformers with CPU-only PyTorch).
+# The default image leaves them out: the NVIDIA CUDA wheels alone are several GB.
+ARG WITH_EMBEDDINGS=0
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+RUN if [ "$WITH_EMBEDDINGS" = "1" ]; then \
+      TORCH_VERSION="$(sed -n 's/^torch==\([^ ;]*\).*/\1/p' requirements-embeddings.txt)" && \
+      pip install --no-cache-dir "torch==${TORCH_VERSION}" \
+        --index-url https://download.pytorch.org/whl/cpu && \
+      grep -vE '^(torch|triton|nvidia-)' requirements-embeddings.txt > /tmp/requirements-rest.txt && \
+      pip install --no-cache-dir -r /tmp/requirements-rest.txt && \
+      rm /tmp/requirements-rest.txt; \
+    fi
 
 # Copy application code
+COPY --chown=appuser:appuser pyproject.toml ./
 COPY --chown=appuser:appuser app/ ./app/
 COPY --chown=appuser:appuser migrations/ ./migrations/
 COPY --chown=appuser:appuser .env.example ./

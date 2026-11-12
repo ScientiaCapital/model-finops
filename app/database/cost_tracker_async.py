@@ -1,7 +1,10 @@
 """Async CostTracker for Supabase with semantic caching and multi-tenancy."""
+
+import hashlib
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 from app.database.supabase_client import get_supabase_client
 from app.embeddings import get_embedding_generator
 
@@ -25,7 +28,7 @@ class AsyncCostTracker:
     - All methods are async (await required)
     """
 
-    def __init__(self, user_id: Optional[str] = None):
+    def __init__(self, user_id: str | None = None) -> None:
         """
         Initialize async cost tracker.
 
@@ -36,8 +39,32 @@ class AsyncCostTracker:
         self.user_id = user_id
         self.db = get_supabase_client()
         self.embeddings = get_embedding_generator()
+        self._embeddings_unavailable_logged = False
 
         logger.info(f"AsyncCostTracker initialized (user_id={user_id})")
+
+    def _embed_for_cache(self, normalized_prompt: str) -> list[float] | None:
+        """Embed a prompt for the semantic cache, or return None to skip caching.
+
+        The cache is optional: sentence-transformers ships in the `embeddings` extra. When it
+        is missing, both cache reads and cache writes are skipped and the request goes to (or
+        comes back from) the provider uncached. That is logged once at INFO, then at DEBUG.
+        """
+        try:
+            return self.embeddings.generate_embedding(normalized_prompt)
+        except ImportError:
+            if not self._embeddings_unavailable_logged:
+                self._embeddings_unavailable_logged = True
+                logger.info(
+                    "semantic cache disabled: sentence-transformers is not installed "
+                    "(install the 'embeddings' extra to enable it)"
+                )
+            else:
+                logger.debug("semantic cache skipped: embeddings unavailable")
+            return None
+        except Exception as e:
+            logger.warning(f"semantic cache skipped: embedding generation failed: {e}")
+            return None
 
     def set_user_context(self, user_id: str) -> None:
         """
@@ -60,13 +87,13 @@ class AsyncCostTracker:
         tokens_in: int,
         tokens_out: int,
         cost: float,
-        project_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        task_type: Optional[str] = None,
-        latency_ms: Optional[int] = None,
-        source: Optional[str] = None,
-        timestamp: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        project_id: str | None = None,
+        session_id: str | None = None,
+        task_type: str | None = None,
+        latency_ms: int | None = None,
+        source: str | None = None,
+        timestamp: str | None = None,
+    ) -> dict[str, Any]:
         """
         Log a completed request to the database.
 
@@ -124,8 +151,7 @@ class AsyncCostTracker:
         result = await self.db.insert("requests", data, use_admin=use_admin)
 
         logger.info(
-            f"Logged request: {provider}/{model}, "
-            f"{tokens_in}→{tokens_out} tokens, ${cost:.6f}"
+            f"Logged request: {provider}/{model}, {tokens_in}→{tokens_out} tokens, ${cost:.6f}"
         )
 
         return result
@@ -147,10 +173,7 @@ class AsyncCostTracker:
 
         # Supabase doesn't have SUM in select, so fetch all and sum in Python
         rows = await self.db.select(
-            "requests",
-            columns="cost",
-            filters=filters,
-            use_admin=use_admin
+            "requests", columns="cost", filters=filters, use_admin=use_admin
         )
 
         total = sum(row.get("cost", 0.0) for row in rows)
@@ -160,6 +183,13 @@ class AsyncCostTracker:
         return total
 
     # ==================== GROUP 2: SEMANTIC CACHING ====================
+
+    def cache_key_for(self, normalized_prompt: str, max_tokens: int) -> str:
+        """Primary key for a cache row. The owner is part of the key, so two users who send the
+        same prompt get two rows instead of one overwriting the other."""
+        owner = self.user_id or ""
+        cache_input = f"{owner}|{normalized_prompt}|{max_tokens}"
+        return hashlib.sha256(cache_input.encode()).hexdigest()
 
     def _normalize_prompt(self, prompt: str) -> str:
         """
@@ -179,11 +209,8 @@ class AsyncCostTracker:
         return " ".join(prompt.split())
 
     async def check_cache(
-        self,
-        prompt: str,
-        max_tokens: int,
-        similarity_threshold: float = 0.95
-    ) -> Optional[Dict[str, Any]]:
+        self, prompt: str, max_tokens: int, similarity_threshold: float = 0.95
+    ) -> dict[str, Any] | None:
         """
         Check if semantically similar response exists in cache.
 
@@ -206,16 +233,20 @@ class AsyncCostTracker:
         Returns:
             Dictionary with cached response data if found, None otherwise
         """
+        # The cache is per user. With no user there is nothing to scope the lookup to, and an
+        # unscoped search would match every user's rows, so anonymous callers skip the cache.
+        if self.user_id is None:
+            logger.debug("semantic cache read skipped: no user_id")
+            return None
+
         # Step 1: Normalize the prompt
         normalized_prompt = self._normalize_prompt(prompt)
 
         # Step 2: Generate embedding for the query prompt
         logger.debug(f"Generating embedding for cache lookup: '{normalized_prompt[:50]}...'")
-        try:
-            query_embedding = self.embeddings.generate_embedding(normalized_prompt)
-        except Exception as e:
-            logger.error(f"Embedding generation failed: {e}")
-            return None  # Fall back to API call if embeddings fail
+        query_embedding = self._embed_for_cache(normalized_prompt)
+        if query_embedding is None:
+            return None  # Fall back to API call if embeddings are unavailable
 
         # Step 3: Perform semantic search using pgvector
         logger.debug(
@@ -228,7 +259,7 @@ class AsyncCostTracker:
                 query_embedding=query_embedding,
                 match_threshold=similarity_threshold,
                 match_count=1,  # Only need the best match
-                user_id=self.user_id  # RLS filtering
+                user_id=self.user_id,  # RLS filtering
             )
 
             if not matches:
@@ -254,7 +285,7 @@ class AsyncCostTracker:
                 "cost": best_match.get("cost", 0.0),
                 "hit_count": best_match.get("hit_count", 0),
                 "quality_score": best_match.get("quality_score"),
-                "similarity": similarity  # NEW! How similar was the match
+                "similarity": similarity,  # NEW! How similar was the match
             }
 
         except Exception as e:
@@ -271,8 +302,8 @@ class AsyncCostTracker:
         complexity: str,
         tokens_in: int,
         tokens_out: int,
-        cost: float
-    ) -> Dict[str, Any]:
+        cost: float,
+    ) -> dict[str, Any]:
         """
         Store response in cache with semantic embedding.
 
@@ -291,20 +322,25 @@ class AsyncCostTracker:
             cost: Total cost in USD
 
         Returns:
-            Inserted cache entry
+            Inserted cache entry, or {} when caching was skipped (embeddings unavailable)
         """
+        # Never write a shared (user_id NULL) cache row: anonymous callers skip the cache.
+        if self.user_id is None:
+            logger.debug("semantic cache write skipped: no user_id")
+            return {}
+
         # Step 1: Normalize prompt
         normalized_prompt = self._normalize_prompt(prompt)
 
-        # Step 2: Generate embedding
+        # Step 2: Generate embedding (skip caching, as the read path does, if unavailable)
         logger.debug(f"Generating embedding for cache storage: '{normalized_prompt[:50]}...'")
-        embedding = self.embeddings.generate_embedding(normalized_prompt)
+        embedding = self._embed_for_cache(normalized_prompt)
+        if embedding is None:
+            return {}
 
         # Step 3: Generate cache key (still used as primary key)
         # We'll use a hash for the cache_key, but the REAL magic is the embedding!
-        import hashlib
-        cache_input = f"{normalized_prompt}|{max_tokens}"
-        cache_key = hashlib.sha256(cache_input.encode()).hexdigest()
+        cache_key = self.cache_key_for(normalized_prompt, max_tokens)
 
         now = datetime.now().isoformat()
 
@@ -327,22 +363,16 @@ class AsyncCostTracker:
             "user_id": self.user_id,  # Multi-tenant RLS
             "upvotes": 0,
             "downvotes": 0,
-            "invalidated": 0
+            "invalidated": 0,
         }
 
         use_admin = self.user_id is None
 
         result = await self.db.upsert(
-            "response_cache",
-            data,
-            on_conflict="cache_key",
-            use_admin=use_admin
+            "response_cache", data, on_conflict="cache_key", use_admin=use_admin
         )
 
-        logger.info(
-            f"Stored in cache: {cache_key[:16]}..., "
-            f"embedding_dim={len(embedding)}"
-        )
+        logger.info(f"Stored in cache: {cache_key[:16]}..., embedding_dim={len(embedding)}")
 
         return result[0] if result else {}
 
@@ -368,7 +398,7 @@ class AsyncCostTracker:
             "response_cache",
             columns="hit_count",
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         if not rows:
@@ -381,20 +411,14 @@ class AsyncCostTracker:
         # Update with incremented count
         await self.db.update(
             "response_cache",
-            data={
-                "hit_count": new_hits,
-                "last_accessed": now
-            },
+            data={"hit_count": new_hits, "last_accessed": now},
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         logger.debug(f"Cache hit recorded: {cache_key[:16]}... (hits={new_hits})")
 
-    async def batch_store_in_cache(
-        self,
-        entries: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    async def batch_store_in_cache(self, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Batch store multiple responses in cache with embeddings.
 
@@ -424,15 +448,11 @@ class AsyncCostTracker:
             ]
             results = await tracker.batch_store_in_cache(entries)
         """
-        import hashlib
-
         if not entries:
             return []
 
         # Step 1: Normalize all prompts
-        normalized_prompts = [
-            self._normalize_prompt(e["prompt"]) for e in entries
-        ]
+        normalized_prompts = [self._normalize_prompt(e["prompt"]) for e in entries]
 
         # Step 2: Batch generate embeddings (much more efficient!)
         logger.info(f"Generating {len(entries)} embeddings in batch...")
@@ -447,45 +467,43 @@ class AsyncCostTracker:
             embedding = embeddings[i]
 
             # Generate cache key
-            cache_input = f"{normalized_prompt}|{entry['max_tokens']}"
-            cache_key = hashlib.sha256(cache_input.encode()).hexdigest()
+            cache_key = self.cache_key_for(normalized_prompt, entry["max_tokens"])
 
-            cache_data.append({
-                "cache_key": cache_key,
-                "prompt_normalized": normalized_prompt,
-                "max_tokens": entry["max_tokens"],
-                "response": entry["response"],
-                "provider": entry["provider"],
-                "model": entry["model"],
-                "complexity": entry["complexity"],
-                "tokens_in": entry["tokens_in"],
-                "tokens_out": entry["tokens_out"],
-                "cost": entry["cost"],
-                "created_at": now,
-                "last_accessed": now,
-                "hit_count": 0,
-                "embedding": embedding,
-                "user_id": self.user_id,
-                "upvotes": 0,
-                "downvotes": 0,
-                "invalidated": 0
-            })
+            cache_data.append(
+                {
+                    "cache_key": cache_key,
+                    "prompt_normalized": normalized_prompt,
+                    "max_tokens": entry["max_tokens"],
+                    "response": entry["response"],
+                    "provider": entry["provider"],
+                    "model": entry["model"],
+                    "complexity": entry["complexity"],
+                    "tokens_in": entry["tokens_in"],
+                    "tokens_out": entry["tokens_out"],
+                    "cost": entry["cost"],
+                    "created_at": now,
+                    "last_accessed": now,
+                    "hit_count": 0,
+                    "embedding": embedding,
+                    "user_id": self.user_id,
+                    "upvotes": 0,
+                    "downvotes": 0,
+                    "invalidated": 0,
+                }
+            )
 
         # Step 4: Batch upsert to database
         use_admin = self.user_id is None
 
         result = await self.db.upsert(
-            "response_cache",
-            cache_data,
-            on_conflict="cache_key",
-            use_admin=use_admin
+            "response_cache", cache_data, on_conflict="cache_key", use_admin=use_admin
         )
 
         logger.info(f"Batch stored {len(cache_data)} cache entries")
 
         return result
 
-    async def get_cache_stats(self) -> Dict[str, Any]:
+    async def get_cache_stats(self) -> dict[str, Any]:
         """
         Get cache statistics using Supabase function.
 
@@ -500,9 +518,7 @@ class AsyncCostTracker:
             # Admin mode - need to aggregate manually
             logger.warning("get_cache_stats in admin mode - manual aggregation")
             rows = await self.db.select(
-                "response_cache",
-                columns="hit_count,quality_score,response",
-                use_admin=True
+                "response_cache", columns="hit_count,quality_score,response", use_admin=True
             )
 
             total_entries = len(rows)
@@ -515,7 +531,7 @@ class AsyncCostTracker:
                 "total_entries": total_entries,
                 "total_hits": total_hits,
                 "avg_quality_score": avg_quality,
-                "cache_size_bytes": cache_size
+                "cache_size_bytes": cache_size,
             }
 
         # User mode - use Supabase function
@@ -524,7 +540,7 @@ class AsyncCostTracker:
 
     # ==================== GROUP 3: STATISTICS ====================
 
-    async def get_usage_stats(self) -> Dict[str, Any]:
+    async def get_usage_stats(self) -> dict[str, Any]:
         """
         Get comprehensive usage statistics for current user.
 
@@ -543,7 +559,7 @@ class AsyncCostTracker:
             columns="provider,complexity,cost,tokens_in,tokens_out,timestamp,prompt_preview,model",
             filters=filters,
             order_by="-timestamp",
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         if not requests:
@@ -553,11 +569,11 @@ class AsyncCostTracker:
                     "total_cost": 0.0,
                     "total_tokens_in": 0,
                     "total_tokens_out": 0,
-                    "avg_cost_per_request": 0.0
+                    "avg_cost_per_request": 0.0,
                 },
                 "by_provider": [],
                 "by_complexity": [],
-                "recent_requests": []
+                "recent_requests": [],
             }
 
         # Calculate overall stats
@@ -576,7 +592,7 @@ class AsyncCostTracker:
                     "provider": provider,
                     "request_count": 0,
                     "total_cost": 0.0,
-                    "avg_cost": 0.0
+                    "avg_cost": 0.0,
                 }
             by_provider[provider]["request_count"] += 1
             by_provider[provider]["total_cost"] += req.get("cost", 0.0)
@@ -595,7 +611,7 @@ class AsyncCostTracker:
                     "complexity": complexity,
                     "request_count": 0,
                     "total_cost": 0.0,
-                    "avg_cost": 0.0
+                    "avg_cost": 0.0,
                 }
             by_complexity[complexity]["request_count"] += 1
             by_complexity[complexity]["total_cost"] += req.get("cost", 0.0)
@@ -603,7 +619,9 @@ class AsyncCostTracker:
         # Calculate averages
         for complexity_stats in by_complexity.values():
             count = complexity_stats["request_count"]
-            complexity_stats["avg_cost"] = complexity_stats["total_cost"] / count if count > 0 else 0.0
+            complexity_stats["avg_cost"] = (
+                complexity_stats["total_cost"] / count if count > 0 else 0.0
+            )
 
         # Recent requests (already sorted by timestamp DESC)
         recent_requests = requests[:10]
@@ -614,14 +632,14 @@ class AsyncCostTracker:
                 "total_cost": total_cost,
                 "total_tokens_in": total_tokens_in,
                 "total_tokens_out": total_tokens_out,
-                "avg_cost_per_request": avg_cost
+                "avg_cost_per_request": avg_cost,
             },
             "by_provider": list(by_provider.values()),
             "by_complexity": list(by_complexity.values()),
-            "recent_requests": recent_requests
+            "recent_requests": recent_requests,
         }
 
-    async def get_request_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_request_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """
         Get recent request history for current user.
 
@@ -643,7 +661,7 @@ class AsyncCostTracker:
             filters=filters,
             order_by="-timestamp",
             limit=limit,
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         logger.debug(f"Fetched {len(requests)} request history entries")
@@ -665,20 +683,13 @@ class AsyncCostTracker:
 
         # Get count before deletion
         existing = await self.db.select(
-            "requests",
-            columns="id",
-            filters={"user_id": self.user_id},
-            use_admin=False
+            "requests", columns="id", filters={"user_id": self.user_id}, use_admin=False
         )
 
         count = len(existing)
 
         # Delete all user's requests
-        await self.db.delete(
-            "requests",
-            filters={"user_id": self.user_id},
-            use_admin=False
-        )
+        await self.db.delete("requests", filters={"user_id": self.user_id}, use_admin=False)
 
         logger.warning(f"Cleared {count} requests for user {self.user_id}")
 
@@ -702,17 +713,13 @@ class AsyncCostTracker:
             "response_cache",
             columns="cache_key",
             filters={"user_id": self.user_id},
-            use_admin=False
+            use_admin=False,
         )
 
         count = len(existing)
 
         # Delete all user's cache
-        await self.db.delete(
-            "response_cache",
-            filters={"user_id": self.user_id},
-            use_admin=False
-        )
+        await self.db.delete("response_cache", filters={"user_id": self.user_id}, use_admin=False)
 
         logger.warning(f"Cleared {count} cache entries for user {self.user_id}")
 
@@ -721,11 +728,7 @@ class AsyncCostTracker:
     # ==================== GROUP 4: QUALITY & FEEDBACK ====================
 
     async def add_feedback(
-        self,
-        cache_key: str,
-        rating: int,
-        comment: Optional[str] = None,
-        user_agent: Optional[str] = None
+        self, cache_key: str, rating: int, comment: str | None = None, user_agent: str | None = None
     ) -> bool:
         """
         Add user feedback for a cached response.
@@ -753,7 +756,7 @@ class AsyncCostTracker:
             "rating": rating,
             "comment": comment,
             "user_agent": user_agent,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         await self.db.insert("response_feedback", feedback_data, use_admin=use_admin)
@@ -764,7 +767,7 @@ class AsyncCostTracker:
             "response_cache",
             columns="upvotes,downvotes",
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         if not cache_entries:
@@ -780,7 +783,7 @@ class AsyncCostTracker:
                 "response_cache",
                 data={"upvotes": current_upvotes + 1},
                 filters={"cache_key": cache_key},
-                use_admin=use_admin
+                use_admin=use_admin,
             )
             logger.info(f"Upvote recorded for {cache_key[:16]}...")
         else:
@@ -788,13 +791,13 @@ class AsyncCostTracker:
                 "response_cache",
                 data={"downvotes": current_downvotes + 1},
                 filters={"cache_key": cache_key},
-                use_admin=use_admin
+                use_admin=use_admin,
             )
             logger.info(f"Downvote recorded for {cache_key[:16]}...")
 
         return True
 
-    async def update_quality_score(self, cache_key: str) -> Optional[float]:
+    async def update_quality_score(self, cache_key: str) -> float | None:
         """
         Recalculate and update quality score for a cached response.
 
@@ -813,7 +816,7 @@ class AsyncCostTracker:
             "response_cache",
             columns="upvotes,downvotes",
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         if not cache_entries:
@@ -835,14 +838,13 @@ class AsyncCostTracker:
             "response_cache",
             data={"quality_score": quality_score},
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         # Check if should be invalidated (< 0.3 score with 5+ votes)
         if quality_score < 0.3 and total_votes >= 5:
             await self.invalidate_cache_entry(
-                cache_key,
-                f"Low quality score: {quality_score:.2f} ({upvotes}↑ {downvotes}↓)"
+                cache_key, f"Low quality score: {quality_score:.2f} ({upvotes}↑ {downvotes}↓)"
             )
             logger.warning(f"Cache entry invalidated due to low quality: {cache_key[:16]}...")
 
@@ -873,14 +875,16 @@ class AsyncCostTracker:
         z = 1.96  # 95% confidence
         p = upvotes / total
 
-        numerator = p + (z * z) / (2 * total) - z * math.sqrt((p * (1 - p) + (z * z) / (4 * total)) / total)
+        numerator = (
+            p + (z * z) / (2 * total) - z * math.sqrt((p * (1 - p) + (z * z) / (4 * total)) / total)
+        )
         denominator = 1 + (z * z) / total
 
         score = numerator / denominator
 
         return max(0.0, min(1.0, score))  # Clamp to [0, 1]
 
-    async def get_feedback_for_response(self, cache_key: str) -> List[Dict[str, Any]]:
+    async def get_feedback_for_response(self, cache_key: str) -> list[dict[str, Any]]:
         """
         Get all feedback for a specific cached response.
 
@@ -897,7 +901,7 @@ class AsyncCostTracker:
             columns="id,rating,comment,user_agent,timestamp",
             filters={"cache_key": cache_key},
             order_by="-timestamp",
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         logger.debug(f"Fetched {len(feedback)} feedback entries for {cache_key[:16]}...")
@@ -918,17 +922,14 @@ class AsyncCostTracker:
 
         await self.db.update(
             "response_cache",
-            data={
-                "invalidated": 1,
-                "invalidation_reason": reason
-            },
+            data={"invalidated": 1, "invalidation_reason": reason},
             filters={"cache_key": cache_key},
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         logger.warning(f"Cache entry invalidated: {cache_key[:16]}... - {reason}")
 
-    async def get_quality_stats(self) -> Dict[str, Any]:
+    async def get_quality_stats(self) -> dict[str, Any]:
         """
         Get quality statistics across all cached responses for current user.
 
@@ -946,7 +947,7 @@ class AsyncCostTracker:
             "response_cache",
             columns="provider,model,upvotes,downvotes,quality_score,invalidated,invalidation_reason,prompt_normalized",
             filters=filters,
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         if not cache_entries:
@@ -956,12 +957,12 @@ class AsyncCostTracker:
                     "total_upvotes": 0,
                     "total_downvotes": 0,
                     "invalidated_count": 0,
-                    "avg_quality_score": 0.0
+                    "avg_quality_score": 0.0,
                 },
                 "by_provider": [],
                 "top_rated": [],
                 "worst_rated": [],
-                "invalidated_responses": []
+                "invalidated_responses": [],
             }
 
         # Calculate overall stats
@@ -970,7 +971,9 @@ class AsyncCostTracker:
         total_downvotes = sum(e.get("downvotes", 0) for e in cache_entries)
         invalidated_count = sum(1 for e in cache_entries if e.get("invalidated"))
 
-        scores = [e.get("quality_score", 0) for e in cache_entries if e.get("quality_score") is not None]
+        scores = [
+            e.get("quality_score", 0) for e in cache_entries if e.get("quality_score") is not None
+        ]
         avg_quality_score = sum(scores) / len(scores) if scores else 0.0
 
         # Group by provider
@@ -987,31 +990,40 @@ class AsyncCostTracker:
                     "total_upvotes": 0,
                     "total_downvotes": 0,
                     "total_votes": 0,
-                    "avg_quality_score": 0.0
+                    "avg_quality_score": 0.0,
                 }
 
             by_provider[provider]["entry_count"] += 1
             by_provider[provider]["total_upvotes"] += entry.get("upvotes", 0)
             by_provider[provider]["total_downvotes"] += entry.get("downvotes", 0)
-            by_provider[provider]["total_votes"] += entry.get("upvotes", 0) + entry.get("downvotes", 0)
+            by_provider[provider]["total_votes"] += entry.get("upvotes", 0) + entry.get(
+                "downvotes", 0
+            )
 
         # Calculate provider averages
         for provider_stats in by_provider.values():
-            provider_entries = [e for e in cache_entries
-                              if e.get("provider") == provider_stats["provider"]
-                              and not e.get("invalidated")
-                              and e.get("quality_score") is not None]
+            provider_entries = [
+                e
+                for e in cache_entries
+                if e.get("provider") == provider_stats["provider"]
+                and not e.get("invalidated")
+                and e.get("quality_score") is not None
+            ]
 
             if provider_entries:
                 scores = [e["quality_score"] for e in provider_entries]
                 provider_stats["avg_quality_score"] = sum(scores) / len(scores)
 
         # Top rated (valid entries with quality scores)
-        scored_entries = [e for e in cache_entries
-                         if e.get("quality_score") is not None
-                         and not e.get("invalidated")]
+        scored_entries = [
+            e
+            for e in cache_entries
+            if e.get("quality_score") is not None and not e.get("invalidated")
+        ]
 
-        top_rated = sorted(scored_entries, key=lambda x: x.get("quality_score", 0), reverse=True)[:5]
+        top_rated = sorted(scored_entries, key=lambda x: x.get("quality_score", 0), reverse=True)[
+            :5
+        ]
         worst_rated = sorted(scored_entries, key=lambda x: x.get("quality_score", 0))[:5]
 
         # Invalidated entries
@@ -1023,12 +1035,12 @@ class AsyncCostTracker:
                 "total_upvotes": total_upvotes,
                 "total_downvotes": total_downvotes,
                 "invalidated_count": invalidated_count,
-                "avg_quality_score": avg_quality_score
+                "avg_quality_score": avg_quality_score,
             },
             "by_provider": list(by_provider.values()),
             "top_rated": top_rated,
             "worst_rated": worst_rated,
-            "invalidated_responses": invalidated
+            "invalidated_responses": invalidated,
         }
 
 
@@ -1036,6 +1048,7 @@ class AsyncCostTracker:
 
 # For gradual migration, we'll keep a compatibility wrapper
 # that mimics the old sync interface but calls async methods
+
 
 class CostTrackerCompat:
     """
@@ -1045,9 +1058,10 @@ class CostTrackerCompat:
     Migrate to AsyncCostTracker as soon as possible.
     """
 
-    def __init__(self, db_path: str = "optimizer.db"):
+    def __init__(self, db_path: str = "optimizer.db") -> None:
         """Initialize (db_path ignored, for compatibility only)."""
         import asyncio
+
         self._tracker = AsyncCostTracker()
         self._loop = asyncio.new_event_loop()
         logger.warning(
@@ -1055,18 +1069,27 @@ class CostTrackerCompat:
             "Migrate to AsyncCostTracker for better performance!"
         )
 
-    def log_request(self, prompt, complexity, provider, model,
-                    tokens_in, tokens_out, cost):
+    def log_request(
+        self,
+        prompt: str,
+        complexity: str,
+        provider: str,
+        model: str,
+        tokens_in: int,
+        tokens_out: int,
+        cost: float,
+    ) -> dict[str, Any]:
         """Sync wrapper for log_request."""
         import asyncio
+
         return asyncio.run(
             self._tracker.log_request(
-                prompt, complexity, provider, model,
-                tokens_in, tokens_out, cost
+                prompt, complexity, provider, model, tokens_in, tokens_out, cost
             )
         )
 
     def get_total_cost(self) -> float:
         """Sync wrapper for get_total_cost."""
         import asyncio
+
         return asyncio.run(self._tracker.get_total_cost())

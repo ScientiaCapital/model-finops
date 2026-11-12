@@ -11,10 +11,9 @@ Endpoints:
 - POST /api/telemetry/ingest - Log a pre-computed usage event
 """
 
+import logging
 import os
 import secrets
-import logging
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -37,19 +36,20 @@ class TelemetryEvent(BaseModel):
     input_tokens: int = Field(..., ge=0)
     output_tokens: int = Field(..., ge=0)
     cost_usd: float = Field(..., ge=0.0)
-    task_type: Optional[str] = Field(None, description="Short task/label string")
-    session_id: Optional[str] = None
-    project_id: Optional[str] = None
-    latency_ms: Optional[int] = Field(None, ge=0)
-    timestamp: Optional[str] = Field(None, description="ISO timestamp of the original event")
-    source: Optional[str] = Field(None, description="Origin label, e.g. 'silkroute'")
+    task_type: str | None = Field(None, description="Short task/label string")
+    session_id: str | None = None
+    project_id: str | None = None
+    latency_ms: int | None = Field(None, ge=0)
+    timestamp: str | None = Field(None, description="ISO timestamp of the original event")
+    source: str | None = Field(None, description="Origin label, e.g. 'silkroute'")
 
 
 def _verify_ingest_token(request: Request) -> None:
     expected = os.getenv("FINOPS_INGEST_TOKEN", "")
     auth_header = request.headers.get("Authorization", "")
     got = auth_header.removeprefix("Bearer ") if auth_header.startswith("Bearer ") else ""
-    if not expected or not got or not secrets.compare_digest(got, expected):
+    # Compare bytes: compare_digest raises TypeError on a str that is not ASCII
+    if not expected or not got or not secrets.compare_digest(got.encode(), expected.encode()):
         raise HTTPException(status_code=401, detail="Invalid or missing ingest token")
 
 

@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [
-    { name = "Scientia Capital", email = "dev@scientiacapital.com" }
+    { name = "Tim Kipper", email = "tkipper@gmail.com" }
 ]
 keywords = ["langgraph", "langchain", "llm", "cost-tracking", "budget", "ai"]
 classifiers = [
@@ -43,9 +43,9 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/scientiacapital/ai-cost-optimizer"
-Documentation = "https://github.com/scientiacapital/ai-cost-optimizer#readme"
-Repository = "https://github.com/scientiacapital/ai-cost-optimizer"
+Homepage = "https://github.com/ScientiaCapital/model-finops"
+Documentation = "https://github.com/ScientiaCapital/model-finops#readme"
+Repository = "https://github.com/ScientiaCapital/model-finops"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/langgraph_cost_optimizer"]

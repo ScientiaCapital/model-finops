@@ -2,9 +2,9 @@
 Test suite for forecasting algorithms.
 TDD: Tests written first, implementation follows.
 """
-import pytest
+
 import numpy as np
-from datetime import date, timedelta
+import pytest
 
 
 class TestForecastResult:
@@ -19,7 +19,7 @@ class TestForecastResult:
             lower_bounds=np.array([8.0, 9.0, 10.0]),
             upper_bounds=np.array([12.0, 13.0, 14.0]),
             method="exp_smoothing",
-            quality_score=0.15
+            quality_score=0.15,
         )
 
         assert len(result.predictions) == 3
@@ -31,28 +31,31 @@ class TestForecasterSelection:
 
     def test_select_exp_smoothing_for_many_points(self):
         """Should select ExponentialSmoothing for 7+ data points."""
-        from app.forecasting.algorithms import get_forecaster_for_data, ExponentialSmoothingForecaster
+        from app.forecasting.algorithms import (
+            ExponentialSmoothingForecaster,
+            get_forecaster_for_data,
+        )
 
         forecaster = get_forecaster_for_data(30)
         assert isinstance(forecaster, ExponentialSmoothingForecaster)
 
     def test_select_moving_avg_for_few_points(self):
         """Should select MovingAverage for 3-6 data points."""
-        from app.forecasting.algorithms import get_forecaster_for_data, MovingAverageForecaster
+        from app.forecasting.algorithms import MovingAverageForecaster, get_forecaster_for_data
 
         forecaster = get_forecaster_for_data(5)
         assert isinstance(forecaster, MovingAverageForecaster)
 
     def test_select_linear_for_two_points(self):
         """Should select LinearRegression for 2 data points."""
-        from app.forecasting.algorithms import get_forecaster_for_data, LinearRegressionForecaster
+        from app.forecasting.algorithms import LinearRegressionForecaster, get_forecaster_for_data
 
         forecaster = get_forecaster_for_data(2)
         assert isinstance(forecaster, LinearRegressionForecaster)
 
     def test_select_naive_for_one_point(self):
         """Should select Naive for 1 data point."""
-        from app.forecasting.algorithms import get_forecaster_for_data, NaiveForecaster
+        from app.forecasting.algorithms import NaiveForecaster, get_forecaster_for_data
 
         forecaster = get_forecaster_for_data(1)
         assert isinstance(forecaster, NaiveForecaster)
@@ -255,10 +258,7 @@ class TestConfidenceIntervals:
         result_default = forecaster.forecast(data, 3)
         result_95 = forecaster.forecast(data, 3, confidence=0.95)
 
-        np.testing.assert_array_almost_equal(
-            result_default.lower_bounds,
-            result_95.lower_bounds
-        )
+        np.testing.assert_array_almost_equal(result_default.lower_bounds, result_95.lower_bounds)
 
 
 class TestNonNegativeForecasts:

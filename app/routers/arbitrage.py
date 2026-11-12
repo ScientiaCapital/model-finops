@@ -3,21 +3,20 @@ Arbitrage REST API Router.
 
 Provides endpoints for model arbitrage detection and cost optimization.
 """
+
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from app.arbitrage.capability_registry import CapabilityRegistry
 from app.auth import get_current_user_id
 from app.models.arbitrage import (
     ArbitrageAnalysisRequest,
     ArbitrageAnalysisResponse,
-    ArbitrageOpportunity,
-    ModelProfile,
     ModelCapability,
+    ModelProfile,
 )
 from app.services.arbitrage_service import ArbitrageService
-from app.arbitrage.capability_registry import CapabilityRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +59,15 @@ async def analyze_prompt(
         return response
     except Exception as e:
         logger.error(f"Error analyzing prompt: {e}")
-        raise HTTPException(status_code=500, detail="Failed to analyze prompt")
+        raise HTTPException(status_code=500, detail="Failed to analyze prompt") from e
 
 
-@router.get("/opportunities", response_model=List[dict])
+@router.get("/opportunities", response_model=list[dict])
 async def list_opportunities(
     limit: int = Query(20, ge=1, le=100),
     user_id: str = Depends(get_current_user_id),
     service: ArbitrageService = Depends(get_arbitrage_service),
-) -> List[dict]:
+) -> list[dict]:
     """
     List recent arbitrage opportunities for the user.
 
@@ -80,7 +79,7 @@ async def list_opportunities(
         return opportunities
     except Exception as e:
         logger.error(f"Error listing opportunities: {e}")
-        raise HTTPException(status_code=500, detail="Failed to list opportunities")
+        raise HTTPException(status_code=500, detail="Failed to list opportunities") from e
 
 
 @router.get("/savings-report")
@@ -100,18 +99,18 @@ async def get_savings_report(
         return report
     except Exception as e:
         logger.error(f"Error generating savings report: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate report")
+        raise HTTPException(status_code=500, detail="Failed to generate report") from e
 
 
-@router.get("/models/{model_id}/alternatives", response_model=List[ModelProfile])
+@router.get("/models/{model_id}/alternatives", response_model=list[ModelProfile])
 async def get_model_alternatives(
     model_id: str,
-    capabilities: Optional[str] = Query(
+    capabilities: str | None = Query(
         None,
         description="Comma-separated capability names (e.g., 'code_gen,reasoning')",
     ),
     service: ArbitrageService = Depends(get_arbitrage_service),
-) -> List[ModelProfile]:
+) -> list[ModelProfile]:
     """
     Get cheaper alternatives for a specific model.
 
@@ -128,15 +127,13 @@ async def get_model_alternatives(
         if capabilities:
             try:
                 cap_list = [
-                    ModelCapability(c.strip())
-                    for c in capabilities.split(",")
-                    if c.strip()
+                    ModelCapability(c.strip()) for c in capabilities.split(",") if c.strip()
                 ]
             except ValueError as e:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid capability: {e}",
-                )
+                ) from e
 
         alternatives = service.get_alternatives_for_model(model_id, cap_list)
         return alternatives
@@ -144,11 +141,11 @@ async def get_model_alternatives(
         raise
     except Exception as e:
         logger.error(f"Error getting alternatives: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get alternatives")
+        raise HTTPException(status_code=500, detail="Failed to get alternatives") from e
 
 
-@router.get("/models", response_model=List[ModelProfile])
-async def list_all_models() -> List[ModelProfile]:
+@router.get("/models", response_model=list[ModelProfile])
+async def list_all_models() -> list[ModelProfile]:
     """
     List all models in the capability registry.
 
@@ -159,8 +156,8 @@ async def list_all_models() -> List[ModelProfile]:
     return registry.get_all_models()
 
 
-@router.get("/models/by-provider/{provider}", response_model=List[ModelProfile])
-async def list_models_by_provider(provider: str) -> List[ModelProfile]:
+@router.get("/models/by-provider/{provider}", response_model=list[ModelProfile])
+async def list_models_by_provider(provider: str) -> list[ModelProfile]:
     """
     List models from a specific provider.
 
@@ -180,11 +177,11 @@ async def list_models_by_provider(provider: str) -> List[ModelProfile]:
     return models
 
 
-@router.get("/models/by-capability/{capability}", response_model=List[ModelProfile])
+@router.get("/models/by-capability/{capability}", response_model=list[ModelProfile])
 async def list_models_by_capability(
     capability: str,
-    min_level: Optional[str] = Query(None, description="Minimum capability level"),
-) -> List[ModelProfile]:
+    min_level: str | None = Query(None, description="Minimum capability level"),
+) -> list[ModelProfile]:
     """
     List models with a specific capability.
 
@@ -201,9 +198,10 @@ async def list_models_by_capability(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid capability: {capability}",
-        )
+        ) from None
 
     from app.models.arbitrage import CapabilityLevel
+
     level = None
     if min_level:
         try:
@@ -212,7 +210,7 @@ async def list_models_by_capability(
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid capability level: {min_level}",
-            )
+            ) from None
 
     registry = CapabilityRegistry()
     models = registry.get_models_with_capability(cap, level)
@@ -222,7 +220,7 @@ async def list_models_by_capability(
 @router.get("/cheapest/{capability}", response_model=ModelProfile)
 async def get_cheapest_model(
     capability: str,
-    min_level: Optional[str] = Query(None, description="Minimum capability level"),
+    min_level: str | None = Query(None, description="Minimum capability level"),
 ) -> ModelProfile:
     """
     Get the cheapest model for a capability.
@@ -240,9 +238,10 @@ async def get_cheapest_model(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid capability: {capability}",
-        )
+        ) from None
 
     from app.models.arbitrage import CapabilityLevel
+
     level = None
     if min_level:
         try:
@@ -251,7 +250,7 @@ async def get_cheapest_model(
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid capability level: {min_level}",
-            )
+            ) from None
 
     registry = CapabilityRegistry()
     model = registry.get_cheapest_model(cap, level)

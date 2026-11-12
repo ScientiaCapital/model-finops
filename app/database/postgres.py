@@ -6,12 +6,11 @@ Stub implementations provided for backward compatibility.
 """
 
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def get_connection() -> Any:
+def get_connection() -> None:
     """
     Get PostgreSQL connection (deprecated).
 
@@ -26,7 +25,7 @@ def get_connection() -> Any:
     return None
 
 
-def get_cursor(connection: Any = None) -> Any:
+def get_cursor(connection: object = None) -> None:
     """
     Get database cursor (deprecated).
 
@@ -45,4 +44,4 @@ def get_cursor(connection: Any = None) -> Any:
     return None
 
 
-__all__ = ['get_connection', 'get_cursor']
+__all__ = ["get_connection", "get_cursor"]

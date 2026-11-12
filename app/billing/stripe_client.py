@@ -18,11 +18,12 @@ Usage:
     )
 """
 
+import asyncio
 import logging
-from typing import Optional, Dict, Any, List
+from collections.abc import Callable, Coroutine
 from datetime import datetime
 from functools import wraps
-import asyncio
+from typing import Any, Never
 
 import stripe
 from pydantic import BaseModel, Field
@@ -34,37 +35,41 @@ logger = logging.getLogger(__name__)
 # Pydantic Models for Stripe Responses
 # =============================================================================
 
+
 class StripeCustomer(BaseModel):
     """Stripe customer representation."""
+
     id: str
-    email: Optional[str] = None
-    name: Optional[str] = None
-    default_payment_method: Optional[str] = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    email: str | None = None
+    name: str | None = None
+    default_payment_method: str | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
     created: int
 
 
 class StripeSubscription(BaseModel):
     """Stripe subscription representation."""
+
     id: str
     customer: str
     status: str
     current_period_start: int
     current_period_end: int
     cancel_at_period_end: bool = False
-    canceled_at: Optional[int] = None
-    trial_start: Optional[int] = None
-    trial_end: Optional[int] = None
-    items: List[Dict[str, Any]] = Field(default_factory=list)
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    canceled_at: int | None = None
+    trial_start: int | None = None
+    trial_end: int | None = None
+    items: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class StripeCheckoutSession(BaseModel):
     """Stripe checkout session representation."""
+
     id: str
     url: str
-    customer: Optional[str] = None
-    subscription: Optional[str] = None
+    customer: str | None = None
+    subscription: str | None = None
     status: str
     mode: str
     success_url: str
@@ -73,6 +78,7 @@ class StripeCheckoutSession(BaseModel):
 
 class StripeBillingPortalSession(BaseModel):
     """Stripe billing portal session representation."""
+
     id: str
     url: str
     customer: str
@@ -81,36 +87,39 @@ class StripeBillingPortalSession(BaseModel):
 
 class StripeInvoice(BaseModel):
     """Stripe invoice representation."""
+
     id: str
     customer: str
-    subscription: Optional[str] = None
+    subscription: str | None = None
     status: str
     total: int
     amount_paid: int
     amount_due: int
     currency: str
-    hosted_invoice_url: Optional[str] = None
-    invoice_pdf: Optional[str] = None
+    hosted_invoice_url: str | None = None
+    invoice_pdf: str | None = None
     created: int
-    due_date: Optional[int] = None
-    paid_at: Optional[int] = None
+    due_date: int | None = None
+    paid_at: int | None = None
 
 
 class StripePrice(BaseModel):
     """Stripe price representation."""
+
     id: str
     product: str
-    unit_amount: Optional[int] = None
+    unit_amount: int | None = None
     currency: str
-    recurring: Optional[Dict[str, Any]] = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    recurring: dict[str, Any] | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class StripeWebhookEvent(BaseModel):
     """Stripe webhook event representation."""
+
     id: str
     type: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     created: int
 
 
@@ -118,9 +127,11 @@ class StripeWebhookEvent(BaseModel):
 # Stripe Error Classes
 # =============================================================================
 
+
 class StripeClientError(Exception):
     """Base exception for Stripe client errors."""
-    def __init__(self, message: str, stripe_code: Optional[str] = None):
+
+    def __init__(self, message: str, stripe_code: str | None = None) -> None:
         self.message = message
         self.stripe_code = stripe_code
         super().__init__(message)
@@ -128,21 +139,25 @@ class StripeClientError(Exception):
 
 class StripeAuthenticationError(StripeClientError):
     """Raised when Stripe authentication fails."""
+
     pass
 
 
 class StripeInvalidRequestError(StripeClientError):
     """Raised when request parameters are invalid."""
+
     pass
 
 
 class StripeCardError(StripeClientError):
     """Raised when a card error occurs."""
+
     pass
 
 
 class StripeRateLimitError(StripeClientError):
     """Raised when rate limit is exceeded."""
+
     pass
 
 
@@ -150,23 +165,27 @@ class StripeRateLimitError(StripeClientError):
 # Async Wrapper Decorator
 # =============================================================================
 
-def async_stripe_call(func):
+
+def async_stripe_call[**P, R](func: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     """
     Decorator to run synchronous Stripe API calls in a thread pool.
 
     Stripe's Python SDK is synchronous, so we run it in an executor
     to avoid blocking the async event loop.
     """
+
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
+
     return wrapper
 
 
 # =============================================================================
 # Stripe Client
 # =============================================================================
+
 
 class StripeClient:
     """
@@ -176,7 +195,7 @@ class StripeClient:
     proper error handling and logging.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None) -> None:
         """
         Initialize Stripe client.
 
@@ -201,8 +220,8 @@ class StripeClient:
     async def create_customer(
         self,
         email: str,
-        name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        name: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> StripeCustomer:
         """
         Create a new Stripe customer.
@@ -227,7 +246,8 @@ class StripeClient:
                 email=customer.email,
                 name=customer.name,
                 default_payment_method=customer.invoice_settings.default_payment_method
-                if customer.invoice_settings else None,
+                if customer.invoice_settings
+                else None,
                 metadata=dict(customer.metadata or {}),
                 created=customer.created,
             )
@@ -236,15 +256,15 @@ class StripeClient:
 
     @async_stripe_call
     def _create_customer_sync(
-        self, email: str, name: Optional[str], metadata: Dict[str, str]
-    ):
+        self, email: str, name: str | None, metadata: dict[str, str]
+    ) -> stripe.Customer:
         return stripe.Customer.create(
             email=email,
             name=name,
             metadata=metadata,
         )
 
-    async def get_customer(self, customer_id: str) -> Optional[StripeCustomer]:
+    async def get_customer(self, customer_id: str) -> StripeCustomer | None:
         """
         Retrieve a Stripe customer by ID.
 
@@ -261,7 +281,8 @@ class StripeClient:
                 email=customer.email,
                 name=customer.name,
                 default_payment_method=customer.invoice_settings.default_payment_method
-                if customer.invoice_settings else None,
+                if customer.invoice_settings
+                else None,
                 metadata=dict(customer.metadata or {}),
                 created=customer.created,
             )
@@ -271,15 +292,15 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _get_customer_sync(self, customer_id: str):
+    def _get_customer_sync(self, customer_id: str) -> stripe.Customer:
         return stripe.Customer.retrieve(customer_id)
 
     async def update_customer(
         self,
         customer_id: str,
-        email: Optional[str] = None,
-        name: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        email: str | None = None,
+        name: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> StripeCustomer:
         """
         Update a Stripe customer.
@@ -309,7 +330,8 @@ class StripeClient:
                 email=customer.email,
                 name=customer.name,
                 default_payment_method=customer.invoice_settings.default_payment_method
-                if customer.invoice_settings else None,
+                if customer.invoice_settings
+                else None,
                 metadata=dict(customer.metadata or {}),
                 created=customer.created,
             )
@@ -317,7 +339,7 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _update_customer_sync(self, customer_id: str, params: Dict[str, Any]):
+    def _update_customer_sync(self, customer_id: str, params: dict[str, Any]) -> stripe.Customer:
         return stripe.Customer.modify(customer_id, **params)
 
     # =========================================================================
@@ -328,8 +350,8 @@ class StripeClient:
         self,
         customer_id: str,
         price_id: str,
-        trial_days: Optional[int] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        trial_days: int | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> StripeSubscription:
         """
         Create a new subscription for a customer.
@@ -360,9 +382,9 @@ class StripeClient:
         self,
         customer_id: str,
         price_id: str,
-        trial_days: Optional[int],
-        metadata: Dict[str, str],
-    ):
+        trial_days: int | None,
+        metadata: dict[str, str],
+    ) -> stripe.Subscription:
         params = {
             "customer": customer_id,
             "items": [{"price": price_id}],
@@ -372,7 +394,7 @@ class StripeClient:
             params["trial_period_days"] = trial_days
         return stripe.Subscription.create(**params)
 
-    async def get_subscription(self, subscription_id: str) -> Optional[StripeSubscription]:
+    async def get_subscription(self, subscription_id: str) -> StripeSubscription | None:
         """
         Retrieve a subscription by ID.
 
@@ -391,7 +413,7 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _get_subscription_sync(self, subscription_id: str):
+    def _get_subscription_sync(self, subscription_id: str) -> stripe.Subscription:
         return stripe.Subscription.retrieve(subscription_id)
 
     async def cancel_subscription(
@@ -424,18 +446,20 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _update_subscription_sync(self, subscription_id: str, params: Dict[str, Any]):
+    def _update_subscription_sync(
+        self, subscription_id: str, params: dict[str, Any]
+    ) -> stripe.Subscription:
         return stripe.Subscription.modify(subscription_id, **params)
 
     @async_stripe_call
-    def _cancel_subscription_sync(self, subscription_id: str):
+    def _cancel_subscription_sync(self, subscription_id: str) -> stripe.Subscription:
         return stripe.Subscription.cancel(subscription_id)
 
     async def update_subscription(
         self,
         subscription_id: str,
-        price_id: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
+        price_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> StripeSubscription:
         """
         Update a subscription (e.g., change plan).
@@ -466,7 +490,7 @@ class StripeClient:
         except stripe.error.StripeError as e:
             self._handle_stripe_error(e)
 
-    def _parse_subscription(self, sub) -> StripeSubscription:
+    def _parse_subscription(self, sub: stripe.Subscription) -> StripeSubscription:
         """Parse Stripe subscription object to Pydantic model."""
         return StripeSubscription(
             id=sub.id,
@@ -478,7 +502,10 @@ class StripeClient:
             canceled_at=sub.canceled_at,
             trial_start=sub.trial_start,
             trial_end=sub.trial_end,
-            items=[{"price_id": item.price.id, "quantity": item.quantity} for item in sub["items"]["data"]],
+            items=[
+                {"price_id": item.price.id, "quantity": item.quantity}
+                for item in sub["items"]["data"]
+            ],
             metadata=dict(sub.metadata or {}),
         )
 
@@ -491,10 +518,10 @@ class StripeClient:
         price_id: str,
         success_url: str,
         cancel_url: str,
-        customer_id: Optional[str] = None,
-        customer_email: Optional[str] = None,
-        metadata: Optional[Dict[str, str]] = None,
-        trial_days: Optional[int] = None,
+        customer_id: str | None = None,
+        customer_email: str | None = None,
+        metadata: dict[str, str] | None = None,
+        trial_days: int | None = None,
         allow_promotion_codes: bool = True,
     ) -> StripeCheckoutSession:
         """
@@ -544,12 +571,12 @@ class StripeClient:
         price_id: str,
         success_url: str,
         cancel_url: str,
-        customer_id: Optional[str],
-        customer_email: Optional[str],
-        metadata: Dict[str, str],
-        trial_days: Optional[int],
+        customer_id: str | None,
+        customer_email: str | None,
+        metadata: dict[str, str],
+        trial_days: int | None,
         allow_promotion_codes: bool,
-    ):
+    ) -> stripe.checkout.Session:
         params = {
             "mode": "subscription",
             "line_items": [{"price": price_id, "quantity": 1}],
@@ -604,7 +631,9 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _create_portal_session_sync(self, customer_id: str, return_url: str):
+    def _create_portal_session_sync(
+        self, customer_id: str, return_url: str
+    ) -> stripe.billing_portal.Session:
         return stripe.billing_portal.Session.create(
             customer=customer_id,
             return_url=return_url,
@@ -618,7 +647,7 @@ class StripeClient:
         self,
         customer_id: str,
         limit: int = 10,
-    ) -> List[StripeInvoice]:
+    ) -> list[StripeInvoice]:
         """
         List invoices for a customer.
 
@@ -653,10 +682,12 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _list_invoices_sync(self, customer_id: str, limit: int):
+    def _list_invoices_sync(
+        self, customer_id: str, limit: int
+    ) -> stripe.ListObject[stripe.Invoice]:
         return stripe.Invoice.list(customer=customer_id, limit=limit)
 
-    async def get_upcoming_invoice(self, customer_id: str) -> Optional[StripeInvoice]:
+    async def get_upcoming_invoice(self, customer_id: str) -> StripeInvoice | None:
         """
         Get the upcoming invoice for a customer.
 
@@ -685,14 +716,14 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _get_upcoming_invoice_sync(self, customer_id: str):
+    def _get_upcoming_invoice_sync(self, customer_id: str) -> stripe.Invoice:
         return stripe.Invoice.upcoming(customer=customer_id)
 
     # =========================================================================
     # Prices
     # =========================================================================
 
-    async def get_price(self, price_id: str) -> Optional[StripePrice]:
+    async def get_price(self, price_id: str) -> StripePrice | None:
         """
         Retrieve a price by ID.
 
@@ -718,7 +749,7 @@ class StripeClient:
             self._handle_stripe_error(e)
 
     @async_stripe_call
-    def _get_price_sync(self, price_id: str):
+    def _get_price_sync(self, price_id: str) -> stripe.Price:
         return stripe.Price.retrieve(price_id)
 
     # =========================================================================
@@ -758,15 +789,15 @@ class StripeClient:
                 created=event.created,
             )
         except stripe.error.SignatureVerificationError as e:
-            raise StripeClientError(f"Webhook signature verification failed: {e}")
+            raise StripeClientError(f"Webhook signature verification failed: {e}") from e
         except Exception as e:
-            raise StripeClientError(f"Webhook parsing failed: {e}")
+            raise StripeClientError(f"Webhook parsing failed: {e}") from e
 
     # =========================================================================
     # Error Handling
     # =========================================================================
 
-    def _handle_stripe_error(self, error: stripe.error.StripeError):
+    def _handle_stripe_error(self, error: stripe.error.StripeError) -> Never:
         """Convert Stripe errors to typed exceptions."""
         if isinstance(error, stripe.error.AuthenticationError):
             logger.error(f"Stripe authentication error: {error}")

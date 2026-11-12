@@ -13,24 +13,25 @@ Security Notes:
 - The full key is returned ONCE at creation - it cannot be retrieved later
 """
 
-import secrets
 import hashlib
 import logging
-from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime, timedelta, timezone
+import secrets
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 from app.database.supabase_client import SupabaseClient
 from app.models.api_keys import (
+    APIKeyInfo,
+    APIKeyUsageStats,
+    APIKeyValidation,
     CreateAPIKeyRequest,
     CreateAPIKeyResponse,
-    APIKeyInfo,
     ListAPIKeysResponse,
-    APIKeyUsageStats,
+    RateLimitStatus,
     RevokeAPIKeyResponse,
     RotateAPIKeyResponse,
-    RateLimitStatus,
     UpdateAPIKeyRequest,
     UpdateAPIKeyResponse,
-    APIKeyValidation,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class APIKeyService:
     KEY_PREFIX = "sk-"
     KEY_RANDOM_BYTES = 24  # Produces 32 urlsafe chars
 
-    def __init__(self, supabase: SupabaseClient):
+    def __init__(self, supabase: SupabaseClient) -> None:
         """
         Initialize the API key service.
 
@@ -61,7 +62,7 @@ class APIKeyService:
     # Key Generation Helpers
     # =========================================================================
 
-    def _generate_key(self) -> Tuple[str, str, str]:
+    def _generate_key(self) -> tuple[str, str, str]:
         """
         Generate a new API key.
 
@@ -96,11 +97,7 @@ class APIKeyService:
     # CRUD Operations
     # =========================================================================
 
-    async def create_key(
-        self,
-        user_id: str,
-        request: CreateAPIKeyRequest
-    ) -> CreateAPIKeyResponse:
+    async def create_key(self, user_id: str, request: CreateAPIKeyRequest) -> CreateAPIKeyResponse:
         """
         Create a new API key for a user.
 
@@ -117,7 +114,7 @@ class APIKeyService:
         # Calculate expiration if specified
         expires_at = None
         if request.expires_in_days:
-            expires_at = datetime.now(timezone.utc) + timedelta(days=request.expires_in_days)
+            expires_at = datetime.now(UTC) + timedelta(days=request.expires_in_days)
 
         # Prepare data for insert
         data = {
@@ -171,22 +168,28 @@ class APIKeyService:
 
         keys = []
         for row in results:
-            keys.append(APIKeyInfo(
-                id=row["id"],
-                name=row["name"],
-                key_prefix=row["key_prefix"],
-                permissions=row["permissions"],
-                rate_limit_per_minute=row["rate_limit_per_minute"],
-                rate_limit_per_day=row["rate_limit_per_day"],
-                is_active=row["is_active"],
-                last_used_at=datetime.fromisoformat(row["last_used_at"].replace("Z", "+00:00")) if row.get("last_used_at") else None,
-                created_at=datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")),
-                expires_at=datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00")) if row.get("expires_at") else None,
-            ))
+            keys.append(
+                APIKeyInfo(
+                    id=row["id"],
+                    name=row["name"],
+                    key_prefix=row["key_prefix"],
+                    permissions=row["permissions"],
+                    rate_limit_per_minute=row["rate_limit_per_minute"],
+                    rate_limit_per_day=row["rate_limit_per_day"],
+                    is_active=row["is_active"],
+                    last_used_at=datetime.fromisoformat(row["last_used_at"].replace("Z", "+00:00"))
+                    if row.get("last_used_at")
+                    else None,
+                    created_at=datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")),
+                    expires_at=datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+                    if row.get("expires_at")
+                    else None,
+                )
+            )
 
         return ListAPIKeysResponse(keys=keys, total=len(keys))
 
-    async def get_key(self, user_id: str, key_id: str) -> Optional[APIKeyInfo]:
+    async def get_key(self, user_id: str, key_id: str) -> APIKeyInfo | None:
         """
         Get a specific API key by ID.
 
@@ -216,17 +219,18 @@ class APIKeyService:
             rate_limit_per_minute=row["rate_limit_per_minute"],
             rate_limit_per_day=row["rate_limit_per_day"],
             is_active=row["is_active"],
-            last_used_at=datetime.fromisoformat(row["last_used_at"].replace("Z", "+00:00")) if row.get("last_used_at") else None,
+            last_used_at=datetime.fromisoformat(row["last_used_at"].replace("Z", "+00:00"))
+            if row.get("last_used_at")
+            else None,
             created_at=datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")),
-            expires_at=datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00")) if row.get("expires_at") else None,
+            expires_at=datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+            if row.get("expires_at")
+            else None,
         )
 
     async def update_key(
-        self,
-        user_id: str,
-        key_id: str,
-        request: UpdateAPIKeyRequest
-    ) -> Optional[UpdateAPIKeyResponse]:
+        self, user_id: str, key_id: str, request: UpdateAPIKeyRequest
+    ) -> UpdateAPIKeyResponse | None:
         """
         Update API key settings.
 
@@ -289,11 +293,8 @@ class APIKeyService:
         )
 
     async def revoke_key(
-        self,
-        user_id: str,
-        key_id: str,
-        reason: Optional[str] = None
-    ) -> Optional[RevokeAPIKeyResponse]:
+        self, user_id: str, key_id: str, reason: str | None = None
+    ) -> RevokeAPIKeyResponse | None:
         """
         Revoke an API key (immediate invalidation).
 
@@ -305,7 +306,7 @@ class APIKeyService:
         Returns:
             Revocation confirmation or None if not found
         """
-        revoked_at = datetime.now(timezone.utc)
+        revoked_at = datetime.now(UTC)
 
         results = await self.db.update(
             "api_keys",
@@ -336,8 +337,8 @@ class APIKeyService:
         user_id: str,
         key_id: str,
         preserve_permissions: bool = True,
-        preserve_rate_limits: bool = True
-    ) -> Optional[RotateAPIKeyResponse]:
+        preserve_rate_limits: bool = True,
+    ) -> RotateAPIKeyResponse | None:
         """
         Rotate an API key (revoke old, create new).
 
@@ -365,7 +366,9 @@ class APIKeyService:
 
         create_request = CreateAPIKeyRequest(
             name=f"{current_key.name} (rotated)",
-            permissions=[APIKeyPermission(p) for p in current_key.permissions] if preserve_permissions else [APIKeyPermission.READ, APIKeyPermission.WRITE],
+            permissions=[APIKeyPermission(p) for p in current_key.permissions]
+            if preserve_permissions
+            else [APIKeyPermission.READ, APIKeyPermission.WRITE],
             rate_limit_per_minute=current_key.rate_limit_per_minute if preserve_rate_limits else 60,
             rate_limit_per_day=current_key.rate_limit_per_day if preserve_rate_limits else 10000,
         )
@@ -411,7 +414,9 @@ class APIKeyService:
                     rate_limit_per_minute=0,
                     rate_limit_per_day=0,
                     is_valid=False,
-                    error_message=result.get("error_message", "Invalid API key") if result else "Invalid API key",
+                    error_message=result.get("error_message", "Invalid API key")
+                    if result
+                    else "Invalid API key",
                 )
 
             return APIKeyValidation(
@@ -435,7 +440,7 @@ class APIKeyService:
                 error_message="Key validation failed",
             )
 
-    async def _call_validate_function(self, key_hash: str) -> Optional[Dict[str, Any]]:
+    async def _call_validate_function(self, key_hash: str) -> dict[str, Any] | None:
         """Call the database validate_api_key function."""
         # Use RPC call to the database function
         client = self.db.admin_client or self.db.client
@@ -509,10 +514,10 @@ class APIKeyService:
         tokens_in: int = 0,
         tokens_out: int = 0,
         cost_usd: float = 0.0,
-        latency_ms: Optional[float] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_id: Optional[str] = None,
+        latency_ms: float | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_id: str | None = None,
     ) -> str:
         """
         Record API key usage for a request.
@@ -536,20 +541,23 @@ class APIKeyService:
         """
         try:
             client = self.db.admin_client or self.db.client
-            response = client.rpc("record_api_key_usage", {
-                "p_api_key_id": key_id,
-                "p_user_id": user_id,
-                "p_endpoint": endpoint,
-                "p_method": method,
-                "p_status_code": status_code,
-                "p_tokens_in": tokens_in,
-                "p_tokens_out": tokens_out,
-                "p_cost_usd": cost_usd,
-                "p_latency_ms": latency_ms,
-                "p_ip_address": ip_address,
-                "p_user_agent": user_agent,
-                "p_request_id": request_id,
-            }).execute()
+            response = client.rpc(
+                "record_api_key_usage",
+                {
+                    "p_api_key_id": key_id,
+                    "p_user_id": user_id,
+                    "p_endpoint": endpoint,
+                    "p_method": method,
+                    "p_status_code": status_code,
+                    "p_tokens_in": tokens_in,
+                    "p_tokens_out": tokens_out,
+                    "p_cost_usd": cost_usd,
+                    "p_latency_ms": latency_ms,
+                    "p_ip_address": ip_address,
+                    "p_user_agent": user_agent,
+                    "p_request_id": request_id,
+                },
+            ).execute()
 
             return response.data if response.data else ""
 
@@ -558,11 +566,8 @@ class APIKeyService:
             return ""
 
     async def get_usage_stats(
-        self,
-        user_id: str,
-        key_id: str,
-        days: int = 30
-    ) -> Optional[APIKeyUsageStats]:
+        self, user_id: str, key_id: str, days: int = 30
+    ) -> APIKeyUsageStats | None:
         """
         Get usage statistics for an API key.
 
@@ -581,10 +586,13 @@ class APIKeyService:
 
         try:
             client = self.db.admin_client or self.db.client
-            response = client.rpc("get_api_key_stats", {
-                "p_api_key_id": key_id,
-                "p_days": days,
-            }).execute()
+            response = client.rpc(
+                "get_api_key_stats",
+                {
+                    "p_api_key_id": key_id,
+                    "p_days": days,
+                },
+            ).execute()
 
             if response.data:
                 data = response.data[0] if isinstance(response.data, list) else response.data
@@ -612,6 +620,7 @@ class APIKeyService:
 # =============================================================================
 # Factory function for easy instantiation
 # =============================================================================
+
 
 def create_api_key_service(supabase: SupabaseClient) -> APIKeyService:
     """

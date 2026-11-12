@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS employees (
     auth_user_id UUID UNIQUE,                    -- Links to auth.users(id)
 
     -- Identity
-    email TEXT NOT NULL,                         -- Work email: tim@coperniq.io
+    email TEXT NOT NULL,                         -- Work email: tim@example.com
     name TEXT,
     role TEXT DEFAULT 'employee',                -- employee, manager, admin, hr_admin
 

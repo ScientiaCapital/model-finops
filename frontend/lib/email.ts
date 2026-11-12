@@ -111,7 +111,7 @@ export async function sendWelcomeEmail(
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #1a1a1a;">Welcome to Model FinOps! 🎉</h2>
         <p>${greeting}</p>
-        <p>Thanks for subscribing to ${plan}! You now have access to intelligent LLM routing that can reduce your AI costs by up to 60%.</p>
+        <p>Thanks for subscribing to ${plan}! You now have access to LLM routing with per-request cost tracking.</p>
         <p><strong>Here's how to get started:</strong></p>
         <ol>
           <li>Generate your API key from the dashboard</li>

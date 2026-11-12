@@ -18,17 +18,24 @@ Endpoints:
 """
 
 import logging
-from typing import Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.auth import get_current_user_id
 from app.models.subscription import (
-    SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse,
-    SubscriptionListResponse, SubscriptionUsageCreate, SubscriptionUsageResponse,
-    UpcomingBillingListResponse, SpendSummary, SubscriptionImportResult,
-    ServiceCategory, SubscriptionStatus, BillingCycle
+    ServiceCategory,
+    SpendSummary,
+    SubscriptionCreate,
+    SubscriptionImportResult,
+    SubscriptionListResponse,
+    SubscriptionResponse,
+    SubscriptionStatus,
+    SubscriptionUpdate,
+    SubscriptionUsageCreate,
+    SubscriptionUsageResponse,
+    UpcomingBillingListResponse,
 )
 from app.services.subscription_service import SubscriptionService, get_subscription_service
 
@@ -44,8 +51,10 @@ router = APIRouter(
 # Response Models
 # =============================================================================
 
+
 class UsageHistoryResponse(BaseModel):
     """List of usage records."""
+
     usage: list[SubscriptionUsageResponse]
     total_usage: Decimal
     total_cost: Decimal
@@ -53,12 +62,14 @@ class UsageHistoryResponse(BaseModel):
 
 class ImportRequest(BaseModel):
     """Request model for CSV import."""
+
     csv_data: str = Field(..., description="CSV data as string")
     skip_duplicates: bool = Field(default=True, description="Skip existing subscriptions")
 
 
 class DeleteResponse(BaseModel):
     """Response for delete operation."""
+
     deleted: bool
     message: str
 
@@ -67,18 +78,19 @@ class DeleteResponse(BaseModel):
 # Subscription CRUD Endpoints
 # =============================================================================
 
+
 @router.post(
     "",
     response_model=SubscriptionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add subscription",
-    description="Add a new SaaS subscription to track. Duplicate service names are not allowed."
+    description="Add a new SaaS subscription to track. Duplicate service names are not allowed.",
 )
 async def create_subscription(
     request: SubscriptionCreate,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionResponse:
     """
     Add a new subscription.
 
@@ -91,24 +103,26 @@ async def create_subscription(
         logger.info(f"Created subscription: {subscription.service_name} for user {user_id}")
         return subscription
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get(
     "",
     response_model=SubscriptionListResponse,
     summary="List subscriptions",
-    description="Get all subscriptions with optional filters by category, status, or search term."
+    description="Get all subscriptions with optional filters by category, status, or search term.",
 )
 async def list_subscriptions(
-    category: Optional[ServiceCategory] = Query(None, description="Filter by category"),
-    subscription_status: Optional[SubscriptionStatus] = Query(None, alias="status", description="Filter by status"),
-    search: Optional[str] = Query(None, description="Search in service name"),
+    category: ServiceCategory | None = Query(None, description="Filter by category"),
+    subscription_status: SubscriptionStatus | None = Query(
+        None, alias="status", description="Filter by status"
+    ),
+    search: str | None = Query(None, description="Search in service name"),
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionListResponse:
     """
     List all subscriptions for the authenticated user.
 
@@ -121,25 +135,22 @@ async def list_subscriptions(
         status=subscription_status,
         search=search,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
 
-    return SubscriptionListResponse(
-        subscriptions=subscriptions,
-        total=len(subscriptions)
-    )
+    return SubscriptionListResponse(subscriptions=subscriptions, total=len(subscriptions))
 
 
 @router.get(
     "/summary",
     response_model=SpendSummary,
     summary="Get spend summary",
-    description="Get monthly and yearly spend totals with breakdown by category."
+    description="Get monthly and yearly spend totals with breakdown by category.",
 )
 async def get_spend_summary(
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SpendSummary:
     """
     Get monthly spend summary.
 
@@ -154,12 +165,12 @@ async def get_spend_summary(
     "/upcoming",
     response_model=UpcomingBillingListResponse,
     summary="Get upcoming billing alerts",
-    description="Get subscriptions due for billing soon based on alert_days_before setting."
+    description="Get subscriptions due for billing soon based on alert_days_before setting.",
 )
 async def get_upcoming_alerts(
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> UpcomingBillingListResponse:
     """
     Get upcoming billing alerts.
 
@@ -175,22 +186,19 @@ async def get_upcoming_alerts(
     "/{subscription_id}",
     response_model=SubscriptionResponse,
     summary="Get subscription",
-    description="Get details of a specific subscription."
+    description="Get details of a specific subscription.",
 )
 async def get_subscription(
     subscription_id: str,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionResponse:
     """
     Get subscription details by ID.
     """
     subscription = await service.get_subscription(user_id, subscription_id)
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
     return subscription
 
 
@@ -198,14 +206,14 @@ async def get_subscription(
     "/{subscription_id}",
     response_model=SubscriptionResponse,
     summary="Update subscription",
-    description="Update subscription details. Only provided fields are updated."
+    description="Update subscription details. Only provided fields are updated.",
 )
 async def update_subscription(
     subscription_id: str,
     request: SubscriptionUpdate,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionResponse:
     """
     Update a subscription.
 
@@ -217,23 +225,22 @@ async def update_subscription(
         logger.info(f"Updated subscription: {subscription_id} for user {user_id}")
         return subscription
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
 @router.delete(
     "/{subscription_id}",
     response_model=DeleteResponse,
     summary="Delete subscription",
-    description="Remove a subscription from tracking. This does not cancel the actual subscription."
+    description=(
+        "Remove a subscription from tracking. This does not cancel the actual subscription."
+    ),
 )
 async def delete_subscription(
     subscription_id: str,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> DeleteResponse:
     """
     Delete a subscription.
 
@@ -242,10 +249,7 @@ async def delete_subscription(
     """
     deleted = await service.delete_subscription(user_id, subscription_id)
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
     logger.info(f"Deleted subscription: {subscription_id} for user {user_id}")
     return DeleteResponse(deleted=True, message="Subscription deleted successfully")
@@ -255,19 +259,20 @@ async def delete_subscription(
 # Usage Tracking Endpoints
 # =============================================================================
 
+
 @router.post(
     "/{subscription_id}/usage",
     response_model=SubscriptionUsageResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Record usage",
-    description="Record usage for a usage-based subscription (e.g., API calls, tokens)."
+    description="Record usage for a usage-based subscription (e.g., API calls, tokens).",
 )
 async def record_usage(
     subscription_id: str,
     request: SubscriptionUsageCreate,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionUsageResponse:
     """
     Record usage for a usage-based subscription.
 
@@ -277,34 +282,28 @@ async def record_usage(
     # Verify subscription exists and belongs to user
     subscription = await service.get_subscription(user_id, subscription_id)
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
     try:
         usage = await service.record_usage(user_id, subscription_id, request)
         logger.info(f"Recorded usage for subscription: {subscription_id}")
         return usage
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get(
     "/{subscription_id}/usage",
     response_model=UsageHistoryResponse,
     summary="Get usage history",
-    description="Get usage history for a subscription."
+    description="Get usage history for a subscription.",
 )
 async def get_usage_history(
     subscription_id: str,
     limit: int = Query(12, ge=1, le=100, description="Max records to return"),
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> UsageHistoryResponse:
     """
     Get usage history for a subscription.
 
@@ -314,38 +313,32 @@ async def get_usage_history(
     # Verify subscription exists
     subscription = await service.get_subscription(user_id, subscription_id)
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subscription not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
     usage_records = await service.get_usage_history(user_id, subscription_id, limit)
 
     total_usage = sum(u.usage_amount for u in usage_records)
     total_cost = sum(u.cost_usd for u in usage_records)
 
-    return UsageHistoryResponse(
-        usage=usage_records,
-        total_usage=total_usage,
-        total_cost=total_cost
-    )
+    return UsageHistoryResponse(usage=usage_records, total_usage=total_usage, total_cost=total_cost)
 
 
 # =============================================================================
 # Import Endpoints
 # =============================================================================
 
+
 @router.post(
     "/import",
     response_model=SubscriptionImportResult,
     summary="Import subscriptions from CSV",
-    description="Bulk import subscriptions from CSV data."
+    description="Bulk import subscriptions from CSV data.",
 )
 async def import_subscriptions(
     request: ImportRequest,
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionImportResult:
     """
     Import subscriptions from CSV data.
 
@@ -363,9 +356,7 @@ async def import_subscriptions(
     or skip_duplicates=false to get errors for duplicates.
     """
     result = await service.import_subscriptions(
-        user_id=user_id,
-        csv_data=request.csv_data,
-        skip_duplicates=request.skip_duplicates
+        user_id=user_id, csv_data=request.csv_data, skip_duplicates=request.skip_duplicates
     )
 
     logger.info(
@@ -380,39 +371,35 @@ async def import_subscriptions(
     "/import/file",
     response_model=SubscriptionImportResult,
     summary="Import subscriptions from CSV file",
-    description="Upload a CSV file to bulk import subscriptions."
+    description="Upload a CSV file to bulk import subscriptions.",
 )
 async def import_subscriptions_file(
     file: UploadFile = File(..., description="CSV file to import"),
     skip_duplicates: bool = Query(True, description="Skip existing subscriptions"),
     user_id: str = Depends(get_current_user_id),
     service: SubscriptionService = Depends(get_subscription_service),
-):
+) -> SubscriptionImportResult:
     """
     Import subscriptions from uploaded CSV file.
 
     Same format as the /import endpoint, but accepts a file upload
     instead of raw CSV string.
     """
-    if not file.filename.endswith('.csv'):
+    if not file.filename.endswith(".csv"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be a CSV file"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV file"
         )
 
     try:
         contents = await file.read()
-        csv_data = contents.decode('utf-8')
+        csv_data = contents.decode("utf-8")
     except UnicodeDecodeError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be UTF-8 encoded"
-        )
+            status_code=status.HTTP_400_BAD_REQUEST, detail="File must be UTF-8 encoded"
+        ) from None
 
     result = await service.import_subscriptions(
-        user_id=user_id,
-        csv_data=csv_data,
-        skip_duplicates=skip_duplicates
+        user_id=user_id, csv_data=csv_data, skip_duplicates=skip_duplicates
     )
 
     logger.info(

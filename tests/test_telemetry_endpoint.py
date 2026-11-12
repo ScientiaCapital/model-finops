@@ -11,6 +11,7 @@ importing the full app.main — main.py pulls in the entire dependency tree
 (Stripe, scipy, sentence-transformers, ...) which is unrelated to what this
 router actually does.
 """
+
 from unittest.mock import AsyncMock, patch
 
 import pytest

@@ -1,8 +1,11 @@
 """Tests for HybridStrategy."""
+
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch
-from app.routing.strategy import HybridStrategy, LearningStrategy, ComplexityStrategy
+
 from app.routing.models import RoutingContext, RoutingDecision
+from app.routing.strategy import HybridStrategy
 
 
 @pytest.fixture
@@ -18,7 +21,7 @@ def test_high_confidence_learning_accepted(hybrid_strategy):
     context = RoutingContext(prompt=prompt)
 
     # Mock learning strategy to return HIGH confidence
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.return_value = RoutingDecision(
             provider="gemini",
             model="gemini-1.5-flash",
@@ -26,7 +29,7 @@ def test_high_confidence_learning_accepted(hybrid_strategy):
             strategy_used="learning",
             reasoning="High confidence from learning data",
             fallback_used=False,
-            metadata={"pattern": "simple_query", "quality_score": 0.95}
+            metadata={"pattern": "simple_query", "quality_score": 0.95},
         )
 
         decision = hybrid_strategy.route(prompt, context)
@@ -42,16 +45,19 @@ def test_high_confidence_learning_accepted(hybrid_strategy):
 
 
 def test_high_confidence_learning_validation_rejects_mismatch(hybrid_strategy):
-    """Test HIGH confidence from learning with strong complexity disagreement -> REJECT learning, use complexity."""
+    """High learning confidence but strong complexity disagreement: use complexity."""
     # Complex prompt triggers high complexity score (>0.7)
-    prompt = """Analyze and explain the comprehensive mathematical framework for quantum entanglement,
-    including detailed proofs, derivations, and computational examples spanning multiple domains..."""
+    prompt = (
+        "Analyze and explain the comprehensive mathematical framework for quantum entanglement,\n"
+        "    including detailed proofs, derivations, and computational examples spanning multiple "
+        "domains..."
+    )
 
     context = RoutingContext(prompt=prompt)
 
     # Mock learning to recommend Gemini (cheap/simple) with HIGH confidence
     # This is a MISMATCH - learning says simple, complexity says complex
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.return_value = RoutingDecision(
             provider="gemini",
             model="gemini-1.5-flash",  # Simple tier
@@ -59,7 +65,7 @@ def test_high_confidence_learning_validation_rejects_mismatch(hybrid_strategy):
             strategy_used="learning",
             reasoning="High confidence: pattern seen 100+ times",
             fallback_used=False,
-            metadata={"pattern": "technical_query", "quality_score": 0.92}
+            metadata={"pattern": "technical_query", "quality_score": 0.92},
         )
 
         decision = hybrid_strategy.route(prompt, context)
@@ -82,7 +88,7 @@ def test_high_confidence_learning_validation_accepts_match(hybrid_strategy):
 
     # Mock learning to recommend Gemini with HIGH confidence
     # This is a MATCH - both learning and complexity agree on simple tier
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.return_value = RoutingDecision(
             provider="gemini",
             model="gemini-1.5-flash",
@@ -90,7 +96,7 @@ def test_high_confidence_learning_validation_accepts_match(hybrid_strategy):
             strategy_used="learning",
             reasoning="High confidence: simple query pattern",
             fallback_used=False,
-            metadata={"pattern": "simple_query", "quality_score": 0.95}
+            metadata={"pattern": "simple_query", "quality_score": 0.95},
         )
 
         decision = hybrid_strategy.route(prompt, context)
@@ -102,7 +108,10 @@ def test_high_confidence_learning_validation_accepts_match(hybrid_strategy):
         assert decision.strategy_used == "hybrid"
         assert decision.metadata["validation"] == "validated"
         assert "validated by complexity" in decision.reasoning
-        assert decision.metadata.get("learning_mismatch") is None or decision.metadata["learning_mismatch"] is False
+        assert (
+            decision.metadata.get("learning_mismatch") is None
+            or decision.metadata["learning_mismatch"] is False
+        )
 
 
 def test_low_confidence_experimental(hybrid_strategy):
@@ -111,7 +120,7 @@ def test_low_confidence_experimental(hybrid_strategy):
     context = RoutingContext(prompt=prompt)
 
     # Mock learning strategy to return LOW confidence
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.return_value = RoutingDecision(
             provider="claude",
             model="claude-3-haiku-20240307",
@@ -119,7 +128,7 @@ def test_low_confidence_experimental(hybrid_strategy):
             strategy_used="learning",
             reasoning="Low confidence: only 3 samples",
             fallback_used=False,
-            metadata={"pattern": "rare_query", "quality_score": 0.75}
+            metadata={"pattern": "rare_query", "quality_score": 0.75},
         )
 
         decision = hybrid_strategy.route(prompt, context)
@@ -140,7 +149,7 @@ def test_no_learning_data_fallback(hybrid_strategy):
     context = RoutingContext(prompt=prompt)
 
     # Mock learning strategy to raise exception (simulating no data)
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.side_effect = FileNotFoundError("No training data")
 
         decision = hybrid_strategy.route(prompt, context)
@@ -159,7 +168,7 @@ def test_metadata_includes_both_strategies(hybrid_strategy):
     context = RoutingContext(prompt=prompt)
 
     # Mock learning strategy to return MEDIUM confidence
-    with patch.object(hybrid_strategy.learning_strategy, 'route') as mock_learning:
+    with patch.object(hybrid_strategy.learning_strategy, "route") as mock_learning:
         mock_learning.return_value = RoutingDecision(
             provider="claude",
             model="claude-3-haiku-20240307",
@@ -167,11 +176,7 @@ def test_metadata_includes_both_strategies(hybrid_strategy):
             strategy_used="learning",
             reasoning="Medium confidence from learning",
             fallback_used=False,
-            metadata={
-                "pattern": "moderate_query",
-                "quality_score": 0.82,
-                "cost_estimate": 0.0001
-            }
+            metadata={"pattern": "moderate_query", "quality_score": 0.82, "cost_estimate": 0.0001},
         )
 
         decision = hybrid_strategy.route(prompt, context)

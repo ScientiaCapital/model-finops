@@ -8,11 +8,10 @@ Endpoints:
 - GET /api/status/setup-links - Get setup links for all providers
 """
 
-import os
-import asyncio
 import logging
-from typing import Optional
-from enum import Enum
+import os
+from enum import StrEnum
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/status", tags=["status"])
 
 
-class ProviderStatus(str, Enum):
+class ProviderStatus(StrEnum):
     CONNECTED = "connected"
     INVALID = "invalid"
     NOT_CONFIGURED = "not_configured"
@@ -32,18 +31,20 @@ class ProviderStatus(str, Enum):
 
 class ProviderInfo(BaseModel):
     """Information about a provider's status."""
+
     name: str
     display_name: str
     status: ProviderStatus
     message: str
     category: str
     setup_url: str
-    models_available: Optional[int] = None
+    models_available: int | None = None
     env_vars: list[str]
 
 
 class ProvidersStatusResponse(BaseModel):
     """Response for all providers status."""
+
     providers: list[ProviderInfo]
     summary: dict
     setup_progress: float = Field(description="Percentage of providers configured (0-100)")
@@ -51,19 +52,22 @@ class ProvidersStatusResponse(BaseModel):
 
 class ValidateKeyRequest(BaseModel):
     """Request to validate a specific API key."""
+
     provider: str
     api_key: str
 
 
 class ValidateKeyResponse(BaseModel):
     """Response from key validation."""
+
     valid: bool
     message: str
-    models_available: Optional[int] = None
+    models_available: int | None = None
 
 
 class SetupLink(BaseModel):
     """Setup link for a provider."""
+
     provider: str
     display_name: str
     category: str
@@ -85,7 +89,7 @@ PROVIDER_CONFIG = {
             "url": "https://api.anthropic.com/v1/models",
             "headers": lambda key: {"x-api-key": key, "anthropic-version": "2023-06-01"},
             "models_key": "data",
-        }
+        },
     },
     "google": {
         "display_name": "Google AI / Gemini",
@@ -96,7 +100,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url_template": "https://generativelanguage.googleapis.com/v1beta/models?key={key}",
             "models_key": "models",
-        }
+        },
     },
     "openrouter": {
         "display_name": "OpenRouter",
@@ -108,7 +112,7 @@ PROVIDER_CONFIG = {
             "url": "https://openrouter.ai/api/v1/models",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
             "models_key": "data",
-        }
+        },
     },
     "groq": {
         "display_name": "Groq",
@@ -120,7 +124,7 @@ PROVIDER_CONFIG = {
             "url": "https://api.groq.com/openai/v1/models",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
             "models_key": "data",
-        }
+        },
     },
     "cerebras": {
         "display_name": "Cerebras",
@@ -132,7 +136,7 @@ PROVIDER_CONFIG = {
             "url": "https://api.cerebras.ai/v1/models",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
             "models_key": "data",
-        }
+        },
     },
     "together": {
         "display_name": "Together AI",
@@ -143,7 +147,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.together.xyz/v1/models",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
-        }
+        },
     },
     "huggingface": {
         "display_name": "Hugging Face",
@@ -154,7 +158,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://huggingface.co/api/whoami-v2",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
-        }
+        },
     },
     # Voice AI - TTS
     "cartesia": {
@@ -166,7 +170,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.cartesia.ai/voices",
             "headers": lambda key: {"X-API-Key": key, "Cartesia-Version": "2024-06-10"},
-        }
+        },
     },
     "elevenlabs": {
         "display_name": "ElevenLabs",
@@ -178,7 +182,7 @@ PROVIDER_CONFIG = {
             "url": "https://api.elevenlabs.io/v1/voices",
             "headers": lambda key: {"xi-api-key": key},
             "models_key": "voices",
-        }
+        },
     },
     # Voice AI - STT
     "deepgram": {
@@ -191,7 +195,7 @@ PROVIDER_CONFIG = {
             "url": "https://api.deepgram.com/v1/projects",
             "headers": lambda key: {"Authorization": f"Token {key}"},
             "models_key": "projects",
-        }
+        },
     },
     "assemblyai": {
         "display_name": "AssemblyAI",
@@ -203,14 +207,19 @@ PROVIDER_CONFIG = {
             "url": "https://api.assemblyai.com/v2/transcript",
             "headers": lambda key: {"authorization": key},
             "models_key": "transcripts",
-        }
+        },
     },
     # Infrastructure
     "supabase": {
         "display_name": "Supabase",
         "category": "Infrastructure",
         "setup_url": "https://supabase.com/dashboard/project/_/settings/api",
-        "env_vars": ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_JWT_SECRET"],
+        "env_vars": [
+            "SUPABASE_URL",
+            "SUPABASE_ANON_KEY",
+            "SUPABASE_SERVICE_KEY",
+            "SUPABASE_JWT_SECRET",
+        ],
         "instructions": "Project → Settings → API",
         "validator": None,  # Special handling
     },
@@ -239,7 +248,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.runpod.io/v2/user/current",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
-        }
+        },
     },
     # AI Media
     "runway": {
@@ -251,7 +260,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.runwayml.com/v1/organizations",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
-        }
+        },
     },
     # Observability
     "langsmith": {
@@ -263,7 +272,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.smith.langchain.com/api/v1/info",
             "headers": lambda key: {"x-api-key": key},
-        }
+        },
     },
     # Billing
     "stripe": {
@@ -275,7 +284,7 @@ PROVIDER_CONFIG = {
         "validator": {
             "url": "https://api.stripe.com/v1/balance",
             "headers": lambda key: {"Authorization": f"Bearer {key}"},
-        }
+        },
     },
 }
 
@@ -283,8 +292,8 @@ PROVIDER_CONFIG = {
 async def validate_provider(
     client: httpx.AsyncClient,
     provider: str,
-    api_key: Optional[str] = None,
-) -> tuple[ProviderStatus, str, Optional[int]]:
+    api_key: str | None = None,
+) -> tuple[ProviderStatus, str, int | None]:
     """Validate a single provider's API key."""
     config = PROVIDER_CONFIG.get(provider)
     if not config:
@@ -341,7 +350,7 @@ async def validate_provider(
 
 
 @router.get("/providers", response_model=ProvidersStatusResponse)
-async def get_providers_status(request: Request):
+async def get_providers_status(request: Request) -> ProvidersStatusResponse:
     """
     Get status of all configured providers.
 
@@ -353,16 +362,18 @@ async def get_providers_status(request: Request):
         for name, config in PROVIDER_CONFIG.items():
             status, message, models = await validate_provider(client, name)
 
-            providers.append(ProviderInfo(
-                name=name,
-                display_name=config["display_name"],
-                status=status,
-                message=message,
-                category=config["category"],
-                setup_url=config["setup_url"],
-                models_available=models,
-                env_vars=config["env_vars"],
-            ))
+            providers.append(
+                ProviderInfo(
+                    name=name,
+                    display_name=config["display_name"],
+                    status=status,
+                    message=message,
+                    category=config["category"],
+                    setup_url=config["setup_url"],
+                    models_available=models,
+                    env_vars=config["env_vars"],
+                )
+            )
 
     # Calculate summary
     connected = sum(1 for p in providers if p.status == ProviderStatus.CONNECTED)
@@ -382,7 +393,7 @@ async def get_providers_status(request: Request):
 
 
 @router.get("/providers/{provider}", response_model=ProviderInfo)
-async def get_provider_status(provider: str, request: Request):
+async def get_provider_status(provider: str, request: Request) -> ProviderInfo:
     """Get status of a specific provider."""
     if provider not in PROVIDER_CONFIG:
         raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
@@ -405,7 +416,7 @@ async def get_provider_status(provider: str, request: Request):
 
 
 @router.post("/validate", response_model=ValidateKeyResponse)
-async def validate_api_key(body: ValidateKeyRequest, request: Request):
+async def validate_api_key(body: ValidateKeyRequest, request: Request) -> ValidateKeyResponse:
     """
     Validate a specific API key before saving.
 
@@ -427,7 +438,7 @@ async def validate_api_key(body: ValidateKeyRequest, request: Request):
 
 
 @router.get("/setup-links", response_model=list[SetupLink])
-async def get_setup_links(request: Request, category: Optional[str] = None):
+async def get_setup_links(request: Request, category: str | None = None) -> list[SetupLink]:
     """
     Get setup links for all providers.
 
@@ -439,20 +450,22 @@ async def get_setup_links(request: Request, category: Optional[str] = None):
         if category and config["category"] != category:
             continue
 
-        links.append(SetupLink(
-            provider=name,
-            display_name=config["display_name"],
-            category=config["category"],
-            setup_url=config["setup_url"],
-            env_vars=config["env_vars"],
-            instructions=config["instructions"],
-        ))
+        links.append(
+            SetupLink(
+                provider=name,
+                display_name=config["display_name"],
+                category=config["category"],
+                setup_url=config["setup_url"],
+                env_vars=config["env_vars"],
+                instructions=config["instructions"],
+            )
+        )
 
     return links
 
 
 @router.get("/categories")
-async def get_categories(request: Request):
+async def get_categories(request: Request) -> dict[str, Any]:
     """Get list of provider categories."""
     categories = set()
     for config in PROVIDER_CONFIG.values():
@@ -463,5 +476,5 @@ async def get_categories(request: Request):
         "providers_by_category": {
             cat: [name for name, cfg in PROVIDER_CONFIG.items() if cfg["category"] == cat]
             for cat in sorted(categories)
-        }
+        },
     }

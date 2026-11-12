@@ -1,18 +1,20 @@
 """Automated learning pipeline from user feedback."""
+
+import asyncio
 import logging
 import uuid
-import asyncio
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-from app.services.admin_service import get_admin_service
+from typing import Any
+
 from app.learning.query_pattern_analyzer import QueryPatternAnalyzer
+from app.services.admin_service import get_admin_service
 
 logger = logging.getLogger(__name__)
 
 
-def _is_sqlite(conn) -> bool:
+def _is_sqlite(conn: object) -> bool:
     """Check if connection is SQLite."""
-    return hasattr(conn, 'row_factory')
+    return hasattr(conn, "row_factory")
 
 
 class FeedbackTrainer:
@@ -28,11 +30,11 @@ class FeedbackTrainer:
     MIN_QUALITY_SCORE = 3.5
     MIN_CORRECTNESS_RATE = 0.7
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize trainer with database connection."""
         self.analyzer = QueryPatternAnalyzer(db_path=None)  # Uses PostgreSQL
 
-    def retrain(self, dry_run: bool = False) -> Dict[str, Any]:
+    def retrain(self, dry_run: bool = False) -> dict[str, Any]:
         """Run retraining cycle.
 
         Args:
@@ -53,38 +55,36 @@ class FeedbackTrainer:
         for pattern, models_data in performance_data.items():
             for model, stats in models_data.items():
                 confidence = self._calculate_confidence(
-                    sample_count=stats['count'],
-                    avg_quality=stats['avg_quality'],
-                    correctness_rate=stats['correctness']
+                    sample_count=stats["count"],
+                    avg_quality=stats["avg_quality"],
+                    correctness_rate=stats["correctness"],
                 )
 
                 # 3. Only update if meets threshold
-                if confidence in ['high', 'medium']:
+                if confidence in ["high", "medium"]:
                     change = {
-                        'pattern': pattern,
-                        'model': model,
-                        'confidence': confidence,
-                        'sample_count': stats['count'],
-                        'avg_quality': stats['avg_quality'],
-                        'correctness_rate': stats['correctness']
+                        "pattern": pattern,
+                        "model": model,
+                        "confidence": confidence,
+                        "sample_count": stats["count"],
+                        "avg_quality": stats["avg_quality"],
+                        "correctness_rate": stats["correctness"],
                     }
 
                     changes.append(change)
 
                     if not dry_run:
                         self._update_routing_weights(pattern, model, stats)
-                        self._store_performance_history(
-                            pattern, model, stats, confidence, run_id
-                        )
+                        self._store_performance_history(pattern, model, stats, confidence, run_id)
 
         # 4. Log retraining run
         result = {
-            'run_id': run_id,
-            'timestamp': datetime.now().isoformat(),
-            'patterns_updated': len(set(c['pattern'] for c in changes)),
-            'total_changes': len(changes),
-            'changes': changes,
-            'dry_run': dry_run
+            "run_id": run_id,
+            "timestamp": datetime.now().isoformat(),
+            "patterns_updated": len(set(c["pattern"] for c in changes)),
+            "total_changes": len(changes),
+            "changes": changes,
+            "dry_run": dry_run,
         }
 
         if not dry_run:
@@ -95,10 +95,7 @@ class FeedbackTrainer:
         return result
 
     def _calculate_confidence(
-        self,
-        sample_count: int,
-        avg_quality: float,
-        correctness_rate: float
+        self, sample_count: int, avg_quality: float, correctness_rate: float
     ) -> str:
         """Calculate confidence level for pattern.
 
@@ -115,7 +112,11 @@ class FeedbackTrainer:
             return "low"
 
         # High confidence: lots of samples + excellent metrics
-        if sample_count >= self.HIGH_CONFIDENCE_THRESHOLD and avg_quality >= 4.0 and correctness_rate >= 0.8:
+        if (
+            sample_count >= self.HIGH_CONFIDENCE_THRESHOLD
+            and avg_quality >= 4.0
+            and correctness_rate >= 0.8
+        ):
             return "high"
 
         # Medium confidence: sufficient samples + good metrics
@@ -125,7 +126,7 @@ class FeedbackTrainer:
         # Low confidence: insufficient data
         return "low"
 
-    def _aggregate_feedback(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+    def _aggregate_feedback(self) -> dict[str, dict[str, dict[str, Any]]]:
         """Aggregate feedback by pattern and model.
 
         Returns:
@@ -136,9 +137,10 @@ class FeedbackTrainer:
         # Run async operation in sync context
         try:
             # Check if event loop is already running
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # Event loop is running - create task and wait
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(asyncio.run, admin_service.aggregate_feedback_for_learning())
                 result = future.result()
@@ -148,12 +150,7 @@ class FeedbackTrainer:
             result = asyncio.run(admin_service.aggregate_feedback_for_learning())
             return result
 
-    def _update_routing_weights(
-        self,
-        pattern: str,
-        model: str,
-        stats: Dict[str, Any]
-    ):
+    def _update_routing_weights(self, pattern: str, model: str, stats: dict[str, Any]) -> None:
         """Update routing weights for pattern-model pair.
 
         Args:
@@ -163,20 +160,17 @@ class FeedbackTrainer:
         """
         # Update QueryPatternAnalyzer weights
         # This is application-specific logic
-        logger.info(f"Updating weights for {pattern} -> {model}: quality={stats['avg_quality']:.2f}")
+        logger.info(
+            f"Updating weights for {pattern} -> {model}: quality={stats['avg_quality']:.2f}"
+        )
 
         # Implementation depends on how QueryPatternAnalyzer stores recommendations
         # For now, just log the update
         pass
 
     def _store_performance_history(
-        self,
-        pattern: str,
-        model: str,
-        stats: Dict[str, Any],
-        confidence: str,
-        run_id: str
-    ):
+        self, pattern: str, model: str, stats: dict[str, Any], confidence: str, run_id: str
+    ) -> None:
         """Store performance metrics to history table.
 
         Args:
@@ -191,9 +185,10 @@ class FeedbackTrainer:
         # Run async operation in sync context
         try:
             # Check if event loop is already running
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # Event loop is running - create task in thread pool
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(
                     asyncio.run,
@@ -202,21 +197,19 @@ class FeedbackTrainer:
                         model=model,
                         stats=stats,
                         confidence=confidence,
-                        run_id=run_id
-                    )
+                        run_id=run_id,
+                    ),
                 )
                 future.result()
         except RuntimeError:
             # No running loop - safe to use asyncio.run()
-            asyncio.run(admin_service.store_performance_history(
-                pattern=pattern,
-                model=model,
-                stats=stats,
-                confidence=confidence,
-                run_id=run_id
-            ))
+            asyncio.run(
+                admin_service.store_performance_history(
+                    pattern=pattern, model=model, stats=stats, confidence=confidence, run_id=run_id
+                )
+            )
 
-    def _log_retraining_run(self, result: Dict[str, Any]):
+    def _log_retraining_run(self, result: dict[str, Any]) -> None:
         """Log retraining run metadata.
 
         Args:
@@ -224,7 +217,7 @@ class FeedbackTrainer:
         """
         logger.info(f"Retraining run {result['run_id']}: {result['total_changes']} changes applied")
 
-    def _get_current_weights(self) -> Dict[str, Any]:
+    def _get_current_weights(self) -> dict[str, Any]:
         """Get current routing weights for comparison.
 
         Returns:
