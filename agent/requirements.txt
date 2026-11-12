@@ -6,7 +6,7 @@ claude-agent-sdk==0.1.6
 
 # Core dependencies (inherited from SDK)
 anyio>=4.0.0
-mcp>=0.1.0
+mcp>=2.3.0
 
 # Project dependencies (from parent app)
 # The agent imports from ../app/, so main project deps should be installed
