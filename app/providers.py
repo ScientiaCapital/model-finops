@@ -1,11 +1,23 @@
-"""LLM provider implementations for Gemini, Claude, Cerebras, Groq, Together AI, OpenRouter, Mistral, Cohere, Ollama, Fireworks, and Bedrock."""
+"""LLM provider implementations.
+
+Covers Gemini, Claude, Cerebras, Groq, Together AI, OpenRouter, Mistral, Cohere, Ollama,
+Fireworks and Bedrock.
+"""
+
 import os
-from typing import Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
 import httpx
+
+if TYPE_CHECKING:  # boto3 is optional; imported lazily by BedrockProvider
+    from botocore.client import BaseClient
 
 
 class ProviderError(Exception):
     """Base exception for provider errors."""
+
     pass
 
 
@@ -19,10 +31,10 @@ class GeminiProvider:
     INPUT_PRICE = 0.075  # $0.075 per 1M input tokens
     OUTPUT_PRICE = 0.30  # $0.30 per 1M output tokens
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000) -> Tuple[str, int, int, float]:
+    async def complete(self, prompt: str, max_tokens: int = 1000) -> tuple[str, int, int, float]:
         """
         Send completion request to Gemini.
 
@@ -32,13 +44,8 @@ class GeminiProvider:
         url = f"{self.BASE_URL}/models/{self.MODEL}:generateContent?key={self.api_key}"
 
         payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": 0.7
-            }
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.7},
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -64,7 +71,7 @@ class GeminiProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Gemini API error: {str(e)}")
+                raise ProviderError(f"Gemini API error: {str(e)}") from e
 
     def calculate_cost(self, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on token usage."""
@@ -80,13 +87,13 @@ class ClaudeProvider:
     MODEL = "claude-3-haiku-20240307"
 
     # Pricing per 1M tokens
-    INPUT_PRICE = 0.25   # $0.25 per 1M input tokens
+    INPUT_PRICE = 0.25  # $0.25 per 1M input tokens
     OUTPUT_PRICE = 1.25  # $1.25 per 1M output tokens
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000) -> Tuple[str, int, int, float]:
+    async def complete(self, prompt: str, max_tokens: int = 1000) -> tuple[str, int, int, float]:
         """
         Send completion request to Claude.
 
@@ -98,15 +105,13 @@ class ClaudeProvider:
         headers = {
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
+            "content-type": "application/json",
         }
 
         payload = {
             "model": self.MODEL,
             "max_tokens": max_tokens,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
+            "messages": [{"role": "user", "content": prompt}],
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -129,7 +134,7 @@ class ClaudeProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Claude API error: {str(e)}")
+                raise ProviderError(f"Claude API error: {str(e)}") from e
 
     def calculate_cost(self, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on token usage."""
@@ -152,10 +157,12 @@ class OpenRouterProvider:
         "anthropic/claude-3.5-sonnet": {"input": 3.00, "output": 15.00},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, model: str, prompt: str, max_tokens: int = 1000) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, model: str, prompt: str, max_tokens: int = 1000
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to OpenRouter.
 
@@ -169,17 +176,12 @@ class OpenRouterProvider:
         """
         url = f"{self.BASE_URL}/chat/completions"
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": max_tokens
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -202,7 +204,7 @@ class OpenRouterProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"OpenRouter API error: {str(e)}")
+                raise ProviderError(f"OpenRouter API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -224,10 +226,12 @@ class CerebrasProvider:
         "llama3.1-70b": {"input": 0.60, "output": 0.60},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Cerebras.
 
@@ -237,16 +241,13 @@ class CerebrasProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -269,7 +270,7 @@ class CerebrasProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Cerebras API error: {str(e)}")
+                raise ProviderError(f"Cerebras API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -294,10 +295,12 @@ class GroqProvider:
         "gemma2-9b-it": {"input": 0.20, "output": 0.20},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Groq.
 
@@ -307,16 +310,13 @@ class GroqProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -339,7 +339,7 @@ class GroqProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Groq API error: {str(e)}")
+                raise ProviderError(f"Groq API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -372,10 +372,12 @@ class TogetherAIProvider:
         "custom": {"input": 0.20, "output": 0.20},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Together AI.
 
@@ -390,16 +392,13 @@ class TogetherAIProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -422,7 +421,7 @@ class TogetherAIProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Together AI API error: {str(e)}")
+                raise ProviderError(f"Together AI API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -450,10 +449,12 @@ class MistralProvider:
         "ministral-8b-latest": {"input": 0.10, "output": 0.10},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Mistral AI.
 
@@ -462,16 +463,13 @@ class MistralProvider:
         """
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -494,7 +492,7 @@ class MistralProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Mistral API error: {str(e)}")
+                raise ProviderError(f"Mistral API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -520,10 +518,12 @@ class FireworksProvider:
         "accounts/fireworks/models/qwen2p5-72b-instruct": {"input": 0.90, "output": 0.90},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Fireworks AI.
 
@@ -532,16 +532,13 @@ class FireworksProvider:
         """
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -564,7 +561,7 @@ class FireworksProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Fireworks API error: {str(e)}")
+                raise ProviderError(f"Fireworks API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -589,10 +586,12 @@ class CohereProvider:
         "command-r-plus-08-2024": {"input": 2.50, "output": 10.00},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Cohere.
 
@@ -603,18 +602,10 @@ class CohereProvider:
         """
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         # Cohere uses 'message' not 'messages' array
-        payload = {
-            "model": model,
-            "message": prompt,
-            "max_tokens": max_tokens,
-            "temperature": 0.7
-        }
+        payload = {"model": model, "message": prompt, "max_tokens": max_tokens, "temperature": 0.7}
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
@@ -637,7 +628,7 @@ class CohereProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Cohere API error: {str(e)}")
+                raise ProviderError(f"Cohere API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -651,10 +642,10 @@ class OllamaProvider:
     """Ollama provider - local LLM inference (free, no API key needed)."""
 
     MODEL = "llama3.2"  # Default local model
-    INPUT_PRICE = 0.0   # Free (local inference)
+    INPUT_PRICE = 0.0  # Free (local inference)
     OUTPUT_PRICE = 0.0
 
-    def __init__(self, host: str = None):
+    def __init__(self, host: str = None) -> None:
         """
         Initialize Ollama provider.
 
@@ -663,7 +654,9 @@ class OllamaProvider:
         """
         self.base_url = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to local Ollama server.
 
@@ -677,10 +670,7 @@ class OllamaProvider:
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": 0.7
-            }
+            "options": {"num_predict": max_tokens, "temperature": 0.7},
         }
 
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -702,7 +692,7 @@ class OllamaProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Ollama API error: {str(e)}")
+                raise ProviderError(f"Ollama API error: {str(e)}") from e
 
     def calculate_cost(self, input_tokens: int, output_tokens: int) -> float:
         """Local inference is always free."""
@@ -712,12 +702,14 @@ class OllamaProvider:
     def is_available() -> bool:
         """Check if Ollama server is running locally."""
         import socket
+
         host = os.getenv("OLLAMA_HOST", "localhost")
         port = 11434
         try:
             # Extract host/port if full URL provided
             if "://" in host:
                 from urllib.parse import urlparse
+
                 parsed = urlparse(host)
                 host = parsed.hostname or "localhost"
                 port = parsed.port or 11434
@@ -753,7 +745,7 @@ class BedrockProvider:
         "mistral.mixtral-8x7b-instruct-v0:1": {"input": 0.45, "output": 0.70},
     }
 
-    def __init__(self, region: str = None):
+    def __init__(self, region: str = None) -> None:
         """
         Initialize Bedrock provider using AWS credentials from environment.
 
@@ -763,28 +755,28 @@ class BedrockProvider:
         self.region = region or os.getenv("AWS_REGION", "us-east-1")
         self._client = None
 
-    def _get_client(self):
+    def _get_client(self) -> "BaseClient":
         """Lazy-load boto3 client."""
         if self._client is None:
             try:
                 import boto3
-                self._client = boto3.client(
-                    "bedrock-runtime",
-                    region_name=self.region
-                )
+
+                self._client = boto3.client("bedrock-runtime", region_name=self.region)
             except ImportError:
-                raise ProviderError("boto3 not installed. Run: pip install boto3")
+                raise ProviderError("boto3 not installed. Run: pip install boto3") from None
         return self._client
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to AWS Bedrock.
 
         Returns:
             Tuple of (response_text, input_tokens, output_tokens, cost)
         """
-        import json
         import asyncio
+        import json
 
         model = model or self.MODEL
         client = self._get_client()
@@ -794,19 +786,22 @@ class BedrockProvider:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": max_tokens,
-                "messages": [{"role": "user", "content": prompt}]
+                "messages": [{"role": "user", "content": prompt}],
             }
         elif model.startswith("meta."):
             body = {
-                "prompt": f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+                "prompt": (
+                    "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
+                    f"{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+                ),
                 "max_gen_len": max_tokens,
-                "temperature": 0.7
+                "temperature": 0.7,
             }
         elif model.startswith("mistral."):
             body = {
                 "prompt": f"<s>[INST] {prompt} [/INST]",
                 "max_tokens": max_tokens,
-                "temperature": 0.7
+                "temperature": 0.7,
             }
         else:
             raise ProviderError(f"Unsupported Bedrock model: {model}")
@@ -820,8 +815,8 @@ class BedrockProvider:
                     modelId=model,
                     body=json.dumps(body),
                     contentType="application/json",
-                    accept="application/json"
-                )
+                    accept="application/json",
+                ),
             )
 
             result = json.loads(response["body"].read())
@@ -845,7 +840,7 @@ class BedrockProvider:
             return text, int(input_tokens), int(output_tokens), cost
 
         except Exception as e:
-            raise ProviderError(f"Bedrock API error: {str(e)}")
+            raise ProviderError(f"Bedrock API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -868,10 +863,12 @@ class DeepSeekProvider:
         "deepseek-reasoner": {"input": 0.55, "output": 2.19},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to DeepSeek.
 
@@ -881,16 +878,13 @@ class DeepSeekProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -910,7 +904,7 @@ class DeepSeekProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"DeepSeek API error: {str(e)}")
+                raise ProviderError(f"DeepSeek API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -934,10 +928,12 @@ class GLMProvider:
         "glm-4.7": {"input": 0.60, "output": 2.20},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to GLM (Zhipu).
 
@@ -947,16 +943,13 @@ class GLMProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -976,7 +969,7 @@ class GLMProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"GLM API error: {str(e)}")
+                raise ProviderError(f"GLM API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -1000,10 +993,12 @@ class QwenProvider:
         "qwen-max": {"input": 1.60, "output": 6.40},
     }
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    async def complete(self, prompt: str, max_tokens: int = 1000, model: str = None) -> Tuple[str, int, int, float]:
+    async def complete(
+        self, prompt: str, max_tokens: int = 1000, model: str = None
+    ) -> tuple[str, int, int, float]:
         """
         Send completion request to Qwen (DashScope).
 
@@ -1013,16 +1008,13 @@ class QwenProvider:
         url = f"{self.BASE_URL}/chat/completions"
         model = model or self.MODEL
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
-            "temperature": 0.7
+            "temperature": 0.7,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -1042,7 +1034,7 @@ class QwenProvider:
                 return text, input_tokens, output_tokens, cost
 
             except httpx.HTTPError as e:
-                raise ProviderError(f"Qwen API error: {str(e)}")
+                raise ProviderError(f"Qwen API error: {str(e)}") from e
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost based on model and token usage."""
@@ -1052,76 +1044,87 @@ class QwenProvider:
         return input_cost + output_cost
 
 
+@dataclass(frozen=True)
+class ProviderSpec:
+    """How one provider is configured from the environment.
+
+    Attributes:
+        name: Key used in the providers dict and by the routing strategies.
+        env_vars: Environment variables that configure the provider. All must be non-empty,
+            unless ``probe`` is set, in which case they are optional settings.
+        build: Creates the provider instance once it is configured.
+        probe: Optional availability check used instead of the env vars (e.g. a local server).
+    """
+
+    name: str
+    env_vars: tuple[str, ...]
+    build: Callable[[], Any]
+    probe: Callable[[], bool] | None = None
+
+    def is_configured(self) -> bool:
+        if self.probe is not None:
+            return self.probe()
+        return all(os.getenv(var) for var in self.env_vars)
+
+
+def _api_key_spec(name: str, env_var: str, provider_cls: type) -> ProviderSpec:
+    return ProviderSpec(name, (env_var,), lambda: provider_cls(os.getenv(env_var)))
+
+
+# Single source of truth for which providers exist and how each is enabled.
+# Order matters: it is the order of the providers dict, and OpenRouter stays last as the fallback.
+PROVIDER_REGISTRY: tuple[ProviderSpec, ...] = (
+    _api_key_spec("gemini", "GOOGLE_API_KEY", GeminiProvider),
+    _api_key_spec("claude", "ANTHROPIC_API_KEY", ClaudeProvider),
+    _api_key_spec("cerebras", "CEREBRAS_API_KEY", CerebrasProvider),
+    _api_key_spec("groq", "GROQ_API_KEY", GroqProvider),
+    _api_key_spec("together", "TOGETHER_API_KEY", TogetherAIProvider),
+    _api_key_spec("mistral", "MISTRAL_API_KEY", MistralProvider),
+    _api_key_spec("fireworks", "FIREWORKS_API_KEY", FireworksProvider),
+    _api_key_spec("cohere", "COHERE_API_KEY", CohereProvider),
+    _api_key_spec("deepseek", "DEEPSEEK_API_KEY", DeepSeekProvider),
+    _api_key_spec("glm", "GLM_API_KEY", GLMProvider),
+    _api_key_spec("qwen", "DASHSCOPE_API_KEY", QwenProvider),
+    # Local inference: enabled when a server answers on OLLAMA_HOST (default localhost:11434).
+    ProviderSpec(
+        "ollama",
+        ("OLLAMA_HOST",),
+        lambda: OllamaProvider(),
+        probe=lambda: OllamaProvider.is_available(),
+    ),
+    ProviderSpec(
+        "bedrock", ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"), lambda: BedrockProvider()
+    ),
+    _api_key_spec("openrouter", "OPENROUTER_API_KEY", OpenRouterProvider),
+)
+
+
+def no_provider_message() -> str:
+    """Client-facing explanation for "nothing configured", built from PROVIDER_REGISTRY.
+
+    Lists environment variable names only, never their values.
+    """
+    options = []
+    for spec in PROVIDER_REGISTRY:
+        if spec.probe is not None:
+            options.append(f"a running {spec.name} server ({' / '.join(spec.env_vars)})")
+        else:
+            options.append(" + ".join(spec.env_vars))
+    return "no model provider is configured; set one of " + ", ".join(options)
+
+
+class NoProvidersConfiguredError(RuntimeError):
+    """Raised when a request needs a model provider and none is configured."""
+
+    def __init__(self) -> None:
+        super().__init__(no_provider_message())
+
+
 def init_providers() -> dict:
     """
-    Initialize available providers based on environment variables.
-
-    Supported providers:
-    - gemini: Google Gemini (GOOGLE_API_KEY)
-    - claude: Anthropic Claude (ANTHROPIC_API_KEY)
-    - cerebras: Ultra-fast inference (CEREBRAS_API_KEY)
-    - groq: LPU inference (GROQ_API_KEY)
-    - together: Fine-tuned models (TOGETHER_API_KEY)
-    - mistral: European LLM (MISTRAL_API_KEY)
-    - fireworks: Fast serverless (FIREWORKS_API_KEY)
-    - cohere: Enterprise NLP (COHERE_API_KEY)
-    - ollama: Local inference (OLLAMA_HOST, no key needed)
-    - bedrock: AWS Bedrock (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY)
-    - openrouter: Multi-model gateway (OPENROUTER_API_KEY)
+    Initialize the providers whose configuration is present, per PROVIDER_REGISTRY.
 
     Returns:
         Dictionary of {provider_name: provider_instance}
     """
-    providers = {}
-
-    # Primary providers
-    if api_key := os.getenv("GOOGLE_API_KEY"):
-        providers["gemini"] = GeminiProvider(api_key)
-
-    if api_key := os.getenv("ANTHROPIC_API_KEY"):
-        providers["claude"] = ClaudeProvider(api_key)
-
-    # Ultra-fast providers
-    if api_key := os.getenv("CEREBRAS_API_KEY"):
-        providers["cerebras"] = CerebrasProvider(api_key)
-
-    if api_key := os.getenv("GROQ_API_KEY"):
-        providers["groq"] = GroqProvider(api_key)
-
-    # Fine-tuned model hosting (Unsloth, custom LoRAs)
-    if api_key := os.getenv("TOGETHER_API_KEY"):
-        providers["together"] = TogetherAIProvider(api_key)
-
-    # New providers - Technical Depth Sprint
-    if api_key := os.getenv("MISTRAL_API_KEY"):
-        providers["mistral"] = MistralProvider(api_key)
-
-    if api_key := os.getenv("FIREWORKS_API_KEY"):
-        providers["fireworks"] = FireworksProvider(api_key)
-
-    if api_key := os.getenv("COHERE_API_KEY"):
-        providers["cohere"] = CohereProvider(api_key)
-
-    # Cheap + capable Chinese frontier providers (OpenAI-compatible)
-    if api_key := os.getenv("DEEPSEEK_API_KEY"):
-        providers["deepseek"] = DeepSeekProvider(api_key)
-
-    if api_key := os.getenv("GLM_API_KEY"):
-        providers["glm"] = GLMProvider(api_key)
-
-    if api_key := os.getenv("DASHSCOPE_API_KEY"):
-        providers["qwen"] = QwenProvider(api_key)
-
-    # Ollama - local inference (no API key needed)
-    if OllamaProvider.is_available():
-        providers["ollama"] = OllamaProvider()
-
-    # AWS Bedrock - requires AWS credentials
-    if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
-        providers["bedrock"] = BedrockProvider()
-
-    # Fallback aggregator (NO OpenAI models)
-    if api_key := os.getenv("OPENROUTER_API_KEY"):
-        providers["openrouter"] = OpenRouterProvider(api_key)
-
-    return providers
+    return {spec.name: spec.build() for spec in PROVIDER_REGISTRY if spec.is_configured()}

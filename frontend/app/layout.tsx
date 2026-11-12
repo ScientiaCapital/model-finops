@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'ModelFinOps - FinOps for AI',
-  description: 'Intelligent AI routing with semantic caching to reduce your LLM costs by 60%+',
+  description: 'LLM routing across providers with semantic caching and per-request cost tracking',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -10,10 +10,11 @@ Provides scientific validation of A/B test results:
 """
 
 import logging
-from typing import Dict, List, Optional, Any
-from scipy import stats
-import numpy as np
 import math
+from typing import Any
+
+import numpy as np
+from scipy import stats
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +32,8 @@ class StatisticalAnalyzer:
     """
 
     def chi_square_test(
-        self,
-        control_successes: int,
-        control_total: int,
-        test_successes: int,
-        test_total: int
-    ) -> Dict[str, Any]:
+        self, control_successes: int, control_total: int, test_successes: int, test_total: int
+    ) -> dict[str, Any]:
         """
         Perform chi-square test for categorical outcomes.
 
@@ -77,26 +74,28 @@ class StatisticalAnalyzer:
         control_failures = control_total - control_successes
         test_failures = test_total - test_successes
 
-        contingency_table = [
-            [control_successes, control_failures],
-            [test_successes, test_failures]
-        ]
+        contingency_table = [[control_successes, control_failures], [test_successes, test_failures]]
 
         # Handle zero variance edge cases (all successes or all failures in both groups)
-        if (control_failures == 0 and test_failures == 0) or \
-           (control_successes == 0 and test_successes == 0):
+        if (control_failures == 0 and test_failures == 0) or (
+            control_successes == 0 and test_successes == 0
+        ):
             # Both groups identical (all success or all fail) - no difference
             return {
-                'significant': False,
-                'p_value': 1.0,
-                'chi_square_statistic': 0.0,
-                'control_rate': control_rate,
-                'test_rate': test_rate
+                "significant": False,
+                "p_value": 1.0,
+                "chi_square_statistic": 0.0,
+                "control_rate": control_rate,
+                "test_rate": test_rate,
             }
 
         # Warn if one group has extreme rates (potential chi-square assumption violation)
-        if (control_failures == 0 or test_failures == 0 or
-            control_successes == 0 or test_successes == 0):
+        if (
+            control_failures == 0
+            or test_failures == 0
+            or control_successes == 0
+            or test_successes == 0
+        ):
             logger.warning(
                 f"Chi-square test with extreme success rates "
                 f"(control={control_rate:.2%}, test={test_rate:.2%}). "
@@ -112,19 +111,16 @@ class StatisticalAnalyzer:
         )
 
         return {
-            'significant': bool(p_value < SIGNIFICANCE_LEVEL),
-            'p_value': float(p_value),
-            'chi_square_statistic': float(chi2_statistic),
-            'control_rate': control_rate,
-            'test_rate': test_rate
+            "significant": bool(p_value < SIGNIFICANCE_LEVEL),
+            "p_value": float(p_value),
+            "chi_square_statistic": float(chi2_statistic),
+            "control_rate": control_rate,
+            "test_rate": test_rate,
         }
 
     def ttest_independent(
-        self,
-        control_values: List[float],
-        test_values: List[float],
-        metric_name: str
-    ) -> Dict[str, Any]:
+        self, control_values: list[float], test_values: list[float], metric_name: str
+    ) -> dict[str, Any]:
         """
         Perform independent t-test for continuous metrics.
 
@@ -172,10 +168,8 @@ class StatisticalAnalyzer:
         else:
             # Zero variance case: all values identical
             # If means differ, effect size is very large; otherwise zero
-            if abs(control_mean - test_mean) > 1e-9:
-                cohens_d = 10.0  # Arbitrarily large effect (perfect separation)
-            else:
-                cohens_d = 0.0
+            # 10.0 stands in for an arbitrarily large effect (perfect separation)
+            cohens_d = 10.0 if abs(control_mean - test_mean) > 1e-9 else 0.0
 
         logger.debug(
             f"T-test for {metric_name}: control_mean={control_mean:.4f}, "
@@ -183,14 +177,14 @@ class StatisticalAnalyzer:
         )
 
         return {
-            'significant': bool(p_value < SIGNIFICANCE_LEVEL),
-            'p_value': float(p_value),
-            'control_mean': float(control_mean),
-            'test_mean': float(test_mean),
-            'effect_size': float(cohens_d)
+            "significant": bool(p_value < SIGNIFICANCE_LEVEL),
+            "p_value": float(p_value),
+            "control_mean": float(control_mean),
+            "test_mean": float(test_mean),
+            "effect_size": float(cohens_d),
         }
 
-    def detect_winner(self, experiment_summary: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    def detect_winner(self, experiment_summary: dict[str, dict[str, Any]]) -> dict[str, Any]:
         """
         Detect winner based on multiple metrics.
 
@@ -212,20 +206,20 @@ class StatisticalAnalyzer:
             - tradeoffs: dict of mixed results (if any)
             - reason: explanation if no clear winner
         """
-        control = experiment_summary.get('control', {})
-        test = experiment_summary.get('test', {})
+        control = experiment_summary.get("control", {})
+        test = experiment_summary.get("test", {})
 
         # Check minimum samples
-        control_count = control.get('count', 0)
-        test_count = test.get('count', 0)
+        control_count = control.get("count", 0)
+        test_count = test.get("count", 0)
 
         if control_count < MIN_SAMPLE_SIZE or test_count < MIN_SAMPLE_SIZE:
             return {
-                'winner': None,
-                'confidence': 'low',
-                'winning_metrics': [],
-                'tradeoffs': {},
-                'reason': f'insufficient_samples (need {MIN_SAMPLE_SIZE} per group)'
+                "winner": None,
+                "confidence": "low",
+                "winning_metrics": [],
+                "tradeoffs": {},
+                "reason": f"insufficient_samples (need {MIN_SAMPLE_SIZE} per group)",
             }
 
         # Compare metrics
@@ -233,57 +227,57 @@ class StatisticalAnalyzer:
         tradeoffs = {}
 
         # Latency (lower is better)
-        if test.get('avg_latency_ms', float('inf')) < control.get('avg_latency_ms', 0):
-            winning_metrics.append('latency')
-        elif test.get('avg_latency_ms', 0) > control.get('avg_latency_ms', float('inf')):
-            tradeoffs['latency'] = 'control_better'
+        if test.get("avg_latency_ms", float("inf")) < control.get("avg_latency_ms", 0):
+            winning_metrics.append("latency")
+        elif test.get("avg_latency_ms", 0) > control.get("avg_latency_ms", float("inf")):
+            tradeoffs["latency"] = "control_better"
 
         # Cost (lower is better)
-        if test.get('avg_cost_usd', float('inf')) < control.get('avg_cost_usd', 0):
-            winning_metrics.append('cost')
-        elif test.get('avg_cost_usd', 0) > control.get('avg_cost_usd', float('inf')):
-            tradeoffs['cost'] = 'control_better'
+        if test.get("avg_cost_usd", float("inf")) < control.get("avg_cost_usd", 0):
+            winning_metrics.append("cost")
+        elif test.get("avg_cost_usd", 0) > control.get("avg_cost_usd", float("inf")):
+            tradeoffs["cost"] = "control_better"
 
         # Quality (higher is better)
-        if test.get('avg_quality_score', 0) > control.get('avg_quality_score', float('inf')):
-            winning_metrics.append('quality')
-        elif test.get('avg_quality_score', float('inf')) < control.get('avg_quality_score', 0):
-            tradeoffs['quality'] = 'control_better'
+        if test.get("avg_quality_score", 0) > control.get("avg_quality_score", float("inf")):
+            winning_metrics.append("quality")
+        elif test.get("avg_quality_score", float("inf")) < control.get("avg_quality_score", 0):
+            tradeoffs["quality"] = "control_better"
 
         # Determine winner and confidence
         if len(winning_metrics) == 3 and len(tradeoffs) == 0:
             # Test wins on all metrics
             return {
-                'winner': 'test',
-                'confidence': 'high',
-                'winning_metrics': winning_metrics,
-                'tradeoffs': tradeoffs
+                "winner": "test",
+                "confidence": "high",
+                "winning_metrics": winning_metrics,
+                "tradeoffs": tradeoffs,
             }
         elif len(winning_metrics) >= 2 and len(tradeoffs) == 0:
             # Test wins on most metrics with no tradeoffs
             return {
-                'winner': 'test',
-                'confidence': 'medium',
-                'winning_metrics': winning_metrics,
-                'tradeoffs': tradeoffs
+                "winner": "test",
+                "confidence": "medium",
+                "winning_metrics": winning_metrics,
+                "tradeoffs": tradeoffs,
             }
         elif len(tradeoffs) > 0:
             # Mixed results - any tradeoff means unclear winner
             return {
-                'winner': None,
-                'confidence': 'low',
-                'winning_metrics': winning_metrics,
-                'tradeoffs': tradeoffs,
-                'reason': 'Mixed results with tradeoffs'
+                "winner": None,
+                "confidence": "low",
+                "winning_metrics": winning_metrics,
+                "tradeoffs": tradeoffs,
+                "reason": "Mixed results with tradeoffs",
             }
         else:
             # No clear difference
             return {
-                'winner': None,
-                'confidence': 'low',
-                'winning_metrics': [],
-                'tradeoffs': {},
-                'reason': 'No significant differences detected'
+                "winner": None,
+                "confidence": "low",
+                "winning_metrics": [],
+                "tradeoffs": {},
+                "reason": "No significant differences detected",
             }
 
     def calculate_required_sample_size(
@@ -291,7 +285,7 @@ class StatisticalAnalyzer:
         baseline_mean: float,
         expected_improvement: float,
         power: float = 0.80,
-        alpha: float = 0.05
+        alpha: float = 0.05,
     ) -> int:
         """
         Calculate required sample size for desired statistical power.
@@ -313,10 +307,8 @@ class StatisticalAnalyzer:
         assumed_std = baseline_mean * 0.30
         expected_diff = baseline_mean * expected_improvement
 
-        if assumed_std > 0:
-            cohens_d = expected_diff / assumed_std
-        else:
-            cohens_d = 0.5  # Default moderate effect
+        # 0.5 is the default moderate effect when no spread is assumed
+        cohens_d = expected_diff / assumed_std if assumed_std > 0 else 0.5
 
         # Power analysis formula (simplified)
         # n ≈ 2 * ((Z_α/2 + Z_β) / d)^2
@@ -341,7 +333,7 @@ class StatisticalAnalyzer:
 
         return required_size
 
-    def analyze_experiment(self, experiment_data: Dict[str, List[float]]) -> Dict[str, Any]:
+    def analyze_experiment(self, experiment_data: dict[str, list[float]]) -> dict[str, Any]:
         """
         Perform comprehensive experiment analysis.
 
@@ -368,55 +360,57 @@ class StatisticalAnalyzer:
             - reason: explanation if invalid
         """
         # Check if we have minimum data
-        control_latencies = experiment_data.get('control_latencies', [])
-        test_latencies = experiment_data.get('test_latencies', [])
+        control_latencies = experiment_data.get("control_latencies", [])
+        test_latencies = experiment_data.get("test_latencies", [])
 
         if len(control_latencies) < MIN_SAMPLE_SIZE or len(test_latencies) < MIN_SAMPLE_SIZE:
             return {
-                'valid': False,
-                'reason': f'Insufficient data (need {MIN_SAMPLE_SIZE} samples per group)'
+                "valid": False,
+                "reason": f"Insufficient data (need {MIN_SAMPLE_SIZE} samples per group)",
             }
 
         # Analyze each metric
         analyses = {}
 
-        if 'control_latencies' in experiment_data and 'test_latencies' in experiment_data:
-            analyses['latency_analysis'] = self.ttest_independent(
-                experiment_data['control_latencies'],
-                experiment_data['test_latencies'],
-                'latency_ms'
+        if "control_latencies" in experiment_data and "test_latencies" in experiment_data:
+            analyses["latency_analysis"] = self.ttest_independent(
+                experiment_data["control_latencies"],
+                experiment_data["test_latencies"],
+                "latency_ms",
             )
             # Add improvement percentage (safe division)
-            if analyses['latency_analysis']['control_mean'] > 0:
-                analyses['latency_analysis']['improvement_pct'] = (
-                    (analyses['latency_analysis']['control_mean'] -
-                     analyses['latency_analysis']['test_mean']) /
-                    analyses['latency_analysis']['control_mean'] * 100
+            if analyses["latency_analysis"]["control_mean"] > 0:
+                analyses["latency_analysis"]["improvement_pct"] = (
+                    (
+                        analyses["latency_analysis"]["control_mean"]
+                        - analyses["latency_analysis"]["test_mean"]
+                    )
+                    / analyses["latency_analysis"]["control_mean"]
+                    * 100
                 )
             else:
-                analyses['latency_analysis']['improvement_pct'] = 0.0
+                analyses["latency_analysis"]["improvement_pct"] = 0.0
 
-        if 'control_costs' in experiment_data and 'test_costs' in experiment_data:
-            analyses['cost_analysis'] = self.ttest_independent(
-                experiment_data['control_costs'],
-                experiment_data['test_costs'],
-                'cost_usd'
+        if "control_costs" in experiment_data and "test_costs" in experiment_data:
+            analyses["cost_analysis"] = self.ttest_independent(
+                experiment_data["control_costs"], experiment_data["test_costs"], "cost_usd"
             )
             # Add improvement percentage (safe division)
-            if analyses['cost_analysis']['control_mean'] > 0:
-                analyses['cost_analysis']['improvement_pct'] = (
-                    (analyses['cost_analysis']['control_mean'] -
-                     analyses['cost_analysis']['test_mean']) /
-                    analyses['cost_analysis']['control_mean'] * 100
+            if analyses["cost_analysis"]["control_mean"] > 0:
+                analyses["cost_analysis"]["improvement_pct"] = (
+                    (
+                        analyses["cost_analysis"]["control_mean"]
+                        - analyses["cost_analysis"]["test_mean"]
+                    )
+                    / analyses["cost_analysis"]["control_mean"]
+                    * 100
                 )
             else:
-                analyses['cost_analysis']['improvement_pct'] = 0.0
+                analyses["cost_analysis"]["improvement_pct"] = 0.0
 
-        if 'control_quality' in experiment_data and 'test_quality' in experiment_data:
-            analyses['quality_analysis'] = self.ttest_independent(
-                experiment_data['control_quality'],
-                experiment_data['test_quality'],
-                'quality_score'
+        if "control_quality" in experiment_data and "test_quality" in experiment_data:
+            analyses["quality_analysis"] = self.ttest_independent(
+                experiment_data["control_quality"], experiment_data["test_quality"], "quality_score"
             )
 
         # Determine overall winner
@@ -424,51 +418,53 @@ class StatisticalAnalyzer:
         significant_regressions = 0
 
         for metric, analysis in analyses.items():
-            if analysis['significant']:
-                if 'latency' in metric or 'cost' in metric:
+            if analysis["significant"]:
+                if "latency" in metric or "cost" in metric:
                     # Lower is better
-                    if analysis['test_mean'] < analysis['control_mean']:
+                    if analysis["test_mean"] < analysis["control_mean"]:
                         significant_improvements += 1
                     else:
                         significant_regressions += 1
                 else:
                     # Higher is better (quality)
-                    if analysis['test_mean'] > analysis['control_mean']:
+                    if analysis["test_mean"] > analysis["control_mean"]:
                         significant_improvements += 1
                     else:
                         significant_regressions += 1
 
         # Determine winner
         if significant_improvements > 0 and significant_regressions == 0:
-            overall_winner = 'test'
-            confidence_level = 'high' if significant_improvements >= 2 else 'medium'
+            overall_winner = "test"
+            confidence_level = "high" if significant_improvements >= 2 else "medium"
         elif significant_regressions > significant_improvements:
-            overall_winner = 'control'
-            confidence_level = 'medium'
+            overall_winner = "control"
+            confidence_level = "medium"
         else:
             overall_winner = None
-            confidence_level = 'low'
+            confidence_level = "low"
 
         # Generate recommendation
-        if overall_winner == 'test':
+        if overall_winner == "test":
             recommendation = (
                 f"Test strategy shows significant improvements across "
                 f"{significant_improvements} metric(s). Recommend adopting test strategy."
             )
-        elif overall_winner == 'control':
+        elif overall_winner == "control":
             recommendation = "Control strategy performs better. Keep existing approach."
         else:
-            recommendation = "No clear winner. Consider extending experiment or analyzing tradeoffs."
+            recommendation = (
+                "No clear winner. Consider extending experiment or analyzing tradeoffs."
+            )
 
         return {
             **analyses,
-            'overall_winner': overall_winner,
-            'confidence_level': confidence_level,
-            'recommendation': recommendation,
-            'valid': True
+            "overall_winner": overall_winner,
+            "confidence_level": confidence_level,
+            "recommendation": recommendation,
+            "valid": True,
         }
 
-    def generate_report(self, analysis: Dict[str, Any]) -> str:
+    def generate_report(self, analysis: dict[str, Any]) -> str:
         """
         Generate human-readable report from analysis results.
 
@@ -478,31 +474,31 @@ class StatisticalAnalyzer:
         Returns:
             Formatted text report
         """
-        if not analysis.get('valid', True):
+        if not analysis.get("valid", True):
             return f"⚠️  Analysis Invalid: {analysis.get('reason', 'Unknown reason')}"
 
-        winner = analysis.get('overall_winner')
-        confidence = analysis.get('confidence_level', 'unknown')
+        winner = analysis.get("overall_winner")
+        confidence = analysis.get("confidence_level", "unknown")
 
-        if winner == 'test':
+        if winner == "test":
             report = f"✅ **Winner: TEST Strategy** (Confidence: {confidence.upper()})\n\n"
             report += "Significant improvements detected:\n"
 
-            if 'latency_analysis' in analysis and analysis['latency_analysis'].get('significant'):
-                improvement = analysis['latency_analysis'].get('improvement_pct', 0)
+            if "latency_analysis" in analysis and analysis["latency_analysis"].get("significant"):
+                improvement = analysis["latency_analysis"].get("improvement_pct", 0)
                 report += f"  • Latency: {improvement:.1f}% faster\n"
 
-            if 'cost_analysis' in analysis and analysis['cost_analysis'].get('significant'):
-                improvement = analysis['cost_analysis'].get('improvement_pct', 0)
+            if "cost_analysis" in analysis and analysis["cost_analysis"].get("significant"):
+                improvement = analysis["cost_analysis"].get("improvement_pct", 0)
                 report += f"  • Cost: {improvement:.1f}% cheaper\n"
 
-        elif winner == 'control':
+        elif winner == "control":
             report = f"⚠️  **Winner: CONTROL Strategy** (Confidence: {confidence.upper()})\n\n"
             report += "Test strategy did not outperform control.\n"
 
         else:
             report = f"❓ **No Clear Winner** (Confidence: {confidence.upper()})\n\n"
-            reason = analysis.get('reason', 'Mixed results or insufficient differences')
+            reason = analysis.get("reason", "Mixed results or insufficient differences")
             report += f"Reason: {reason}\n"
 
         return report

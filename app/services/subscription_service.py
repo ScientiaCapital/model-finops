@@ -12,20 +12,29 @@ Features:
 - Bulk import from CSV data
 """
 
-import logging
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone, date
-from decimal import Decimal
 import csv
 import io
+import logging
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from typing import Any
 
+from app.database.supabase_client import SupabaseClient
 from app.models.subscription import (
-    SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse,
-    SubscriptionUsageCreate, SubscriptionUsageResponse,
-    SubscriptionAlertCreate, SubscriptionAlertResponse,
-    UpcomingBillingAlert, UpcomingBillingListResponse,
-    SpendSummary, SubscriptionImportRow, SubscriptionImportResult,
-    ServiceCategory, BillingCycle, SubscriptionStatus
+    BillingCycle,
+    ServiceCategory,
+    SpendSummary,
+    SubscriptionAlertCreate,
+    SubscriptionAlertResponse,
+    SubscriptionCreate,
+    SubscriptionImportResult,
+    SubscriptionResponse,
+    SubscriptionStatus,
+    SubscriptionUpdate,
+    SubscriptionUsageCreate,
+    SubscriptionUsageResponse,
+    UpcomingBillingAlert,
+    UpcomingBillingListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +52,7 @@ class SubscriptionService:
     - Bulk import
     """
 
-    def __init__(self, supabase_client=None):
+    def __init__(self, supabase_client: SupabaseClient | None = None) -> None:
         """
         Initialize subscription service.
 
@@ -53,10 +62,11 @@ class SubscriptionService:
         self._supabase = supabase_client
 
     @property
-    def supabase(self):
+    def supabase(self) -> SupabaseClient:
         """Lazy load Supabase client."""
         if self._supabase is None:
             from app.database.supabase_client import get_supabase_client
+
             self._supabase = get_supabase_client()
         return self._supabase
 
@@ -65,9 +75,7 @@ class SubscriptionService:
     # =========================================================================
 
     async def create_subscription(
-        self,
-        user_id: str,
-        data: SubscriptionCreate
+        self, user_id: str, data: SubscriptionCreate
     ) -> SubscriptionResponse:
         """
         Create a new subscription.
@@ -86,15 +94,23 @@ class SubscriptionService:
             "user_id": user_id,
             "service_name": data.service_name,
             "service_provider": data.service_provider,
-            "category": data.category.value if isinstance(data.category, ServiceCategory) else data.category,
+            "category": data.category.value
+            if isinstance(data.category, ServiceCategory)
+            else data.category,
             "monthly_cost": float(data.monthly_cost),
             "original_price": float(data.original_price) if data.original_price else None,
             "currency": data.currency,
-            "billing_cycle": data.billing_cycle.value if isinstance(data.billing_cycle, BillingCycle) else data.billing_cycle,
+            "billing_cycle": data.billing_cycle.value
+            if isinstance(data.billing_cycle, BillingCycle)
+            else data.billing_cycle,
             "billing_day": data.billing_day,
-            "next_billing_date": data.next_billing_date.isoformat() if data.next_billing_date else None,
+            "next_billing_date": data.next_billing_date.isoformat()
+            if data.next_billing_date
+            else None,
             "trial_ends_at": data.trial_ends_at.isoformat() if data.trial_ends_at else None,
-            "status": data.status.value if isinstance(data.status, SubscriptionStatus) else data.status,
+            "status": data.status.value
+            if isinstance(data.status, SubscriptionStatus)
+            else data.status,
             "auto_renew": data.auto_renew,
             "alert_days_before": data.alert_days_before,
             "alert_enabled": data.alert_enabled,
@@ -117,19 +133,19 @@ class SubscriptionService:
 
         except Exception as e:
             if "duplicate key" in str(e).lower() or "unique" in str(e).lower():
-                raise ValueError(f"Subscription for '{data.service_name}' already exists")
+                raise ValueError(f"Subscription for '{data.service_name}' already exists") from e
             logger.error(f"Error creating subscription: {e}")
             raise
 
     async def get_subscriptions(
         self,
         user_id: str,
-        category: Optional[ServiceCategory] = None,
-        status: Optional[SubscriptionStatus] = None,
-        search: Optional[str] = None,
+        category: ServiceCategory | None = None,
+        status: SubscriptionStatus | None = None,
+        search: str | None = None,
         limit: int = 100,
-        offset: int = 0
-    ) -> List[SubscriptionResponse]:
+        offset: int = 0,
+    ) -> list[SubscriptionResponse]:
         """
         Get all subscriptions for a user with optional filters.
 
@@ -164,10 +180,8 @@ class SubscriptionService:
         return [self._map_to_response(s) for s in result.data]
 
     async def get_subscription(
-        self,
-        user_id: str,
-        subscription_id: str
-    ) -> Optional[SubscriptionResponse]:
+        self, user_id: str, subscription_id: str
+    ) -> SubscriptionResponse | None:
         """
         Get a single subscription by ID.
 
@@ -178,19 +192,20 @@ class SubscriptionService:
         Returns:
             Subscription or None if not found
         """
-        result = self.supabase.table("subscriptions").select("*").eq(
-            "id", subscription_id
-        ).eq("user_id", user_id).execute()
+        result = (
+            self.supabase.table("subscriptions")
+            .select("*")
+            .eq("id", subscription_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
 
         if result.data:
             return self._map_to_response(result.data[0])
         return None
 
     async def update_subscription(
-        self,
-        user_id: str,
-        subscription_id: str,
-        data: SubscriptionUpdate
+        self, user_id: str, subscription_id: str, data: SubscriptionUpdate
     ) -> SubscriptionResponse:
         """
         Update a subscription.
@@ -214,7 +229,9 @@ class SubscriptionService:
         if data.service_provider is not None:
             update_data["service_provider"] = data.service_provider
         if data.category is not None:
-            update_data["category"] = data.category.value if isinstance(data.category, ServiceCategory) else data.category
+            update_data["category"] = (
+                data.category.value if isinstance(data.category, ServiceCategory) else data.category
+            )
         if data.monthly_cost is not None:
             update_data["monthly_cost"] = float(data.monthly_cost)
         if data.original_price is not None:
@@ -222,7 +239,11 @@ class SubscriptionService:
         if data.currency is not None:
             update_data["currency"] = data.currency
         if data.billing_cycle is not None:
-            update_data["billing_cycle"] = data.billing_cycle.value if isinstance(data.billing_cycle, BillingCycle) else data.billing_cycle
+            update_data["billing_cycle"] = (
+                data.billing_cycle.value
+                if isinstance(data.billing_cycle, BillingCycle)
+                else data.billing_cycle
+            )
         if data.billing_day is not None:
             update_data["billing_day"] = data.billing_day
         if data.next_billing_date is not None:
@@ -230,7 +251,9 @@ class SubscriptionService:
         if data.trial_ends_at is not None:
             update_data["trial_ends_at"] = data.trial_ends_at.isoformat()
         if data.status is not None:
-            update_data["status"] = data.status.value if isinstance(data.status, SubscriptionStatus) else data.status
+            update_data["status"] = (
+                data.status.value if isinstance(data.status, SubscriptionStatus) else data.status
+            )
         if data.auto_renew is not None:
             update_data["auto_renew"] = data.auto_renew
         if data.alert_days_before is not None:
@@ -253,20 +276,20 @@ class SubscriptionService:
                 return existing
             raise ValueError("Subscription not found")
 
-        result = self.supabase.table("subscriptions").update(update_data).eq(
-            "id", subscription_id
-        ).eq("user_id", user_id).execute()
+        result = (
+            self.supabase.table("subscriptions")
+            .update(update_data)
+            .eq("id", subscription_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
 
         if result.data:
             return self._map_to_response(result.data[0])
 
         raise ValueError("Subscription not found")
 
-    async def delete_subscription(
-        self,
-        user_id: str,
-        subscription_id: str
-    ) -> bool:
+    async def delete_subscription(self, user_id: str, subscription_id: str) -> bool:
         """
         Delete (cancel) a subscription.
 
@@ -277,9 +300,13 @@ class SubscriptionService:
         Returns:
             True if deleted, False if not found
         """
-        result = self.supabase.table("subscriptions").delete().eq(
-            "id", subscription_id
-        ).eq("user_id", user_id).execute()
+        result = (
+            self.supabase.table("subscriptions")
+            .delete()
+            .eq("id", subscription_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
 
         return len(result.data) > 0
 
@@ -297,10 +324,7 @@ class SubscriptionService:
         Returns:
             Spend summary with totals and breakdown by category
         """
-        result = self.supabase.rpc(
-            "get_monthly_spend_summary",
-            {"p_user_id": user_id}
-        ).execute()
+        result = self.supabase.rpc("get_monthly_spend_summary", {"p_user_id": user_id}).execute()
 
         if result.data and len(result.data) > 0:
             data = result.data[0]
@@ -308,7 +332,7 @@ class SubscriptionService:
                 total_monthly_cost=Decimal(str(data.get("total_monthly_cost", 0))),
                 total_yearly_cost=Decimal(str(data.get("total_yearly_cost", 0))),
                 active_subscriptions=data.get("active_subscriptions", 0),
-                by_category=data.get("by_category", {}) or {}
+                by_category=data.get("by_category", {}) or {},
             )
 
         # No data, return empty summary
@@ -316,17 +340,14 @@ class SubscriptionService:
             total_monthly_cost=Decimal("0"),
             total_yearly_cost=Decimal("0"),
             active_subscriptions=0,
-            by_category={}
+            by_category={},
         )
 
     # =========================================================================
     # Upcoming Billing Alerts
     # =========================================================================
 
-    async def get_upcoming_alerts(
-        self,
-        user_id: str
-    ) -> UpcomingBillingListResponse:
+    async def get_upcoming_alerts(self, user_id: str) -> UpcomingBillingListResponse:
         """
         Get upcoming billing alerts using the database function.
 
@@ -336,10 +357,7 @@ class SubscriptionService:
         Returns:
             List of upcoming billing alerts
         """
-        result = self.supabase.rpc(
-            "get_upcoming_billing_alerts",
-            {"p_user_id": user_id}
-        ).execute()
+        result = self.supabase.rpc("get_upcoming_billing_alerts", {"p_user_id": user_id}).execute()
 
         alerts = []
         total_cost = Decimal("0")
@@ -350,25 +368,18 @@ class SubscriptionService:
                 user_id=row["user_id"],
                 service_name=row["service_name"],
                 monthly_cost=Decimal(str(row.get("monthly_cost", 0))),
-                next_billing_date=datetime.strptime(
-                    row["next_billing_date"], "%Y-%m-%d"
-                ).date() if isinstance(row["next_billing_date"], str) else row["next_billing_date"],
+                next_billing_date=datetime.strptime(row["next_billing_date"], "%Y-%m-%d").date()
+                if isinstance(row["next_billing_date"], str)
+                else row["next_billing_date"],
                 days_until_billing=row.get("days_until_billing", 0),
-                alert_days_before=row.get("alert_days_before", 3)
+                alert_days_before=row.get("alert_days_before", 3),
             )
             alerts.append(alert)
             total_cost += alert.monthly_cost
 
-        return UpcomingBillingListResponse(
-            alerts=alerts,
-            total_upcoming_cost=total_cost
-        )
+        return UpcomingBillingListResponse(alerts=alerts, total_upcoming_cost=total_cost)
 
-    async def mark_alert_sent(
-        self,
-        subscription_id: str,
-        user_id: str
-    ) -> None:
+    async def mark_alert_sent(self, subscription_id: str, user_id: str) -> None:
         """
         Mark that an alert has been sent for a subscription.
 
@@ -376,19 +387,16 @@ class SubscriptionService:
             subscription_id: Subscription ID
             user_id: User ID
         """
-        self.supabase.table("subscriptions").update({
-            "last_alert_sent_at": datetime.now(timezone.utc).isoformat()
-        }).eq("id", subscription_id).eq("user_id", user_id).execute()
+        self.supabase.table("subscriptions").update(
+            {"last_alert_sent_at": datetime.now(UTC).isoformat()}
+        ).eq("id", subscription_id).eq("user_id", user_id).execute()
 
     # =========================================================================
     # Usage Recording
     # =========================================================================
 
     async def record_usage(
-        self,
-        user_id: str,
-        subscription_id: str,
-        usage_data: SubscriptionUsageCreate
+        self, user_id: str, subscription_id: str, usage_data: SubscriptionUsageCreate
     ) -> SubscriptionUsageResponse:
         """
         Record usage for a usage-based subscription.
@@ -409,7 +417,7 @@ class SubscriptionService:
             "usage_amount": float(usage_data.usage_amount),
             "usage_unit": usage_data.usage_unit,
             "cost_usd": float(usage_data.cost_usd),
-            "breakdown": usage_data.breakdown
+            "breakdown": usage_data.breakdown,
         }
 
         result = self.supabase.table("subscription_usage").insert(insert_data).execute()
@@ -420,11 +428,8 @@ class SubscriptionService:
         raise ValueError("Failed to record usage")
 
     async def get_usage_history(
-        self,
-        user_id: str,
-        subscription_id: str,
-        limit: int = 12
-    ) -> List[SubscriptionUsageResponse]:
+        self, user_id: str, subscription_id: str, limit: int = 12
+    ) -> list[SubscriptionUsageResponse]:
         """
         Get usage history for a subscription.
 
@@ -436,11 +441,15 @@ class SubscriptionService:
         Returns:
             List of usage records, most recent first
         """
-        result = self.supabase.table("subscription_usage").select("*").eq(
-            "subscription_id", subscription_id
-        ).eq("user_id", user_id).order(
-            "period_end", desc=True
-        ).limit(limit).execute()
+        result = (
+            self.supabase.table("subscription_usage")
+            .select("*")
+            .eq("subscription_id", subscription_id)
+            .eq("user_id", user_id)
+            .order("period_end", desc=True)
+            .limit(limit)
+            .execute()
+        )
 
         return [self._map_usage_to_response(u) for u in result.data]
 
@@ -449,10 +458,7 @@ class SubscriptionService:
     # =========================================================================
 
     async def create_alert_record(
-        self,
-        user_id: str,
-        subscription_id: str,
-        alert_data: SubscriptionAlertCreate
+        self, user_id: str, subscription_id: str, alert_data: SubscriptionAlertCreate
     ) -> SubscriptionAlertResponse:
         """
         Create an alert record for tracking.
@@ -471,9 +477,11 @@ class SubscriptionService:
             "alert_type": alert_data.alert_type,
             "message": alert_data.message,
             "channels": alert_data.channels,
-            "billing_date": alert_data.billing_date.isoformat() if alert_data.billing_date else None,
+            "billing_date": alert_data.billing_date.isoformat()
+            if alert_data.billing_date
+            else None,
             "amount": float(alert_data.amount) if alert_data.amount else None,
-            "delivery_status": "sent"
+            "delivery_status": "sent",
         }
 
         result = self.supabase.table("subscription_alerts").insert(insert_data).execute()
@@ -484,11 +492,8 @@ class SubscriptionService:
         raise ValueError("Failed to create alert record")
 
     async def get_alert_history(
-        self,
-        user_id: str,
-        subscription_id: Optional[str] = None,
-        limit: int = 50
-    ) -> List[SubscriptionAlertResponse]:
+        self, user_id: str, subscription_id: str | None = None, limit: int = 50
+    ) -> list[SubscriptionAlertResponse]:
         """
         Get alert history.
 
@@ -516,10 +521,7 @@ class SubscriptionService:
     # =========================================================================
 
     async def import_subscriptions(
-        self,
-        user_id: str,
-        csv_data: str,
-        skip_duplicates: bool = True
+        self, user_id: str, csv_data: str, skip_duplicates: bool = True
     ) -> SubscriptionImportResult:
         """
         Import subscriptions from CSV data.
@@ -560,9 +562,13 @@ class SubscriptionService:
 
                     # Parse monthly cost
                     try:
-                        monthly_cost = Decimal(row["monthly_cost"].replace("$", "").replace(",", ""))
+                        monthly_cost = Decimal(
+                            row["monthly_cost"].replace("$", "").replace(",", "")
+                        )
                     except (ValueError, TypeError):
-                        errors.append(f"Row {row_num}: Invalid monthly_cost '{row['monthly_cost']}'")
+                        errors.append(
+                            f"Row {row_num}: Invalid monthly_cost '{row['monthly_cost']}'"
+                        )
                         continue
 
                     # Parse billing cycle
@@ -596,7 +602,7 @@ class SubscriptionService:
                         billing_cycle=billing_cycle_enum,
                         category=category_enum,
                         billing_day=billing_day,
-                        notes=row.get("notes", "").strip() or None
+                        notes=row.get("notes", "").strip() or None,
                     )
 
                     try:
@@ -615,17 +621,14 @@ class SubscriptionService:
             errors.append(f"CSV parsing error: {str(e)}")
 
         return SubscriptionImportResult(
-            imported=len(imported),
-            skipped=skipped,
-            errors=errors,
-            subscriptions=imported
+            imported=len(imported), skipped=skipped, errors=errors, subscriptions=imported
         )
 
     # =========================================================================
     # Helper Methods
     # =========================================================================
 
-    def _map_to_response(self, data: Dict[str, Any]) -> SubscriptionResponse:
+    def _map_to_response(self, data: dict[str, Any]) -> SubscriptionResponse:
         """Map database row to response model."""
         return SubscriptionResponse(
             id=data["id"],
@@ -634,7 +637,9 @@ class SubscriptionService:
             service_provider=data.get("service_provider"),
             category=data.get("category", "other"),
             monthly_cost=Decimal(str(data.get("monthly_cost", 0))),
-            original_price=Decimal(str(data["original_price"])) if data.get("original_price") else None,
+            original_price=Decimal(str(data["original_price"]))
+            if data.get("original_price")
+            else None,
             currency=data.get("currency", "USD"),
             billing_cycle=data.get("billing_cycle", "monthly"),
             billing_day=data.get("billing_day"),
@@ -649,11 +654,11 @@ class SubscriptionService:
             api_key_configured=data.get("api_key_configured", False),
             external_subscription_id=data.get("external_subscription_id"),
             external_customer_id=data.get("external_customer_id"),
-            created_at=self._parse_datetime(data["created_at"]) or datetime.now(timezone.utc),
-            updated_at=self._parse_datetime(data.get("updated_at"))
+            created_at=self._parse_datetime(data["created_at"]) or datetime.now(UTC),
+            updated_at=self._parse_datetime(data.get("updated_at")),
         )
 
-    def _map_usage_to_response(self, data: Dict[str, Any]) -> SubscriptionUsageResponse:
+    def _map_usage_to_response(self, data: dict[str, Any]) -> SubscriptionUsageResponse:
         """Map usage row to response model."""
         return SubscriptionUsageResponse(
             id=data["id"],
@@ -665,10 +670,10 @@ class SubscriptionService:
             usage_unit=data.get("usage_unit", "tokens"),
             cost_usd=Decimal(str(data.get("cost_usd", 0))),
             breakdown=data.get("breakdown"),
-            created_at=self._parse_datetime(data["created_at"]) or datetime.now(timezone.utc)
+            created_at=self._parse_datetime(data["created_at"]) or datetime.now(UTC),
         )
 
-    def _map_alert_to_response(self, data: Dict[str, Any]) -> SubscriptionAlertResponse:
+    def _map_alert_to_response(self, data: dict[str, Any]) -> SubscriptionAlertResponse:
         """Map alert row to response model."""
         return SubscriptionAlertResponse(
             id=data["id"],
@@ -676,14 +681,14 @@ class SubscriptionService:
             user_id=data["user_id"],
             alert_type=data["alert_type"],
             message=data.get("message"),
-            sent_at=self._parse_datetime(data["sent_at"]) or datetime.now(timezone.utc),
+            sent_at=self._parse_datetime(data["sent_at"]) or datetime.now(UTC),
             channels=data.get("channels", []),
             delivery_status=data.get("delivery_status", "sent"),
             billing_date=self._parse_date(data.get("billing_date")),
-            amount=Decimal(str(data["amount"])) if data.get("amount") else None
+            amount=Decimal(str(data["amount"])) if data.get("amount") else None,
         )
 
-    def _parse_datetime(self, value: Any) -> Optional[datetime]:
+    def _parse_datetime(self, value: object) -> datetime | None:
         """Parse datetime from string or return as-is."""
         if value is None:
             return None
@@ -699,14 +704,14 @@ class SubscriptionService:
                 return None
         return None
 
-    def _parse_date(self, value: Any) -> Optional[date]:
+    def _parse_date(self, value: object) -> date | None:
         """Parse date from string or return as-is."""
         if value is None:
             return None
+        if isinstance(value, datetime):  # check first: datetime is a subclass of date
+            return value.date()
         if isinstance(value, date):
             return value
-        if isinstance(value, datetime):
-            return value.date()
         if isinstance(value, str):
             try:
                 return datetime.strptime(value.split("T")[0], "%Y-%m-%d").date()
@@ -719,7 +724,7 @@ class SubscriptionService:
 # Singleton Pattern
 # =============================================================================
 
-_subscription_service: Optional[SubscriptionService] = None
+_subscription_service: SubscriptionService | None = None
 
 
 def get_subscription_service() -> SubscriptionService:

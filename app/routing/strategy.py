@@ -1,10 +1,12 @@
 """Routing strategies."""
+
 import logging
 import sqlite3
 from abc import ABC, abstractmethod
-from app.routing.models import RoutingDecision, RoutingContext
-from app.routing.complexity import score_complexity
+
 from app.learning import QueryPatternAnalyzer
+from app.routing.complexity import score_complexity
+from app.routing.models import RoutingContext, RoutingDecision
 
 logger = logging.getLogger(__name__)
 
@@ -62,21 +64,27 @@ class ComplexityStrategy(RoutingStrategy):
             provider, model = self._select_simple_provider(context.available_providers)
             if (provider, model) == (None, None):
                 # Fallback to any available provider
-                provider, model, fallback_used = self._fallback_provider(context.available_providers)
+                provider, model, fallback_used = self._fallback_provider(
+                    context.available_providers
+                )
 
         # Moderate prompts → Claude Haiku (with fallback)
         elif complexity_score < 0.7:
             provider, model = self._select_moderate_provider(context.available_providers)
             if (provider, model) == (None, None):
                 # Fallback to any available provider
-                provider, model, fallback_used = self._fallback_provider(context.available_providers)
+                provider, model, fallback_used = self._fallback_provider(
+                    context.available_providers
+                )
 
         # Complex prompts → Claude Sonnet (with fallback)
         else:
             provider, model = self._select_complex_provider(context.available_providers)
             if (provider, model) == (None, None):
                 # Fallback to any available provider
-                provider, model, fallback_used = self._fallback_provider(context.available_providers)
+                provider, model, fallback_used = self._fallback_provider(
+                    context.available_providers
+                )
 
         return RoutingDecision(
             provider=provider,
@@ -85,10 +93,7 @@ class ComplexityStrategy(RoutingStrategy):
             strategy_used="complexity",
             reasoning=f"Complexity score: {complexity_score:.2f}",
             fallback_used=fallback_used,
-            metadata={
-                "complexity": complexity_score,
-                "pattern": "unknown"
-            }
+            metadata={"complexity": complexity_score, "pattern": "unknown"},
         )
 
     def _select_simple_provider(self, available_providers: list) -> tuple:
@@ -222,7 +227,7 @@ class LearningStrategy(RoutingStrategy):
     Confidence depends on sample count for detected pattern.
     """
 
-    def __init__(self, db_path: str = "optimizer.db"):
+    def __init__(self, db_path: str = "optimizer.db") -> None:
         """Initialize with database path.
 
         Args:
@@ -258,7 +263,7 @@ class LearningStrategy(RoutingStrategy):
             recommendation = self.analyzer.recommend_provider(
                 prompt=prompt,
                 complexity=complexity,
-                available_providers=context.available_providers
+                available_providers=context.available_providers,
             )
         except (sqlite3.Error, FileNotFoundError) as e:
             # Database error or missing table - will use fallback
@@ -267,13 +272,10 @@ class LearningStrategy(RoutingStrategy):
 
         # Handle case when no training data is available or database error
         if recommendation is None:
-            # Fallback: use a sensible default based on complexity
-            if complexity == "simple":
-                provider, model = "gemini", "gemini-1.5-flash"
-            elif complexity == "moderate":
-                provider, model = "claude", "claude-3-haiku-20240307"
-            else:
-                provider, model = "claude", "claude-3-5-sonnet-20241022"
+            # Fallback: the complexity tier's pick among the available providers
+            # (gemini flash / claude haiku / claude sonnet when those are available).
+            default = ComplexityStrategy().route(prompt, context)
+            provider, model = default.provider, default.model
 
             return RoutingDecision(
                 provider=provider,
@@ -286,24 +288,24 @@ class LearningStrategy(RoutingStrategy):
                     "pattern": pattern,
                     "quality_score": None,
                     "cost_estimate": None,
-                    "complexity": complexity_score
-                }
+                    "complexity": complexity_score,
+                },
             )
 
         return RoutingDecision(
-            provider=recommendation['provider'],
-            model=recommendation['model'],
-            confidence=recommendation['confidence'],
+            provider=recommendation["provider"],
+            model=recommendation["model"],
+            confidence=recommendation["confidence"],
             strategy_used="learning",
-            reasoning=recommendation.get('reasoning', 'Based on learned patterns'),
+            reasoning=recommendation.get("reasoning", "Based on learned patterns"),
             fallback_used=False,
             metadata={
                 "pattern": pattern,
-                "quality_score": recommendation.get('avg_quality'),
-                "composite_score": recommendation.get('score'),
-                "cost_estimate": recommendation.get('avg_cost'),
-                "complexity": complexity_score
-            }
+                "quality_score": recommendation.get("avg_quality"),
+                "composite_score": recommendation.get("score"),
+                "cost_estimate": recommendation.get("avg_cost"),
+                "complexity": complexity_score,
+            },
         )
 
     def get_name(self) -> str:
@@ -320,7 +322,7 @@ class HybridStrategy(RoutingStrategy):
     - No learning data: Fallback to ComplexityStrategy
     """
 
-    def __init__(self, db_path: str = "optimizer.db"):
+    def __init__(self, db_path: str = "optimizer.db") -> None:
         """Initialize with database path.
 
         Args:
@@ -346,7 +348,9 @@ class HybridStrategy(RoutingStrategy):
             logger.info(f"Learning strategy failed, falling back to complexity: {e}")
             decision = self.complexity_strategy.route(prompt, context)
             decision.strategy_used = "hybrid_fallback"
-            decision.reasoning = f"Fallback to complexity (learning unavailable): {decision.reasoning}"
+            decision.reasoning = (
+                f"Fallback to complexity (learning unavailable): {decision.reasoning}"
+            )
             return decision
 
         # Get complexity score for validation
@@ -365,7 +369,10 @@ class HybridStrategy(RoutingStrategy):
                 return learning_decision
             else:
                 # Mismatch - use complexity as safety
-                logger.warning(f"Learning/complexity mismatch: {learning_decision.model} vs {complexity_decision.model}")
+                logger.warning(
+                    "Learning/complexity mismatch: "
+                    f"{learning_decision.model} vs {complexity_decision.model}"
+                )
                 complexity_decision.strategy_used = "hybrid"
                 complexity_decision.metadata["learning_mismatch"] = True
                 complexity_decision.metadata["rejected_model"] = learning_decision.model
@@ -378,18 +385,17 @@ class HybridStrategy(RoutingStrategy):
             learning_decision.metadata["complexity"] = complexity_score
             learning_decision.metadata["validation"] = "experimental"
             learning_decision.metadata["experimental"] = True
-            learning_decision.reasoning = f"Experimental routing (confidence={learning_decision.confidence}): {learning_decision.reasoning}"
+            learning_decision.reasoning = (
+                f"Experimental routing (confidence={learning_decision.confidence}): "
+                f"{learning_decision.reasoning}"
+            )
             return learning_decision
 
     def get_name(self) -> str:
         """Return strategy name."""
         return "hybrid"
 
-    def _validate_match(
-        self,
-        learning: RoutingDecision,
-        complexity: RoutingDecision
-    ) -> bool:
+    def _validate_match(self, learning: RoutingDecision, complexity: RoutingDecision) -> bool:
         """Check if learning and complexity recommendations are compatible.
 
         Compatible means within 1 tier of each other:

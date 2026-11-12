@@ -14,61 +14,61 @@ Usage:
     python -m app.cli_tester insights # View learning insights
 """
 
-import sys
 import argparse
 import asyncio
-from datetime import datetime
-from typing import Optional
+import sys
+
+from app.complexity import get_complexity_metadata, score_complexity
 
 # Add parent directory to path for imports
 from app.database import CostTracker
-from app.complexity import score_complexity, get_complexity_metadata
-from app.router import Router
 from app.providers import init_providers
+from app.router import Router
 
 
 class Colors:
     """ANSI color codes for terminal output."""
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    CYAN = '\033[96m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    END = '\033[0m'
+
+    HEADER = "\033[95m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    END = "\033[0m"
 
 
-def print_header(text: str):
+def print_header(text: str) -> None:
     """Print colored header."""
-    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.END}")
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'=' * 70}{Colors.END}")
     print(f"{Colors.BOLD}{Colors.CYAN}{text.center(70)}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*70}{Colors.END}\n")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 70}{Colors.END}\n")
 
 
-def print_section(text: str):
+def print_section(text: str) -> None:
     """Print section divider."""
     print(f"\n{Colors.BOLD}{Colors.BLUE}{text}{Colors.END}")
-    print(f"{Colors.BLUE}{'-'*len(text)}{Colors.END}")
+    print(f"{Colors.BLUE}{'-' * len(text)}{Colors.END}")
 
 
-def print_success(text: str):
+def print_success(text: str) -> None:
     """Print success message."""
     print(f"{Colors.GREEN}✓ {text}{Colors.END}")
 
 
-def print_error(text: str):
+def print_error(text: str) -> None:
     """Print error message."""
     print(f"{Colors.RED}✗ {text}{Colors.END}")
 
 
-def print_info(text: str):
+def print_info(text: str) -> None:
     """Print info message."""
     print(f"{Colors.CYAN}ℹ {text}{Colors.END}")
 
 
-def print_warning(text: str):
+def print_warning(text: str) -> None:
     """Print warning message."""
     print(f"{Colors.YELLOW}⚠ {text}{Colors.END}")
 
@@ -76,7 +76,7 @@ def print_warning(text: str):
 class CLITester:
     """Interactive CLI testing tool."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize CLI tester with database and router."""
         self.cost_tracker = CostTracker()
         self.providers = init_providers()
@@ -86,9 +86,11 @@ class CLITester:
             print_error("No providers initialized! Check your API keys in .env")
             sys.exit(1)
 
-        print_success(f"Initialized with {len(self.providers)} providers: {', '.join(self.providers.keys())}")
+        print_success(
+            f"Initialized with {len(self.providers)} providers: {', '.join(self.providers.keys())}"
+        )
 
-    async def test_interactive(self):
+    async def test_interactive(self) -> None:
         """Interactive testing mode with quality rating."""
         print_header("Interactive Testing Mode")
         print_info("Type 'quit' or 'exit' to stop\n")
@@ -98,7 +100,7 @@ class CLITester:
                 # Get prompt from user
                 prompt = input(f"\n{Colors.BOLD}Enter your prompt: {Colors.END}").strip()
 
-                if prompt.lower() in ['quit', 'exit', 'q']:
+                if prompt.lower() in ["quit", "exit", "q"]:
                     print_success("Exiting interactive mode")
                     break
 
@@ -107,7 +109,9 @@ class CLITester:
                     continue
 
                 # Get max tokens (optional)
-                max_tokens_input = input(f"{Colors.BOLD}Max tokens (default: 200): {Colors.END}").strip()
+                max_tokens_input = input(
+                    f"{Colors.BOLD}Max tokens (default: 200): {Colors.END}"
+                ).strip()
                 max_tokens = int(max_tokens_input) if max_tokens_input else 200
 
                 # Analyze complexity
@@ -119,7 +123,7 @@ class CLITester:
             except Exception as e:
                 print_error(f"Error: {str(e)}")
 
-    async def _analyze_and_route(self, prompt: str, max_tokens: int):
+    async def _analyze_and_route(self, prompt: str, max_tokens: int) -> None:
         """Analyze prompt, route to provider, and handle rating."""
         print_section("Complexity Analysis")
 
@@ -129,7 +133,10 @@ class CLITester:
 
         print(f"Classification: {Colors.BOLD}{complexity.upper()}{Colors.END}")
         print(f"Token count: {metadata['token_count']}")
-        print(f"Keywords found: {', '.join(metadata['keywords_found']) if metadata['keywords_found'] else 'None'}")
+        print(
+            "Keywords found: "
+            f"{', '.join(metadata['keywords_found']) if metadata['keywords_found'] else 'None'}"
+        )
 
         # Check cache
         print_section("Cache Check")
@@ -142,8 +149,8 @@ class CLITester:
             print(f"\n{Colors.BOLD}Response:{Colors.END}\n{cached['response'][:500]}...")
 
             # Record cache hit
-            self.cost_tracker.record_cache_hit(cached['cache_key'])
-            cache_key = cached['cache_key']
+            self.cost_tracker.record_cache_hit(cached["cache_key"])
+            cache_key = cached["cache_key"]
             print_info("Recorded cache hit")
 
         else:
@@ -176,24 +183,24 @@ class CLITester:
                 self.cost_tracker.store_in_cache(
                     prompt=prompt,
                     max_tokens=max_tokens,
-                    response=result['response'],
-                    provider=result['provider'],
-                    model=result['model'],
-                    complexity=result['complexity'],
-                    tokens_in=result['tokens_in'],
-                    tokens_out=result['tokens_out'],
-                    cost=result['cost']
+                    response=result["response"],
+                    provider=result["provider"],
+                    model=result["model"],
+                    complexity=result["complexity"],
+                    tokens_in=result["tokens_in"],
+                    tokens_out=result["tokens_out"],
+                    cost=result["cost"],
                 )
 
                 # Log to database
                 self.cost_tracker.log_request(
                     prompt=prompt,
-                    complexity=result['complexity'],
-                    provider=result['provider'],
-                    model=result['model'],
-                    tokens_in=result['tokens_in'],
-                    tokens_out=result['tokens_out'],
-                    cost=result['cost']
+                    complexity=result["complexity"],
+                    provider=result["provider"],
+                    model=result["model"],
+                    tokens_in=result["tokens_in"],
+                    tokens_out=result["tokens_out"],
+                    cost=result["cost"],
                 )
 
                 cache_key = self.cost_tracker._generate_cache_key(prompt, max_tokens)
@@ -205,7 +212,7 @@ class CLITester:
         # Quality rating
         await self._rate_response(cache_key)
 
-    async def _rate_response(self, cache_key: str):
+    async def _rate_response(self, cache_key: str) -> None:
         """Prompt user to rate the response quality."""
         print_section("Quality Rating")
         print("Rate this response:")
@@ -215,7 +222,7 @@ class CLITester:
 
         rating_input = input(f"\n{Colors.BOLD}Your rating: {Colors.END}").strip()
 
-        if not rating_input or rating_input == '0':
+        if not rating_input or rating_input == "0":
             print_info("Rating skipped")
             return
 
@@ -230,21 +237,23 @@ class CLITester:
 
             # Add feedback
             self.cost_tracker.add_feedback(
-                cache_key=cache_key,
-                rating=rating,
-                comment=comment if comment else None
+                cache_key=cache_key, rating=rating, comment=comment if comment else None
             )
 
             # Update quality score
             quality_score = self.cost_tracker.update_quality_score(cache_key)
 
             emoji = "👍" if rating == 1 else "👎"
-            print_success(f"{emoji} Rating recorded! Quality score: {quality_score:.2f}" if quality_score else f"{emoji} Rating recorded!")
+            print_success(
+                f"{emoji} Rating recorded! Quality score: {quality_score:.2f}"
+                if quality_score
+                else f"{emoji} Rating recorded!"
+            )
 
         except ValueError:
             print_warning("Invalid input. Rating skipped.")
 
-    def show_stats(self):
+    def show_stats(self) -> None:
         """Display usage statistics."""
         print_header("Usage Statistics")
 
@@ -259,18 +268,18 @@ class CLITester:
         print(f"Total tokens out: {stats['overall']['total_tokens_out']:,}")
 
         # Provider breakdown
-        if stats['by_provider']:
+        if stats["by_provider"]:
             print_section("By Provider")
-            for provider in stats['by_provider']:
+            for provider in stats["by_provider"]:
                 print(f"\n{Colors.BOLD}{provider['provider']}{Colors.END}:")
                 print(f"  Requests: {provider['request_count']}")
                 print(f"  Total cost: ${provider['total_cost']:.6f}")
                 print(f"  Avg cost: ${provider['avg_cost']:.6f}")
 
         # Complexity breakdown
-        if stats['by_complexity']:
+        if stats["by_complexity"]:
             print_section("By Complexity")
-            for complexity in stats['by_complexity']:
+            for complexity in stats["by_complexity"]:
                 print(f"\n{Colors.BOLD}{complexity['complexity']}{Colors.END}:")
                 print(f"  Requests: {complexity['request_count']}")
                 print(f"  Total cost: ${complexity['total_cost']:.6f}")
@@ -284,7 +293,7 @@ class CLITester:
         print(f"Hit rate: {cache_stats['hit_rate_percent']:.1f}%")
         print(f"Cost savings: ${cache_stats['total_savings']:.6f}")
 
-    def show_history(self, limit: int = 20):
+    def show_history(self, limit: int = 20) -> None:
         """Display recent request history."""
         print_header(f"Recent Request History (last {limit})")
 
@@ -301,11 +310,11 @@ class CLITester:
             print(f"   Complexity: {req['complexity']}")
             print(f"   Cost: ${req['cost']:.6f}")
 
-    def show_insights(self):
+    def show_insights(self) -> None:
         """Display learning insights."""
         print_header("Learning Insights")
 
-        if not hasattr(self.router, 'analyzer') or not self.router.analyzer:
+        if not hasattr(self.router, "analyzer") or not self.router.analyzer:
             print_warning("Intelligent routing not enabled. Need more historical data.")
             print_info("Use 'test' mode to generate data with quality ratings")
             return
@@ -318,54 +327,56 @@ class CLITester:
         print(f"Total requests: {insights['overall']['total_requests']}")
         print(f"Rated responses: {insights['overall']['rated_responses']}")
 
-        learning_active = insights['overall']['rated_responses'] >= 5
-        status = f"{Colors.GREEN}ACTIVE{Colors.END}" if learning_active else f"{Colors.YELLOW}INACTIVE{Colors.END}"
+        learning_active = insights["overall"]["rated_responses"] >= 5
+        status = (
+            f"{Colors.GREEN}ACTIVE{Colors.END}"
+            if learning_active
+            else f"{Colors.YELLOW}INACTIVE{Colors.END}"
+        )
         print(f"Learning status: {status}")
 
         if not learning_active:
-            print_info(f"Need {5 - insights['overall']['rated_responses']} more rated responses to activate learning")
+            print_info(
+                f"Need {5 - insights['overall']['rated_responses']} more rated responses "
+                "to activate learning"
+            )
 
         # Provider performance
-        if insights['by_provider']:
+        if insights["by_provider"]:
             print_section("Provider Performance")
-            for provider in insights['by_provider']:
+            for provider in insights["by_provider"]:
                 print(f"\n{Colors.BOLD}{provider['provider']}{Colors.END}:")
                 print(f"  Requests: {provider['requests']}")
-                if provider['avg_quality']:
+                if provider["avg_quality"]:
                     print(f"  Avg quality: {provider['avg_quality']:.2f}")
                 print(f"  Avg cost: ${provider['avg_cost']:.6f}")
-                if provider['upvotes'] or provider['downvotes']:
+                if provider["upvotes"] or provider["downvotes"]:
                     print(f"  Votes: {provider['upvotes']} 👍 / {provider['downvotes']} 👎")
 
         # Complexity breakdown
-        if insights['by_complexity']:
+        if insights["by_complexity"]:
             print_section("By Complexity")
-            for complexity in insights['by_complexity']:
+            for complexity in insights["by_complexity"]:
                 print(f"\n{Colors.BOLD}{complexity['complexity']}{Colors.END}:")
                 print(f"  Requests: {complexity['requests']}")
-                if complexity['avg_quality']:
+                if complexity["avg_quality"]:
                     print(f"  Avg quality: {complexity['avg_quality']:.2f}")
                 print(f"  Avg cost: ${complexity['avg_cost']:.6f}")
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         description="AI Cost Optimizer Interactive Testing Tool",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
-        'command',
-        choices=['test', 'stats', 'history', 'insights'],
-        help='Command to execute'
+        "command", choices=["test", "stats", "history", "insights"], help="Command to execute"
     )
 
     parser.add_argument(
-        '--limit',
-        type=int,
-        default=20,
-        help='Number of history entries to show (default: 20)'
+        "--limit", type=int, default=20, help="Number of history entries to show (default: 20)"
     )
 
     args = parser.parse_args()
@@ -373,13 +384,13 @@ def main():
     tester = CLITester()
 
     try:
-        if args.command == 'test':
+        if args.command == "test":
             asyncio.run(tester.test_interactive())
-        elif args.command == 'stats':
+        elif args.command == "stats":
             tester.show_stats()
-        elif args.command == 'history':
+        elif args.command == "history":
             tester.show_history(args.limit)
-        elif args.command == 'insights':
+        elif args.command == "insights":
             tester.show_insights()
     except KeyboardInterrupt:
         print_success("\n\nExited by user")

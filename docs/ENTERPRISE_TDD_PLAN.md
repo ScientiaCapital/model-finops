@@ -4,7 +4,7 @@
 
 Build enterprise multi-tenant AI cost tracking with HR/Compliance focus using **Test-Driven Development (TDD)**. This enables tracking of 500-1000 employees across work/personal accounts with compliance flags for Chinese AI models.
 
-**MVP User**: Tim (tim@coperniq.io + tkipper@gmail.com) tracking 9 providers
+**MVP User**: Tim (tim@example.com + tkipper@gmail.com) tracking 9 providers
 **Enterprise Target**: HR/Compliance teams tracking AI responsible deployment
 
 ---
@@ -246,7 +246,7 @@ docs/ENTERPRISE_SCHEMA.md  # Update with implementation
 
 ## Success Criteria
 
-1. **Tim MVP**: Track tim@coperniq.io + tkipper@gmail.com across 9 providers
+1. **Tim MVP**: Track tim@example.com + tkipper@gmail.com across 9 providers
 2. **Compliance**: DeepSeek/Qwen/Baidu usage triggers automatic alerts
 3. **Security**: All API keys encrypted with AES-256, never logged
 4. **Multi-Tenancy**: RLS policies isolate org data completely

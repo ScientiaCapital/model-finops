@@ -1,6 +1,7 @@
 """Data models for routing system."""
+
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 
 @dataclass
@@ -23,7 +24,7 @@ class RoutingDecision:
     strategy_used: str
     reasoning: str
     fallback_used: bool
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -40,13 +41,18 @@ class RoutingContext:
     """
 
     prompt: str
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    available_providers: List[str] = field(
+    user_id: str | None = None
+    session_id: str | None = None
+    available_providers: list[str] = field(
         default_factory=lambda: [
-            "gemini", "claude", "openrouter",
-            "ollama", "deepseek", "glm", "qwen",
+            "gemini",
+            "claude",
+            "openrouter",
+            "ollama",
+            "deepseek",
+            "glm",
+            "qwen",
         ]
     )
-    max_cost: Optional[float] = None
-    min_quality: Optional[float] = None
+    max_cost: float | None = None
+    min_quality: float | None = None

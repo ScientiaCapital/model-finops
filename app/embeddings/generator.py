@@ -1,8 +1,12 @@
 """Embedding generator for semantic caching with sentence-transformers."""
-import os
+
 import logging
-from typing import List, Optional
+import os
 from functools import lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # optional "embeddings" extra; imported lazily at runtime
+    from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +24,8 @@ class EmbeddingGenerator:
     """
 
     def __init__(
-        self,
-        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-        device: str = "cpu"
-    ):
+        self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", device: str = "cpu"
+    ) -> None:
         """
         Initialize embedding generator.
 
@@ -35,12 +37,10 @@ class EmbeddingGenerator:
         self.device = device
         self._model = None  # Lazy loaded
 
-        logger.info(
-            f"EmbeddingGenerator initialized (model={model_name}, device={device})"
-        )
+        logger.info(f"EmbeddingGenerator initialized (model={model_name}, device={device})")
 
     @property
-    def model(self):
+    def model(self) -> "SentenceTransformer":
         """
         Lazy-load the sentence transformer model.
 
@@ -52,19 +52,15 @@ class EmbeddingGenerator:
                 from sentence_transformers import SentenceTransformer
 
                 logger.info(f"Loading embedding model: {self.model_name}")
-                self._model = SentenceTransformer(
-                    self.model_name,
-                    device=self.device
-                )
+                self._model = SentenceTransformer(self.model_name, device=self.device)
                 logger.info(f"Model loaded successfully on {self.device}")
 
             except ImportError as e:
-                logger.error(
-                    "sentence-transformers not installed. "
-                    "Install with: pip install sentence-transformers"
-                )
+                # Optional extra: callers decide how loudly to report it (the cost tracker
+                # logs it once and skips caching), so don't log an error on every call here.
                 raise ImportError(
-                    "sentence-transformers is required for semantic caching"
+                    "sentence-transformers is required for semantic caching "
+                    "(install the 'embeddings' extra)"
                 ) from e
 
             except Exception as e:
@@ -73,7 +69,7 @@ class EmbeddingGenerator:
 
         return self._model
 
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, text: str) -> list[float]:
         """
         Generate embedding for a single text.
 
@@ -97,17 +93,19 @@ class EmbeddingGenerator:
             embedding = self.model.encode(
                 normalized_text,
                 convert_to_numpy=True,
-                normalize_embeddings=True  # L2 normalization for cosine similarity
+                normalize_embeddings=True,  # L2 normalization for cosine similarity
             )
 
             # Convert to list for JSON serialization
             return embedding.tolist()
 
+        except ImportError:
+            raise  # optional extra missing; reported by the caller
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             raise
 
-    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings for multiple texts (batched).
 
@@ -133,12 +131,14 @@ class EmbeddingGenerator:
                 convert_to_numpy=True,
                 normalize_embeddings=True,
                 batch_size=32,  # Process 32 at a time
-                show_progress_bar=len(normalized_texts) > 100  # Show progress for large batches
+                show_progress_bar=len(normalized_texts) > 100,  # Show progress for large batches
             )
 
             # Convert to list of lists
             return [emb.tolist() for emb in embeddings]
 
+        except ImportError:
+            raise  # optional extra missing; reported by the caller
         except Exception as e:
             logger.error(f"Batch embedding generation failed: {e}")
             raise
@@ -153,7 +153,7 @@ class EmbeddingGenerator:
         # Force model load to get dimension
         return self.model.get_sentence_embedding_dimension()
 
-    def cosine_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
+    def cosine_similarity(self, embedding1: list[float], embedding2: list[float]) -> float:
         """
         Calculate cosine similarity between two embeddings.
 
@@ -172,12 +172,11 @@ class EmbeddingGenerator:
         """
         if len(embedding1) != len(embedding2):
             raise ValueError(
-                f"Embedding dimensions don't match: "
-                f"{len(embedding1)} vs {len(embedding2)}"
+                f"Embedding dimensions don't match: {len(embedding1)} vs {len(embedding2)}"
             )
 
         # Dot product of normalized vectors = cosine similarity
-        similarity = sum(a * b for a, b in zip(embedding1, embedding2))
+        similarity = sum(a * b for a, b in zip(embedding1, embedding2, strict=False))
 
         # Clamp to [0, 1] range (numerical precision)
         return max(0.0, min(1.0, similarity))
@@ -199,13 +198,12 @@ class EmbeddingGenerator:
 
 # ==================== GLOBAL INSTANCE ====================
 
-_embedding_generator: Optional[EmbeddingGenerator] = None
+_embedding_generator: EmbeddingGenerator | None = None
 
 
 @lru_cache(maxsize=1)
 def get_embedding_generator(
-    model_name: Optional[str] = None,
-    device: Optional[str] = None
+    model_name: str | None = None, device: str | None = None
 ) -> EmbeddingGenerator:
     """
     Get global EmbeddingGenerator instance (singleton).
@@ -221,19 +219,13 @@ def get_embedding_generator(
 
     if _embedding_generator is None:
         # Get config from environment
-        default_model = os.getenv(
-            "EMBEDDING_MODEL",
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
+        default_model = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
         default_device = os.getenv("EMBEDDING_DEVICE", _detect_device())
 
         final_model = model_name or default_model
         final_device = device or default_device
 
-        _embedding_generator = EmbeddingGenerator(
-            model_name=final_model,
-            device=final_device
-        )
+        _embedding_generator = EmbeddingGenerator(model_name=final_model, device=final_device)
 
         logger.info("Global EmbeddingGenerator created")
 

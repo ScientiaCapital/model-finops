@@ -1,35 +1,19 @@
-"""
-Encryption Service for API Key Storage
-
-Uses AES-256-GCM for authenticated encryption of API keys.
-Keys are encrypted before database storage and decrypted only when needed.
-
-Security:
-- AES-256-GCM provides both confidentiality and authenticity
-- Random IV (nonce) for each encryption operation
-- Key derived from ENCRYPTION_KEY environment variable
-- Version field for future key rotation support
-
-Usage:
-    service = EncryptionService()
-    encrypted = service.encrypt("sk-ant-api03-xxx")
-    decrypted = service.decrypt(encrypted)
-"""
-
-import os
 import base64
+import os
 import secrets
 import struct
-from typing import Optional
 
-# Import cryptography library for AES-256-GCM
-try:
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-    CRYPTOGRAPHY_AVAILABLE = True
-except ImportError:
-    CRYPTOGRAPHY_AVAILABLE = False
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+
+class EncryptionConfigError(RuntimeError):
+    """ENCRYPTION_KEY is needed to encrypt or decrypt but is missing or too short."""
+
+
+MIN_KEY_CHARS = 32
 
 
 class EncryptionService:
@@ -50,30 +34,37 @@ class EncryptionService:
     # Salt for key derivation (constant, but adds complexity)
     KEY_SALT = b"ai-cost-optimizer-encryption-v1"
 
-    def __init__(self, key: Optional[str] = None):
+    def __init__(self, key: str | None = None) -> None:
         """
         Initialize encryption service.
 
         Args:
-            key: Optional encryption key. If not provided, uses ENCRYPTION_KEY
-                 environment variable. If that's not set, generates a random key
-                 (WARNING: random key means data can't be decrypted after restart).
+            key: Optional encryption key. If not provided, ENCRYPTION_KEY is read from the
+                 environment when the key is first needed. If neither is set, encrypt() and
+                 decrypt() raise EncryptionConfigError; there is no random-key or
+                 unencrypted fallback.
         """
-        if not CRYPTOGRAPHY_AVAILABLE:
-            # Fallback to simple encoding if cryptography not installed
-            self._use_fallback = True
-            self._key = None
-            return
+        self._explicit_key = key
+        self._key_cache: bytes | None = None
 
-        self._use_fallback = False
-
-        if key:
-            self._key = self._derive_key(key)
-        elif os.environ.get("ENCRYPTION_KEY"):
-            self._key = self._derive_key(os.environ["ENCRYPTION_KEY"])
-        else:
-            # Generate random key (warning: data won't survive restarts)
-            self._key = secrets.token_bytes(self.KEY_LENGTH)
+    @property
+    def _key(self) -> bytes:
+        """The derived AES key, resolved on first use so startup does not need it."""
+        if self._key_cache is None:
+            secret = self._explicit_key or os.environ.get("ENCRYPTION_KEY")
+            if not secret:
+                raise EncryptionConfigError(
+                    "ENCRYPTION_KEY is not set. Generate one with "
+                    '`python -c "import secrets; print(secrets.token_hex(32))"` '
+                    "and set it in the environment."
+                )
+            if len(secret) < MIN_KEY_CHARS:
+                raise EncryptionConfigError(
+                    f"ENCRYPTION_KEY must be at least {MIN_KEY_CHARS} characters. Generate one "
+                    'with `python -c "import secrets; print(secrets.token_hex(32))"`.'
+                )
+            self._key_cache = self._derive_key(secret)
+        return self._key_cache
 
     def _derive_key(self, password: str) -> bytes:
         """
@@ -82,10 +73,6 @@ class EncryptionService:
         This allows using human-readable passwords while still getting
         a cryptographically strong key.
         """
-        if not CRYPTOGRAPHY_AVAILABLE:
-            # Simple fallback: use first 32 bytes
-            return password.encode()[:32].ljust(32, b'\0')
-
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=self.KEY_LENGTH,
@@ -108,21 +95,17 @@ class EncryptionService:
         if version is None:
             version = self.CURRENT_VERSION
 
-        if self._use_fallback:
-            # Fallback: base64 encode (NOT SECURE - just for testing without cryptography)
-            return base64.b64encode(
-                struct.pack('B', version) + plaintext.encode()
-            ).decode()
+        key = self._key  # raises EncryptionConfigError before anything is produced
 
         # Generate random IV
         iv = secrets.token_bytes(self.IV_LENGTH)
 
         # Create cipher and encrypt
-        aesgcm = AESGCM(self._key)
+        aesgcm = AESGCM(key)
         ciphertext = aesgcm.encrypt(iv, plaintext.encode(), None)
 
         # Pack: version (1 byte) + IV (12 bytes) + ciphertext
-        packed = struct.pack('B', version) + iv + ciphertext
+        packed = struct.pack("B", version) + iv + ciphertext
 
         return base64.b64encode(packed).decode()
 
@@ -142,11 +125,9 @@ class EncryptionService:
         packed = base64.b64decode(encrypted)
 
         # Extract version
-        version = struct.unpack('B', packed[:1])[0]
+        version = struct.unpack("B", packed[:1])[0]
 
-        if self._use_fallback:
-            # Fallback: base64 decode (NOT SECURE)
-            return packed[1:].decode()
+        _ = self._key  # fail with a clear configuration error before parsing further
 
         if version == 1:
             return self._decrypt_v1(packed[1:])
@@ -156,12 +137,18 @@ class EncryptionService:
     def _decrypt_v1(self, data: bytes) -> str:
         """Decrypt version 1 format."""
         # Extract IV and ciphertext
-        iv = data[:self.IV_LENGTH]
-        ciphertext = data[self.IV_LENGTH:]
+        iv = data[: self.IV_LENGTH]
+        ciphertext = data[self.IV_LENGTH :]
 
         # Decrypt
         aesgcm = AESGCM(self._key)
-        plaintext = aesgcm.decrypt(iv, ciphertext, None)
+        try:
+            plaintext = aesgcm.decrypt(iv, ciphertext, None)
+        except InvalidTag:
+            raise ValueError(
+                "Value could not be decrypted: ENCRYPTION_KEY is not the key it was encrypted "
+                "with, or the stored data is damaged"
+            ) from None
 
         return plaintext.decode()
 
@@ -176,7 +163,7 @@ class EncryptionService:
             Version number
         """
         packed = base64.b64decode(encrypted)
-        return struct.unpack('B', packed[:1])[0]
+        return struct.unpack("B", packed[:1])[0]
 
     def get_key_last_four(self, api_key: str) -> str:
         """
@@ -216,7 +203,7 @@ class EncryptionService:
 
 
 # Singleton instance for convenience
-_default_service: Optional[EncryptionService] = None
+_default_service: EncryptionService | None = None
 
 
 def get_encryption_service() -> EncryptionService:

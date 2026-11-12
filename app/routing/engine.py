@@ -1,15 +1,15 @@
 """Routing engine that orchestrates strategy selection and execution."""
-import logging
-from typing import Optional, Dict
 
-from app.routing.models import RoutingDecision, RoutingContext
-from app.routing.strategy import (
-    RoutingStrategy,
-    ComplexityStrategy,
-    LearningStrategy,
-    HybridStrategy
-)
+import logging
+
 from app.routing.metrics import MetricsCollector
+from app.routing.models import RoutingContext, RoutingDecision
+from app.routing.strategy import (
+    ComplexityStrategy,
+    HybridStrategy,
+    LearningStrategy,
+    RoutingStrategy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,10 @@ class RoutingEngine:
         db_path: Path to database for learning strategy
     """
 
-    VALID_PROVIDERS = ['gemini', 'claude', 'openrouter', 'ollama', 'deepseek', 'glm', 'qwen']
-    VALID_CONFIDENCE = ['high', 'medium', 'low']
+    VALID_PROVIDERS = ["gemini", "claude", "openrouter", "ollama", "deepseek", "glm", "qwen"]
+    VALID_CONFIDENCE = ["high", "medium", "low"]
 
-    def __init__(self, db_path: str = "optimizer.db", track_metrics: bool = True):
+    def __init__(self, db_path: str = "optimizer.db", track_metrics: bool = True) -> None:
         """Initialize routing engine.
 
         Args:
@@ -46,10 +46,10 @@ class RoutingEngine:
             self.metrics = None
 
         # Initialize all available strategies
-        self.strategies: Dict[str, RoutingStrategy] = {
+        self.strategies: dict[str, RoutingStrategy] = {
             "complexity": ComplexityStrategy(),
             "learning": LearningStrategy(db_path=db_path),
-            "hybrid": HybridStrategy(db_path=db_path)
+            "hybrid": HybridStrategy(db_path=db_path),
         }
 
         logger.info("RoutingEngine initialized")
@@ -58,8 +58,8 @@ class RoutingEngine:
         self,
         prompt: str,
         auto_route: bool = False,
-        context: Optional[RoutingContext] = None,
-        request_id: str = None
+        context: RoutingContext | None = None,
+        request_id: str = None,
     ) -> RoutingDecision:
         """Route a prompt to the optimal provider/model.
 
@@ -89,7 +89,10 @@ class RoutingEngine:
 
             # Validate decision
             if not self._is_valid_decision(decision):
-                raise ValueError(f"Invalid routing decision: provider={decision.provider}, model={decision.model}")
+                raise ValueError(
+                    "Invalid routing decision: "
+                    f"provider={decision.provider}, model={decision.model}"
+                )
 
             logger.info(
                 f"Routed to {decision.provider}/{decision.model} "
@@ -107,9 +110,9 @@ class RoutingEngine:
 
             # Fallback to complexity strategy
             logger.info("Falling back to complexity strategy")
-            fallback_decision = self.strategies['complexity'].route(prompt, context)
+            fallback_decision = self.strategies["complexity"].route(prompt, context)
             fallback_decision.fallback_used = True
-            fallback_decision.metadata['fallback_reason'] = str(e)
+            fallback_decision.metadata["fallback_reason"] = str(e)
 
             # Track metrics for fallback if enabled
             if self.metrics:
@@ -127,8 +130,8 @@ class RoutingEngine:
             True if decision is valid, False otherwise
         """
         return (
-            decision.provider in self.VALID_PROVIDERS and
-            decision.confidence in self.VALID_CONFIDENCE and
-            decision.model is not None and
-            len(decision.model) > 0
+            decision.provider in self.VALID_PROVIDERS
+            and decision.confidence in self.VALID_CONFIDENCE
+            and decision.model is not None
+            and len(decision.model) > 0
         )

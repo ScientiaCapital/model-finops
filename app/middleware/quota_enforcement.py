@@ -22,13 +22,13 @@ Usage in main.py:
     )
 """
 
-import time
 import logging
-from typing import List, Optional, Callable
+import time
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app.services.billing_service import BillingService
@@ -50,9 +50,9 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        protected_paths: Optional[List[str]] = None,
-        exclude_paths: Optional[List[str]] = None,
-    ):
+        protected_paths: list[str] | None = None,
+        exclude_paths: list[str] | None = None,
+    ) -> None:
         """
         Initialize quota enforcement middleware.
 
@@ -77,7 +77,7 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
             "/api-keys",  # API key management doesn't consume quota
         ]
 
-    def _get_billing_service(self, request: Request) -> Optional[BillingService]:
+    def _get_billing_service(self, request: Request) -> BillingService | None:
         """Get billing service from app state (lazy loading)."""
         return getattr(request.app.state, "billing_service", None)
 
@@ -103,11 +103,7 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
             return False
 
         # Check if path matches any protected prefix
-        for protected in self.protected_paths:
-            if path.startswith(protected):
-                return True
-
-        return False
+        return any(path.startswith(protected) for protected in self.protected_paths)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -173,7 +169,8 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
                 },
                 headers={
                     "Retry-After": str(int((quota.period_ends_at - time.time()).total_seconds()))
-                    if hasattr(quota.period_ends_at, "total_seconds") else "3600",
+                    if hasattr(quota.period_ends_at, "total_seconds")
+                    else "3600",
                     "X-Quota-Remaining": "0",
                     "X-Quota-Limit": str(quota.tokens_limit),
                 },
@@ -186,7 +183,7 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Record usage from response headers
-        latency_ms = (time.time() - start_time) * 1000
+        (time.time() - start_time) * 1000
 
         # Get token counts from response headers if available
         tokens_in = int(response.headers.get("X-Tokens-In", 0))
@@ -229,7 +226,8 @@ class QuotaEnforcementMiddleware(BaseHTTPMiddleware):
 # Utility Functions
 # =============================================================================
 
-def get_quota_status(request: Request) -> Optional[dict]:
+
+def get_quota_status(request: Request) -> dict | None:
     """
     FastAPI dependency to get quota status from request.
 

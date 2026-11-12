@@ -144,8 +144,8 @@ See Also
 
 import hashlib
 import logging
-from datetime import datetime, UTC
-from typing import Dict, List, Optional, Any
+from datetime import UTC, datetime
+from typing import Any
 
 from app.database.supabase_client import get_supabase_client
 
@@ -166,7 +166,7 @@ class AsyncExperimentTracker:
     - Real-time progress tracking
     """
 
-    def __init__(self, user_id: Optional[str] = None):
+    def __init__(self, user_id: str | None = None) -> None:
         """
         Initialize async experiment tracker.
 
@@ -195,9 +195,9 @@ class AsyncExperimentTracker:
         control_strategy: str,
         test_strategy: str,
         sample_size: int = 100,
-        status: str = 'active',
-        description: Optional[str] = None
-    ) -> Dict[str, Any]:
+        status: str = "active",
+        description: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a new A/B test experiment.
 
@@ -221,28 +221,23 @@ class AsyncExperimentTracker:
 
         if control_strategy == test_strategy:
             raise ValueError(
-                f"Control and test strategies must be different, "
-                f"both set to '{control_strategy}'"
+                f"Control and test strategies must be different, both set to '{control_strategy}'"
             )
 
-        valid_strategies = {'complexity', 'learning', 'hybrid'}
+        valid_strategies = {"complexity", "learning", "hybrid"}
         if control_strategy not in valid_strategies:
             raise ValueError(
-                f"Invalid control strategy '{control_strategy}', "
-                f"must be one of {valid_strategies}"
+                f"Invalid control strategy '{control_strategy}', must be one of {valid_strategies}"
             )
 
         if test_strategy not in valid_strategies:
             raise ValueError(
-                f"Invalid test strategy '{test_strategy}', "
-                f"must be one of {valid_strategies}"
+                f"Invalid test strategy '{test_strategy}', must be one of {valid_strategies}"
             )
 
-        valid_statuses = {'active', 'completed', 'paused'}
+        valid_statuses = {"active", "completed", "paused"}
         if status not in valid_statuses:
-            raise ValueError(
-                f"Invalid status '{status}', must be one of {valid_statuses}"
-            )
+            raise ValueError(f"Invalid status '{status}', must be one of {valid_statuses}")
 
         logger.info(f"Creating experiment: {name} ({control_strategy} vs {test_strategy})")
 
@@ -253,7 +248,7 @@ class AsyncExperimentTracker:
             "test_strategy": test_strategy,
             "status": status,
             "created_by": self.user_id,  # RLS
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
         use_admin = self.user_id is None
@@ -264,7 +259,7 @@ class AsyncExperimentTracker:
 
         return result
 
-    async def get_active_experiments(self) -> List[Dict[str, Any]]:
+    async def get_active_experiments(self) -> list[dict[str, Any]]:
         """
         Retrieve all active experiments for current user.
 
@@ -282,14 +277,14 @@ class AsyncExperimentTracker:
             columns="id,name,description,control_strategy,test_strategy,status,created_at",
             filters=filters,
             order_by="created_at",
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         logger.debug(f"Found {len(experiments)} active experiments")
 
         return experiments
 
-    async def get_experiment(self, experiment_id: int) -> Optional[Dict[str, Any]]:
+    async def get_experiment(self, experiment_id: int) -> dict[str, Any] | None:
         """
         Get a single experiment by ID.
 
@@ -306,19 +301,12 @@ class AsyncExperimentTracker:
         use_admin = self.user_id is None
 
         experiments = await self.db.select(
-            "experiments",
-            columns="*",
-            filters=filters,
-            use_admin=use_admin
+            "experiments", columns="*", filters=filters, use_admin=use_admin
         )
 
         return experiments[0] if experiments else None
 
-    async def complete_experiment(
-        self,
-        experiment_id: int,
-        winner: Optional[str] = None
-    ) -> None:
+    async def complete_experiment(self, experiment_id: int, winner: str | None = None) -> None:
         """
         Mark experiment as completed.
 
@@ -326,10 +314,7 @@ class AsyncExperimentTracker:
             experiment_id: ID of experiment to complete
             winner: Optional winning strategy name
         """
-        data = {
-            "status": "completed",
-            "completed_at": datetime.now(UTC).isoformat()
-        }
+        data = {"status": "completed", "completed_at": datetime.now(UTC).isoformat()}
 
         filters = {"id": experiment_id}
         if self.user_id:
@@ -337,12 +322,7 @@ class AsyncExperimentTracker:
 
         use_admin = self.user_id is None
 
-        await self.db.update(
-            "experiments",
-            data=data,
-            filters=filters,
-            use_admin=use_admin
-        )
+        await self.db.update("experiments", data=data, filters=filters, use_admin=use_admin)
 
         logger.info(f"Completed experiment {experiment_id} with winner: {winner}")
 
@@ -363,7 +343,7 @@ class AsyncExperimentTracker:
         Note: This is NOT async because it's pure computation (no I/O)
         """
         # Deterministic hash-based assignment
-        hash_input = f"{experiment_id}:{user_id}".encode('utf-8')
+        hash_input = f"{experiment_id}:{user_id}".encode()
         hash_digest = hashlib.sha256(hash_input).hexdigest()
         assignment = int(hash_digest, 16) % 2
 
@@ -378,12 +358,12 @@ class AsyncExperimentTracker:
         experiment_id: int,
         user_id: str,
         strategy_assigned: str,
-        latency_ms: Optional[float] = None,
-        cost_usd: Optional[float] = None,
-        quality_score: Optional[float] = None,
-        provider: Optional[str] = None,
-        model: Optional[str] = None
-    ) -> Dict[str, Any]:
+        latency_ms: float | None = None,
+        cost_usd: float | None = None,
+        quality_score: float | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+    ) -> dict[str, Any]:
         """
         Record an experiment result (routing decision outcome).
 
@@ -411,7 +391,7 @@ class AsyncExperimentTracker:
             "cost_usd": cost_usd,
             "quality_score": quality_score,
             "provider": provider,
-            "model": model
+            "model": model,
         }
 
         use_admin = self.user_id is None
@@ -422,7 +402,7 @@ class AsyncExperimentTracker:
 
         return result
 
-    async def get_experiment_progress(self, experiment_id: int) -> Dict[str, Any]:
+    async def get_experiment_progress(self, experiment_id: int) -> dict[str, Any]:
         """
         Get progress toward sample_size goal.
 
@@ -437,11 +417,11 @@ class AsyncExperimentTracker:
 
         if not experiment:
             return {
-                'experiment_id': experiment_id,
-                'total_results': 0,
-                'control_count': 0,
-                'test_count': 0,
-                'error': 'Experiment not found'
+                "experiment_id": experiment_id,
+                "total_results": 0,
+                "control_count": 0,
+                "test_count": 0,
+                "error": "Experiment not found",
             }
 
         # Count total results
@@ -450,10 +430,7 @@ class AsyncExperimentTracker:
         use_admin = self.user_id is None
 
         results = await self.db.select(
-            "experiment_results",
-            columns="assigned_strategy",
-            filters=filters,
-            use_admin=use_admin
+            "experiment_results", columns="assigned_strategy", filters=filters, use_admin=use_admin
         )
 
         total_results = len(results)
@@ -461,16 +438,16 @@ class AsyncExperimentTracker:
         test_count = sum(1 for r in results if r.get("assigned_strategy") == "test")
 
         return {
-            'experiment_id': experiment_id,
-            'experiment_name': experiment.get('name'),
-            'total_results': total_results,
-            'control_count': control_count,
-            'test_count': test_count,
-            'control_strategy': experiment.get('control_strategy'),
-            'test_strategy': experiment.get('test_strategy')
+            "experiment_id": experiment_id,
+            "experiment_name": experiment.get("name"),
+            "total_results": total_results,
+            "control_count": control_count,
+            "test_count": test_count,
+            "control_strategy": experiment.get("control_strategy"),
+            "test_strategy": experiment.get("test_strategy"),
         }
 
-    async def get_experiment_summary(self, experiment_id: int) -> Dict[str, Dict[str, Any]]:
+    async def get_experiment_summary(self, experiment_id: int) -> dict[str, dict[str, Any]]:
         """
         Get aggregated statistics by strategy (control vs test).
 
@@ -489,10 +466,10 @@ class AsyncExperimentTracker:
         experiment = await self.get_experiment(experiment_id)
 
         if not experiment:
-            return {'control': {}, 'test': {}}
+            return {"control": {}, "test": {}}
 
-        control_strategy = experiment.get('control_strategy')
-        test_strategy = experiment.get('test_strategy')
+        control_strategy = experiment.get("control_strategy")
+        test_strategy = experiment.get("test_strategy")
 
         # Fetch all results for this experiment
         filters = {"experiment_id": experiment_id}
@@ -503,43 +480,43 @@ class AsyncExperimentTracker:
             "experiment_results",
             columns="assigned_strategy,latency_ms,cost_usd,quality_score",
             filters=filters,
-            use_admin=use_admin
+            use_admin=use_admin,
         )
 
         # Separate control and test results
         control_results = [r for r in results if r.get("assigned_strategy") == "control"]
         test_results = [r for r in results if r.get("assigned_strategy") == "test"]
 
-        def calculate_stats(results_list: List[Dict]) -> Dict[str, Any]:
+        def calculate_stats(results_list: list[dict]) -> dict[str, Any]:
             """Calculate aggregate statistics for a group."""
             if not results_list:
                 return {
-                    'count': 0,
-                    'avg_latency_ms': 0.0,
-                    'avg_cost_usd': 0.0,
-                    'avg_quality_score': 0.0
+                    "count": 0,
+                    "avg_latency_ms": 0.0,
+                    "avg_cost_usd": 0.0,
+                    "avg_quality_score": 0.0,
                 }
 
-            latencies = [r.get('latency_ms', 0) for r in results_list if r.get('latency_ms') is not None]
-            costs = [r.get('cost_usd', 0) for r in results_list if r.get('cost_usd') is not None]
-            scores = [r.get('quality_score', 0) for r in results_list if r.get('quality_score') is not None]
+            latencies = [
+                r.get("latency_ms", 0) for r in results_list if r.get("latency_ms") is not None
+            ]
+            costs = [r.get("cost_usd", 0) for r in results_list if r.get("cost_usd") is not None]
+            scores = [
+                r.get("quality_score", 0)
+                for r in results_list
+                if r.get("quality_score") is not None
+            ]
 
             return {
-                'count': len(results_list),
-                'avg_latency_ms': sum(latencies) / len(latencies) if latencies else 0.0,
-                'avg_cost_usd': sum(costs) / len(costs) if costs else 0.0,
-                'avg_quality_score': sum(scores) / len(scores) if scores else 0.0
+                "count": len(results_list),
+                "avg_latency_ms": sum(latencies) / len(latencies) if latencies else 0.0,
+                "avg_cost_usd": sum(costs) / len(costs) if costs else 0.0,
+                "avg_quality_score": sum(scores) / len(scores) if scores else 0.0,
             }
 
         summary = {
-            'control': {
-                'strategy': control_strategy,
-                **calculate_stats(control_results)
-            },
-            'test': {
-                'strategy': test_strategy,
-                **calculate_stats(test_results)
-            }
+            "control": {"strategy": control_strategy, **calculate_stats(control_results)},
+            "test": {"strategy": test_strategy, **calculate_stats(test_results)},
         }
 
         return summary

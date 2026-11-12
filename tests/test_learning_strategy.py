@@ -1,7 +1,7 @@
 """Tests for LearningStrategy."""
-import pytest
-from app.routing.strategy import LearningStrategy
+
 from app.routing.models import RoutingContext
+from app.routing.strategy import LearningStrategy
 
 
 def test_learning_strategy_uses_analyzer(tmp_path):

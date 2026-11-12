@@ -6,22 +6,23 @@ CerebrasProvider shape. Uses mocked HTTP responses for unit testing — no live
 API calls (no real keys exist yet for these vendors).
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.providers import (
     DeepSeekProvider,
     GLMProvider,
-    QwenProvider,
     OllamaProvider,
     ProviderError,
+    QwenProvider,
     init_providers,
 )
-
 
 # =============================================================================
 # DeepSeek Provider Tests
 # =============================================================================
+
 
 class TestDeepSeekProvider:
     """Test DeepSeek provider."""
@@ -56,14 +57,13 @@ class TestDeepSeekProvider:
 
         mock_response = {
             "choices": [{"message": {"content": "Hello from DeepSeek!"}}],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 5}
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -78,6 +78,7 @@ class TestDeepSeekProvider:
 # =============================================================================
 # GLM (Zhipu) Provider Tests
 # =============================================================================
+
 
 class TestGLMProvider:
     """Test GLM (Zhipu BigModel) provider."""
@@ -111,14 +112,13 @@ class TestGLMProvider:
 
         mock_response = {
             "choices": [{"message": {"content": "Hello from GLM!"}}],
-            "usage": {"prompt_tokens": 12, "completion_tokens": 7}
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -133,6 +133,7 @@ class TestGLMProvider:
 # =============================================================================
 # Qwen (DashScope) Provider Tests
 # =============================================================================
+
 
 class TestQwenProvider:
     """Test Qwen (Alibaba DashScope) provider."""
@@ -166,14 +167,13 @@ class TestQwenProvider:
 
         mock_response = {
             "choices": [{"message": {"content": "Hello from Qwen!"}}],
-            "usage": {"prompt_tokens": 14, "completion_tokens": 9}
+            "usage": {"prompt_tokens": 14, "completion_tokens": 9},
         }
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.return_value = MagicMock(
-                json=MagicMock(return_value=mock_response),
-                raise_for_status=MagicMock()
+                json=MagicMock(return_value=mock_response), raise_for_status=MagicMock()
             )
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -189,32 +189,39 @@ class TestQwenProvider:
 # init_providers() Tests
 # =============================================================================
 
+
 class TestInitProviders:
     """Test provider initialization for the new providers."""
 
     def test_init_deepseek(self):
         """Should initialize DeepSeek when key is set."""
-        with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "deepseek" in providers
-                assert isinstance(providers["deepseek"], DeepSeekProvider)
+        with (
+            patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "deepseek" in providers
+            assert isinstance(providers["deepseek"], DeepSeekProvider)
 
     def test_init_glm(self):
         """Should initialize GLM when key is set."""
-        with patch.dict("os.environ", {"GLM_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "glm" in providers
-                assert isinstance(providers["glm"], GLMProvider)
+        with (
+            patch.dict("os.environ", {"GLM_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "glm" in providers
+            assert isinstance(providers["glm"], GLMProvider)
 
     def test_init_qwen(self):
         """Should initialize Qwen when DashScope key is set."""
-        with patch.dict("os.environ", {"DASHSCOPE_API_KEY": "test-key"}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "qwen" in providers
-                assert isinstance(providers["qwen"], QwenProvider)
+        with (
+            patch.dict("os.environ", {"DASHSCOPE_API_KEY": "test-key"}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "qwen" in providers
+            assert isinstance(providers["qwen"], QwenProvider)
 
     def test_init_all_three(self):
         """Should initialize all three when all keys are set."""
@@ -223,26 +230,31 @@ class TestInitProviders:
             "GLM_API_KEY": "glm-key",
             "DASHSCOPE_API_KEY": "qwen-key",
         }
-        with patch.dict("os.environ", env, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "deepseek" in providers
-                assert "glm" in providers
-                assert "qwen" in providers
+        with (
+            patch.dict("os.environ", env, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "deepseek" in providers
+            assert "glm" in providers
+            assert "qwen" in providers
 
     def test_init_none_when_no_keys(self):
         """Should not initialize new providers when their keys are absent."""
-        with patch.dict("os.environ", {}, clear=True):
-            with patch.object(OllamaProvider, "is_available", return_value=False):
-                providers = init_providers()
-                assert "deepseek" not in providers
-                assert "glm" not in providers
-                assert "qwen" not in providers
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch.object(OllamaProvider, "is_available", return_value=False),
+        ):
+            providers = init_providers()
+            assert "deepseek" not in providers
+            assert "glm" not in providers
+            assert "qwen" not in providers
 
 
 # =============================================================================
 # Error Handling Tests
 # =============================================================================
+
 
 class TestProviderErrorHandling:
     """Test error handling across the new providers."""
@@ -253,6 +265,7 @@ class TestProviderErrorHandling:
         provider = DeepSeekProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")
@@ -267,6 +280,7 @@ class TestProviderErrorHandling:
         provider = GLMProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")
@@ -281,6 +295,7 @@ class TestProviderErrorHandling:
         provider = QwenProvider("test-key")
 
         import httpx
+
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.HTTPError("API Error")

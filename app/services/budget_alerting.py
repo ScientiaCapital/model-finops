@@ -5,18 +5,23 @@ Monitors user spending and sends notifications when budget thresholds are crosse
 Supports multiple notification channels: email (SendGrid), Slack, Discord, custom webhooks.
 """
 
-import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 import httpx
 
 from app.database.supabase_client import get_supabase_client
+from app.network.ssrf import safe_post, validate_public_https_url
 
 logger = logging.getLogger(__name__)
+
+
+def _alert_footer() -> str:
+    """Footer line shared by the Slack and Discord alert payloads."""
+    return f"AI Cost Optimizer • {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}"
 
 
 class AlertChannel(Enum):
@@ -31,11 +36,11 @@ class AlertChannel(Enum):
 class BudgetConfig:
     user_id: str
     monthly_budget: float
-    alert_thresholds: List[float]
-    alert_email: Optional[str] = None
-    alert_webhook_url: Optional[str] = None
-    slack_webhook_url: Optional[str] = None
-    discord_webhook_url: Optional[str] = None
+    alert_thresholds: list[float]
+    alert_email: str | None = None
+    alert_webhook_url: str | None = None
+    slack_webhook_url: str | None = None
+    discord_webhook_url: str | None = None
     alert_cooldown_minutes: int = 60
     enabled: bool = True
 
@@ -51,24 +56,28 @@ class BudgetStatus:
     days_remaining: int
     daily_average: float
     projected_monthly: float
-    threshold_alerts: List[Dict[str, Any]]
+    threshold_alerts: list[dict[str, Any]]
 
 
 class BudgetAlertingService:
     """Service for monitoring budgets and sending threshold alerts."""
 
-    def __init__(self):
-        self.http_client = httpx.AsyncClient(timeout=30.0)
+    def __init__(self) -> None:
+        # No redirects, no proxy settings from the environment: user-supplied URLs go through
+        # app.network.ssrf.safe_post, which checks and pins the address.
+        self.http_client = httpx.AsyncClient(timeout=5.0, follow_redirects=False, trust_env=False)
 
-    async def get_budget_config(self, user_id: str) -> Optional[BudgetConfig]:
+    async def get_budget_config(self, user_id: str) -> BudgetConfig | None:
         """Get user's budget configuration."""
         db = get_supabase_client()
 
-        response = db.client.table("budget_configurations") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .single() \
+        response = (
+            db.client.table("budget_configurations")
+            .select("*")
+            .eq("user_id", user_id)
+            .single()
             .execute()
+        )
 
         if not response.data:
             return None
@@ -90,14 +99,21 @@ class BudgetAlertingService:
         self,
         user_id: str,
         monthly_budget: float,
-        alert_thresholds: Optional[List[float]] = None,
-        alert_email: Optional[str] = None,
-        alert_webhook_url: Optional[str] = None,
-        slack_webhook_url: Optional[str] = None,
-        discord_webhook_url: Optional[str] = None,
+        alert_thresholds: list[float] | None = None,
+        alert_email: str | None = None,
+        alert_webhook_url: str | None = None,
+        slack_webhook_url: str | None = None,
+        discord_webhook_url: str | None = None,
         alert_cooldown_minutes: int = 60,
     ) -> BudgetConfig:
-        """Create or update user's budget configuration."""
+        """Create or update user's budget configuration.
+
+        Raises UnsafeURLError if a webhook URL is not https to a public address.
+        """
+        for url in (alert_webhook_url, slack_webhook_url, discord_webhook_url):
+            if url:
+                await validate_public_https_url(url)
+
         db = get_supabase_client()
 
         data = {
@@ -109,12 +125,10 @@ class BudgetAlertingService:
             "slack_webhook_url": slack_webhook_url,
             "discord_webhook_url": discord_webhook_url,
             "alert_cooldown_minutes": alert_cooldown_minutes,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
-        response = db.client.table("budget_configurations") \
-            .upsert(data, on_conflict="user_id") \
-            .execute()
+        (db.client.table("budget_configurations").upsert(data, on_conflict="user_id").execute())
 
         return BudgetConfig(**{k: v for k, v in data.items() if k != "updated_at"}, enabled=True)
 
@@ -126,14 +140,14 @@ class BudgetAlertingService:
 
         return response.data or 0.0
 
-    async def get_budget_status(self, user_id: str) -> Optional[BudgetStatus]:
+    async def get_budget_status(self, user_id: str) -> BudgetStatus | None:
         """Get comprehensive budget status for a user."""
         config = await self.get_budget_config(user_id)
         if not config:
             return None
 
         current_spend = await self.get_monthly_spend(user_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Calculate days
         days_in_month = (now.replace(month=now.month % 12 + 1, day=1) - now.replace(day=1)).days
@@ -144,18 +158,22 @@ class BudgetAlertingService:
         daily_average = current_spend / day_of_month if day_of_month > 0 else 0
         projected_monthly = daily_average * days_in_month
 
-        percentage_used = (current_spend / config.monthly_budget * 100) if config.monthly_budget > 0 else 0
+        percentage_used = (
+            (current_spend / config.monthly_budget * 100) if config.monthly_budget > 0 else 0
+        )
 
         # Check which thresholds have been crossed
         threshold_alerts = []
         for threshold in sorted(config.alert_thresholds):
             threshold_pct = threshold * 100
             if percentage_used >= threshold_pct:
-                threshold_alerts.append({
-                    "threshold": threshold,
-                    "threshold_percentage": threshold_pct,
-                    "status": "exceeded",
-                })
+                threshold_alerts.append(
+                    {
+                        "threshold": threshold,
+                        "threshold_percentage": threshold_pct,
+                        "status": "exceeded",
+                    }
+                )
 
         return BudgetStatus(
             user_id=user_id,
@@ -171,23 +189,23 @@ class BudgetAlertingService:
         )
 
     async def should_send_alert(
-        self,
-        user_id: str,
-        threshold: float,
-        cooldown_minutes: int = 60
+        self, user_id: str, threshold: float, cooldown_minutes: int = 60
     ) -> bool:
         """Check if alert should be sent (respects cooldown period)."""
         db = get_supabase_client()
 
-        response = db.client.rpc("should_send_alert", {
-            "p_user_id": user_id,
-            "p_threshold": threshold,
-            "p_cooldown_minutes": cooldown_minutes,
-        }).execute()
+        response = db.client.rpc(
+            "should_send_alert",
+            {
+                "p_user_id": user_id,
+                "p_threshold": threshold,
+                "p_cooldown_minutes": cooldown_minutes,
+            },
+        ).execute()
 
         return response.data if response.data is not None else True
 
-    async def check_and_send_alerts(self, user_id: str, current_cost: float) -> List[str]:
+    async def check_and_send_alerts(self, user_id: str, current_cost: float) -> list[str]:
         """Check budget thresholds and send alerts if needed."""
         config = await self.get_budget_config(user_id)
         if not config or not config.enabled:
@@ -207,17 +225,16 @@ class BudgetAlertingService:
 
                 if should_send:
                     channels = await self._send_alert(config, threshold, current_cost)
-                    await self._record_alert(user_id, threshold, current_cost, config.monthly_budget, channels)
+                    await self._record_alert(
+                        user_id, threshold, current_cost, config.monthly_budget, channels
+                    )
                     alerts_sent.extend(channels)
 
         return alerts_sent
 
     async def _send_alert(
-        self,
-        config: BudgetConfig,
-        threshold: float,
-        current_spend: float
-    ) -> List[str]:
+        self, config: BudgetConfig, threshold: float, current_spend: float
+    ) -> list[str]:
         """Send alert through all configured channels."""
         channels_sent = []
         percentage = round(threshold * 100)
@@ -236,7 +253,9 @@ class BudgetAlertingService:
         # Slack
         if config.slack_webhook_url:
             try:
-                await self._send_slack_alert(config.slack_webhook_url, config, threshold, current_spend)
+                await self._send_slack_alert(
+                    config.slack_webhook_url, config, threshold, current_spend
+                )
                 channels_sent.append("slack")
             except Exception as e:
                 logger.error(f"Failed to send Slack alert: {e}")
@@ -244,7 +263,9 @@ class BudgetAlertingService:
         # Discord
         if config.discord_webhook_url:
             try:
-                await self._send_discord_alert(config.discord_webhook_url, config, threshold, current_spend)
+                await self._send_discord_alert(
+                    config.discord_webhook_url, config, threshold, current_spend
+                )
                 channels_sent.append("discord")
             except Exception as e:
                 logger.error(f"Failed to send Discord alert: {e}")
@@ -252,7 +273,9 @@ class BudgetAlertingService:
         # Custom webhook
         if config.alert_webhook_url:
             try:
-                await self._send_webhook_alert(config.alert_webhook_url, config, threshold, current_spend)
+                await self._send_webhook_alert(
+                    config.alert_webhook_url, config, threshold, current_spend
+                )
                 channels_sent.append("webhook")
             except Exception as e:
                 logger.error(f"Failed to send webhook alert: {e}")
@@ -260,12 +283,8 @@ class BudgetAlertingService:
         return channels_sent
 
     async def _send_slack_alert(
-        self,
-        webhook_url: str,
-        config: BudgetConfig,
-        threshold: float,
-        current_spend: float
-    ):
+        self, webhook_url: str, config: BudgetConfig, threshold: float, current_spend: float
+    ) -> None:
         """Send formatted Slack alert."""
         percentage = round(threshold * 100)
         remaining = config.monthly_budget - current_spend
@@ -274,45 +293,52 @@ class BudgetAlertingService:
         color = "#36a64f" if threshold < 0.8 else "#ff9800" if threshold < 0.9 else "#f44336"
 
         payload = {
-            "attachments": [{
-                "color": color,
-                "blocks": [
-                    {
-                        "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": f"🚨 Budget Alert: {percentage}% Reached",
-                            "emoji": True
-                        }
-                    },
-                    {
-                        "type": "section",
-                        "fields": [
-                            {"type": "mrkdwn", "text": f"*Current Spend:*\n${current_spend:.2f}"},
-                            {"type": "mrkdwn", "text": f"*Monthly Budget:*\n${config.monthly_budget:.2f}"},
-                            {"type": "mrkdwn", "text": f"*Remaining:*\n${remaining:.2f}"},
-                            {"type": "mrkdwn", "text": f"*Usage:*\n{percentage}%"},
-                        ]
-                    },
-                    {
-                        "type": "context",
-                        "elements": [
-                            {"type": "mrkdwn", "text": f"AI Cost Optimizer • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"}
-                        ]
-                    }
-                ]
-            }]
+            "attachments": [
+                {
+                    "color": color,
+                    "blocks": [
+                        {
+                            "type": "header",
+                            "text": {
+                                "type": "plain_text",
+                                "text": f"🚨 Budget Alert: {percentage}% Reached",
+                                "emoji": True,
+                            },
+                        },
+                        {
+                            "type": "section",
+                            "fields": [
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Current Spend:*\n${current_spend:.2f}",
+                                },
+                                {
+                                    "type": "mrkdwn",
+                                    "text": f"*Monthly Budget:*\n${config.monthly_budget:.2f}",
+                                },
+                                {"type": "mrkdwn", "text": f"*Remaining:*\n${remaining:.2f}"},
+                                {"type": "mrkdwn", "text": f"*Usage:*\n{percentage}%"},
+                            ],
+                        },
+                        {
+                            "type": "context",
+                            "elements": [
+                                {
+                                    "type": "mrkdwn",
+                                    "text": _alert_footer(),
+                                }
+                            ],
+                        },
+                    ],
+                }
+            ]
         }
 
-        await self.http_client.post(webhook_url, json=payload)
+        await safe_post(self.http_client, webhook_url, payload)
 
     async def _send_discord_alert(
-        self,
-        webhook_url: str,
-        config: BudgetConfig,
-        threshold: float,
-        current_spend: float
-    ):
+        self, webhook_url: str, config: BudgetConfig, threshold: float, current_spend: float
+    ) -> None:
         """Send formatted Discord alert."""
         percentage = round(threshold * 100)
         remaining = config.monthly_budget - current_spend
@@ -321,33 +347,33 @@ class BudgetAlertingService:
         color = 3066993 if threshold < 0.8 else 16750848 if threshold < 0.9 else 15158332
 
         payload = {
-            "embeds": [{
-                "title": f"🚨 Budget Alert: {percentage}% Reached",
-                "color": color,
-                "fields": [
-                    {"name": "Current Spend", "value": f"${current_spend:.2f}", "inline": True},
-                    {"name": "Monthly Budget", "value": f"${config.monthly_budget:.2f}", "inline": True},
-                    {"name": "Remaining", "value": f"${remaining:.2f}", "inline": True},
-                ],
-                "footer": {
-                    "text": f"AI Cost Optimizer • {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+            "embeds": [
+                {
+                    "title": f"🚨 Budget Alert: {percentage}% Reached",
+                    "color": color,
+                    "fields": [
+                        {"name": "Current Spend", "value": f"${current_spend:.2f}", "inline": True},
+                        {
+                            "name": "Monthly Budget",
+                            "value": f"${config.monthly_budget:.2f}",
+                            "inline": True,
+                        },
+                        {"name": "Remaining", "value": f"${remaining:.2f}", "inline": True},
+                    ],
+                    "footer": {"text": _alert_footer()},
                 }
-            }]
+            ]
         }
 
-        await self.http_client.post(webhook_url, json=payload)
+        await safe_post(self.http_client, webhook_url, payload)
 
     async def _send_webhook_alert(
-        self,
-        webhook_url: str,
-        config: BudgetConfig,
-        threshold: float,
-        current_spend: float
-    ):
+        self, webhook_url: str, config: BudgetConfig, threshold: float, current_spend: float
+    ) -> None:
         """Send generic webhook alert (JSON payload)."""
         payload = {
             "event": "budget_threshold_reached",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "user_id": config.user_id,
             "threshold_percentage": threshold * 100,
             "current_spend": current_spend,
@@ -356,7 +382,7 @@ class BudgetAlertingService:
             "usage_percentage": round((current_spend / config.monthly_budget) * 100, 2),
         }
 
-        await self.http_client.post(webhook_url, json=payload)
+        await safe_post(self.http_client, webhook_url, payload)
 
     async def _record_alert(
         self,
@@ -364,44 +390,44 @@ class BudgetAlertingService:
         threshold: float,
         current_spend: float,
         monthly_budget: float,
-        channels: List[str]
-    ):
+        channels: list[str],
+    ) -> None:
         """Record alert in database for audit trail."""
         db = get_supabase_client()
 
-        db.client.table("budget_alerts_sent").insert({
-            "user_id": user_id,
-            "threshold_percentage": threshold,
-            "current_spend": current_spend,
-            "monthly_budget": monthly_budget,
-            "alert_channels": channels,
-            "status": "sent",
-        }).execute()
+        db.client.table("budget_alerts_sent").insert(
+            {
+                "user_id": user_id,
+                "threshold_percentage": threshold,
+                "current_spend": current_spend,
+                "monthly_budget": monthly_budget,
+                "alert_channels": channels,
+                "status": "sent",
+            }
+        ).execute()
 
-    async def get_alert_history(
-        self,
-        user_id: str,
-        limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    async def get_alert_history(self, user_id: str, limit: int = 50) -> list[dict[str, Any]]:
         """Get user's alert history."""
         db = get_supabase_client()
 
-        response = db.client.table("budget_alerts_sent") \
-            .select("*") \
-            .eq("user_id", user_id) \
-            .order("sent_at", desc=True) \
-            .limit(limit) \
+        response = (
+            db.client.table("budget_alerts_sent")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("sent_at", desc=True)
+            .limit(limit)
             .execute()
+        )
 
         return response.data or []
 
-    async def close(self):
+    async def close(self) -> None:
         """Cleanup resources."""
         await self.http_client.aclose()
 
 
 # Singleton instance
-_budget_service: Optional[BudgetAlertingService] = None
+_budget_service: BudgetAlertingService | None = None
 
 
 def get_budget_service() -> BudgetAlertingService:

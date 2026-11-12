@@ -1,28 +1,30 @@
 """Database operations for feedback storage."""
+
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
+
 from app.database.postgres import get_connection, get_cursor
 
 logger = logging.getLogger(__name__)
 
 
-def _is_sqlite(conn) -> bool:
+def _is_sqlite(conn: object) -> bool:
     """Check if connection is SQLite."""
-    return hasattr(conn, 'row_factory')
+    return hasattr(conn, "row_factory")
 
 
 class FeedbackStore:
     """Stores and retrieves feedback data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize and verify database schema."""
         try:
             with get_connection() as conn:
                 cursor = get_cursor(conn, dict_cursor=False)
 
                 # Check if using SQLite or PostgreSQL
-                if hasattr(conn, 'row_factory'):
+                if hasattr(conn, "row_factory"):
                     # SQLite query
                     cursor.execute("""
                         SELECT name FROM sqlite_master
@@ -38,10 +40,9 @@ class FeedbackStore:
 
                 tables = {row[0] for row in cursor.fetchall()}
 
-                if 'routing_feedback' not in tables:
+                if "routing_feedback" not in tables:
                     logger.warning(
-                        "routing_feedback table not found. "
-                        "Run migrations: alembic upgrade head"
+                        "routing_feedback table not found. Run migrations: alembic upgrade head"
                     )
         except Exception as e:
             logger.warning(f"Schema verification failed: {e}")
@@ -51,10 +52,10 @@ class FeedbackStore:
         request_id: str,
         quality_score: int,
         is_correct: bool,
-        is_helpful: Optional[bool] = None,
-        comment: Optional[str] = None,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None
+        is_helpful: bool | None = None,
+        comment: str | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
     ) -> int:
         """Store feedback in database.
 
@@ -73,7 +74,7 @@ class FeedbackStore:
         with get_connection() as conn:
             cursor = get_cursor(conn, dict_cursor=False)
             is_sqlite = _is_sqlite(conn)
-            placeholder = '?' if is_sqlite else '%s'
+            placeholder = "?" if is_sqlite else "%s"
 
             # Get context from routing_metrics
             query = f"""
@@ -84,7 +85,7 @@ class FeedbackStore:
                     complexity_score
                 FROM routing_metrics
                 WHERE request_id = {placeholder}
-            """
+            """  # nosec B608 # interpolates only the "?" or "%s" placeholder
             cursor.execute(query, (request_id,))
 
             context = cursor.fetchone()
@@ -108,21 +109,24 @@ class FeedbackStore:
                         {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder},
                         {placeholder}, {placeholder}
                     )
-                """
-                cursor.execute(query, (
-                    request_id,
-                    datetime.now(),
-                    quality_score,
-                    is_correct,
-                    is_helpful,
-                    pattern,
-                    provider,
-                    model,
-                    complexity,
-                    user_id,
-                    session_id,
-                    comment
-                ))
+                """  # nosec B608 # interpolates only the "?" or "%s" placeholder
+                cursor.execute(
+                    query,
+                    (
+                        request_id,
+                        datetime.now(),
+                        quality_score,
+                        is_correct,
+                        is_helpful,
+                        pattern,
+                        provider,
+                        model,
+                        complexity,
+                        user_id,
+                        session_id,
+                        comment,
+                    ),
+                )
                 feedback_id = cursor.lastrowid
             else:
                 # PostgreSQL supports RETURNING
@@ -136,28 +140,31 @@ class FeedbackStore:
                         {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder},
                         {placeholder}, {placeholder}
                     ) RETURNING id
-                """
-                cursor.execute(query, (
-                    request_id,
-                    datetime.now(),
-                    quality_score,
-                    is_correct,
-                    is_helpful,
-                    pattern,
-                    provider,
-                    model,
-                    complexity,
-                    user_id,
-                    session_id,
-                    comment
-                ))
+                """  # nosec B608 # interpolates only the "?" or "%s" placeholder
+                cursor.execute(
+                    query,
+                    (
+                        request_id,
+                        datetime.now(),
+                        quality_score,
+                        is_correct,
+                        is_helpful,
+                        pattern,
+                        provider,
+                        model,
+                        complexity,
+                        user_id,
+                        session_id,
+                        comment,
+                    ),
+                )
                 feedback_id = cursor.fetchone()[0]
 
             logger.info(f"Stored feedback {feedback_id} for request {request_id}")
 
             return feedback_id
 
-    def get_by_id(self, feedback_id: int) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, feedback_id: int) -> dict[str, Any] | None:
         """Get feedback by ID.
 
         Args:
@@ -169,9 +176,9 @@ class FeedbackStore:
         with get_connection() as conn:
             cursor = get_cursor(conn, dict_cursor=True)
             is_sqlite = _is_sqlite(conn)
-            placeholder = '?' if is_sqlite else '%s'
+            placeholder = "?" if is_sqlite else "%s"
 
-            query = f"SELECT * FROM routing_feedback WHERE id = {placeholder}"
+            query = f"SELECT * FROM routing_feedback WHERE id = {placeholder}"  # nosec B608 # placeholder only
             cursor.execute(query, (feedback_id,))
 
             result = cursor.fetchone()
@@ -180,9 +187,9 @@ class FeedbackStore:
             if result and is_sqlite:
                 result = dict(result)
                 # Convert SQLite integer booleans to actual booleans
-                if 'is_correct' in result and result['is_correct'] is not None:
-                    result['is_correct'] = bool(result['is_correct'])
-                if 'is_helpful' in result and result['is_helpful'] is not None:
-                    result['is_helpful'] = bool(result['is_helpful'])
+                if "is_correct" in result and result["is_correct"] is not None:
+                    result["is_correct"] = bool(result["is_correct"])
+                if "is_helpful" in result and result["is_helpful"] is not None:
+                    result["is_helpful"] = bool(result["is_helpful"])
 
             return result

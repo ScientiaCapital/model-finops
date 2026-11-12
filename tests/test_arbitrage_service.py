@@ -3,16 +3,16 @@ Tests for ArbitrageService business logic.
 
 Tests service layer functionality for cost optimization through model switching.
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 
-from app.services.arbitrage_service import ArbitrageService
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from app.models.arbitrage import (
-    ModelCapability,
     ArbitrageAnalysisResponse,
-    ArbitrageOpportunity,
+    ModelCapability,
 )
+from app.services.arbitrage_service import ArbitrageService
 
 
 class TestArbitrageServiceInit:
@@ -132,9 +132,7 @@ class TestQualityMatch:
         mock_alt = MagicMock()
         mock_alt.capabilities = {}  # No capabilities
 
-        score = service._calculate_quality_match(
-            mock_current, mock_alt, [ModelCapability.CODE_GEN]
-        )
+        score = service._calculate_quality_match(mock_current, mock_alt, [ModelCapability.CODE_GEN])
         assert score == 0.0
 
 
@@ -170,9 +168,7 @@ class TestAnalyzePrompt:
         assert response.current_model == "claude-3-opus"
         # Opus is expensive, should find cheaper alternatives
         if response.opportunities:
-            assert all(
-                opp.savings_percent >= 0 for opp in response.opportunities
-            )
+            assert all(opp.savings_percent >= 0 for opp in response.opportunities)
 
     @pytest.mark.asyncio
     async def test_analyze_estimates_tokens(self, service):

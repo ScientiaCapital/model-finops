@@ -9,14 +9,15 @@ This test suite validates the experiment tracking database schema:
 """
 
 import os
-import pytest
 import sqlite3
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
+import pytest
 
 
 @pytest.mark.skipif(
-    not os.getenv('TEST_DATABASE_URL'),
-    reason="PostgreSQL tests require TEST_DATABASE_URL environment variable"
+    not os.getenv("TEST_DATABASE_URL"),
+    reason="PostgreSQL tests require TEST_DATABASE_URL environment variable",
 )
 class TestExperimentSchemaPostgreSQL:
     """Test experiment schema with PostgreSQL (production database)."""
@@ -25,7 +26,7 @@ class TestExperimentSchemaPostgreSQL:
         """Verify experiments table is created with correct schema."""
         import psycopg2
 
-        conn = psycopg2.connect(os.getenv('TEST_DATABASE_URL'))
+        conn = psycopg2.connect(os.getenv("TEST_DATABASE_URL"))
         cursor = conn.cursor()
 
         # Check table exists
@@ -49,9 +50,16 @@ class TestExperimentSchemaPostgreSQL:
         column_names = [col[0] for col in columns]
 
         expected_columns = [
-            'id', 'name', 'control_strategy', 'test_strategy',
-            'sample_size', 'start_date', 'end_date', 'status',
-            'created_at', 'winner'
+            "id",
+            "name",
+            "control_strategy",
+            "test_strategy",
+            "sample_size",
+            "start_date",
+            "end_date",
+            "status",
+            "created_at",
+            "winner",
         ]
 
         for expected_col in expected_columns:
@@ -63,7 +71,7 @@ class TestExperimentSchemaPostgreSQL:
         """Verify experiment_results table is created with correct schema."""
         import psycopg2
 
-        conn = psycopg2.connect(os.getenv('TEST_DATABASE_URL'))
+        conn = psycopg2.connect(os.getenv("TEST_DATABASE_URL"))
         cursor = conn.cursor()
 
         # Check table exists
@@ -87,9 +95,16 @@ class TestExperimentSchemaPostgreSQL:
         column_names = [col[0] for col in columns]
 
         expected_columns = [
-            'id', 'experiment_id', 'user_id', 'strategy_assigned',
-            'timestamp', 'latency_ms', 'cost_usd', 'quality_score',
-            'provider', 'model'
+            "id",
+            "experiment_id",
+            "user_id",
+            "strategy_assigned",
+            "timestamp",
+            "latency_ms",
+            "cost_usd",
+            "quality_score",
+            "provider",
+            "model",
         ]
 
         for expected_col in expected_columns:
@@ -101,7 +116,7 @@ class TestExperimentSchemaPostgreSQL:
         """Verify foreign key from experiment_results to experiments."""
         import psycopg2
 
-        conn = psycopg2.connect(os.getenv('TEST_DATABASE_URL'))
+        conn = psycopg2.connect(os.getenv("TEST_DATABASE_URL"))
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -122,7 +137,7 @@ class TestExperimentSchemaSQLite:
 
     def test_experiments_table_created(self, client):
         """Verify experiments table exists in SQLite test database."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         assert os.path.exists(db_path), "Test database should exist"
 
         conn = sqlite3.connect(db_path)
@@ -142,9 +157,16 @@ class TestExperimentSchemaSQLite:
         column_names = [col[1] for col in columns]
 
         expected_columns = [
-            'id', 'name', 'control_strategy', 'test_strategy',
-            'sample_size', 'start_date', 'end_date', 'status',
-            'created_at', 'winner'
+            "id",
+            "name",
+            "control_strategy",
+            "test_strategy",
+            "sample_size",
+            "start_date",
+            "end_date",
+            "status",
+            "created_at",
+            "winner",
         ]
 
         for expected_col in expected_columns:
@@ -154,7 +176,7 @@ class TestExperimentSchemaSQLite:
 
     def test_experiment_results_table_created(self, client):
         """Verify experiment_results table exists in SQLite test database."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
@@ -172,9 +194,16 @@ class TestExperimentSchemaSQLite:
         column_names = [col[1] for col in columns]
 
         expected_columns = [
-            'id', 'experiment_id', 'user_id', 'strategy_assigned',
-            'timestamp', 'latency_ms', 'cost_usd', 'quality_score',
-            'provider', 'model'
+            "id",
+            "experiment_id",
+            "user_id",
+            "strategy_assigned",
+            "timestamp",
+            "latency_ms",
+            "cost_usd",
+            "quality_score",
+            "provider",
+            "model",
         ]
 
         for expected_col in expected_columns:
@@ -184,24 +213,27 @@ class TestExperimentSchemaSQLite:
 
     def test_experiment_crud_operations(self, client):
         """Test basic CRUD operations on experiments table."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # Create experiment
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO experiments
             (name, control_strategy, test_strategy, sample_size, start_date, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            'Test Experiment',
-            'complexity',
-            'learning',
-            100,
-            datetime.now(UTC).isoformat(),
-            'active',
-            datetime.now(UTC).isoformat()
-        ))
+        """,
+            (
+                "Test Experiment",
+                "complexity",
+                "learning",
+                100,
+                datetime.now(UTC).isoformat(),
+                "active",
+                datetime.now(UTC).isoformat(),
+            ),
+        )
         conn.commit()
 
         experiment_id = cursor.lastrowid
@@ -210,17 +242,20 @@ class TestExperimentSchemaSQLite:
         # Read experiment
         cursor.execute("SELECT name, status FROM experiments WHERE id = ?", (experiment_id,))
         result = cursor.fetchone()
-        assert result[0] == 'Test Experiment'
-        assert result[1] == 'active'
+        assert result[0] == "Test Experiment"
+        assert result[1] == "active"
 
         # Update experiment
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE experiments SET status = ? WHERE id = ?
-        """, ('completed', experiment_id))
+        """,
+            ("completed", experiment_id),
+        )
         conn.commit()
 
         cursor.execute("SELECT status FROM experiments WHERE id = ?", (experiment_id,))
-        assert cursor.fetchone()[0] == 'completed'
+        assert cursor.fetchone()[0] == "completed"
 
         # Delete experiment
         cursor.execute("DELETE FROM experiments WHERE id = ?", (experiment_id,))
@@ -233,58 +268,68 @@ class TestExperimentSchemaSQLite:
 
     def test_experiment_results_crud_operations(self, client):
         """Test recording experiment results."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # Create experiment first
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO experiments
             (name, control_strategy, test_strategy, sample_size, start_date, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            'Results Test',
-            'complexity',
-            'hybrid',
-            50,
-            datetime.now(UTC).isoformat(),
-            'active',
-            datetime.now(UTC).isoformat()
-        ))
+        """,
+            (
+                "Results Test",
+                "complexity",
+                "hybrid",
+                50,
+                datetime.now(UTC).isoformat(),
+                "active",
+                datetime.now(UTC).isoformat(),
+            ),
+        )
         conn.commit()
         experiment_id = cursor.lastrowid
 
         # Insert result
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO experiment_results
-            (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd, quality_score, provider, model)
+            (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd,
+             quality_score, provider, model)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            experiment_id,
-            'user123',
-            'complexity',
-            datetime.now(UTC).isoformat(),
-            45.5,
-            0.0012,
-            8,
-            'gemini',
-            'gemini-1.5-flash'
-        ))
+        """,
+            (
+                experiment_id,
+                "user123",
+                "complexity",
+                datetime.now(UTC).isoformat(),
+                45.5,
+                0.0012,
+                8,
+                "gemini",
+                "gemini-1.5-flash",
+            ),
+        )
         conn.commit()
 
         result_id = cursor.lastrowid
         assert result_id > 0
 
         # Query result
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT user_id, strategy_assigned, latency_ms, cost_usd
             FROM experiment_results
             WHERE id = ?
-        """, (result_id,))
+        """,
+            (result_id,),
+        )
 
         result = cursor.fetchone()
-        assert result[0] == 'user123'
-        assert result[1] == 'complexity'
+        assert result[0] == "user123"
+        assert result[1] == "complexity"
         assert result[2] == 45.5
         assert result[3] == 0.0012
 
@@ -296,57 +341,64 @@ class TestExperimentSchemaSQLite:
 
     def test_foreign_key_constraint_enforced(self, client):
         """Verify foreign key constraint prevents orphaned results."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA foreign_keys = ON")  # Enable FK constraints
         cursor = conn.cursor()
 
         # Try to insert result with non-existent experiment_id
         with pytest.raises(sqlite3.IntegrityError):
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiment_results
-                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd, quality_score, provider, model)
+                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd,
+             quality_score, provider, model)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                99999,  # Non-existent experiment
-                'user456',
-                'learning',
-                datetime.now(UTC).isoformat(),
-                50.0,
-                0.002,
-                7,
-                'claude',
-                'claude-3-haiku'
-            ))
+            """,
+                (
+                    99999,  # Non-existent experiment
+                    "user456",
+                    "learning",
+                    datetime.now(UTC).isoformat(),
+                    50.0,
+                    0.002,
+                    7,
+                    "claude",
+                    "claude-3-haiku",
+                ),
+            )
             conn.commit()
 
         conn.close()
 
     def test_experiment_status_enum_values(self, client):
         """Test that experiment status accepts valid values."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        valid_statuses = ['active', 'completed', 'cancelled', 'pending']
+        valid_statuses = ["active", "completed", "cancelled", "pending"]
 
         for status in valid_statuses:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiments
                 (name, control_strategy, test_strategy, sample_size, start_date, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                f'Test {status}',
-                'complexity',
-                'learning',
-                100,
-                datetime.now(UTC).isoformat(),
-                status,
-                datetime.now(UTC).isoformat()
-            ))
+            """,
+                (
+                    f"Test {status}",
+                    "complexity",
+                    "learning",
+                    100,
+                    datetime.now(UTC).isoformat(),
+                    status,
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
             conn.commit()
 
-            cursor.execute("SELECT status FROM experiments WHERE name = ?", (f'Test {status}',))
+            cursor.execute("SELECT status FROM experiments WHERE name = ?", (f"Test {status}",))
             assert cursor.fetchone()[0] == status
 
         # Cleanup
@@ -356,49 +408,63 @@ class TestExperimentSchemaSQLite:
 
     def test_experiment_aggregation_query(self, client):
         """Test aggregating results by strategy for an experiment."""
-        db_path = './test_feedback.db'
+        db_path = "./test_feedback.db"
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
         # Create experiment
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO experiments
             (name, control_strategy, test_strategy, sample_size, start_date, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            'Aggregation Test',
-            'complexity',
-            'learning',
-            10,
-            datetime.now(UTC).isoformat(),
-            'active',
-            datetime.now(UTC).isoformat()
-        ))
+        """,
+            (
+                "Aggregation Test",
+                "complexity",
+                "learning",
+                10,
+                datetime.now(UTC).isoformat(),
+                "active",
+                datetime.now(UTC).isoformat(),
+            ),
+        )
         conn.commit()
         experiment_id = cursor.lastrowid
 
         # Insert multiple results for both strategies
         test_data = [
-            ('user1', 'complexity', 40.0, 0.001, 8),
-            ('user2', 'complexity', 45.0, 0.0012, 7),
-            ('user3', 'learning', 35.0, 0.0015, 9),
-            ('user4', 'learning', 38.0, 0.0014, 9),
+            ("user1", "complexity", 40.0, 0.001, 8),
+            ("user2", "complexity", 45.0, 0.0012, 7),
+            ("user3", "learning", 35.0, 0.0015, 9),
+            ("user4", "learning", 38.0, 0.0014, 9),
         ]
 
         for user_id, strategy, latency, cost, quality in test_data:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO experiment_results
-                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd, quality_score, provider, model)
+                (experiment_id, user_id, strategy_assigned, timestamp, latency_ms, cost_usd,
+             quality_score, provider, model)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                experiment_id, user_id, strategy,
-                datetime.now(UTC).isoformat(),
-                latency, cost, quality, 'gemini', 'gemini-1.5-flash'
-            ))
+            """,
+                (
+                    experiment_id,
+                    user_id,
+                    strategy,
+                    datetime.now(UTC).isoformat(),
+                    latency,
+                    cost,
+                    quality,
+                    "gemini",
+                    "gemini-1.5-flash",
+                ),
+            )
         conn.commit()
 
         # Aggregate by strategy
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT
                 strategy_assigned,
                 COUNT(*) as count,
@@ -408,7 +474,9 @@ class TestExperimentSchemaSQLite:
             FROM experiment_results
             WHERE experiment_id = ?
             GROUP BY strategy_assigned
-        """, (experiment_id,))
+        """,
+            (experiment_id,),
+        )
 
         results = cursor.fetchall()
         assert len(results) == 2, "Should have results for both strategies"
@@ -416,12 +484,12 @@ class TestExperimentSchemaSQLite:
         # Verify aggregations
         for row in results:
             strategy, count, avg_latency, avg_cost, avg_quality = row
-            assert count == 2, f"Each strategy should have 2 results"
+            assert count == 2, "Each strategy should have 2 results"
 
-            if strategy == 'complexity':
+            if strategy == "complexity":
                 assert 42.0 <= avg_latency <= 43.0, "Average latency should be ~42.5"
                 assert avg_quality >= 7.0
-            elif strategy == 'learning':
+            elif strategy == "learning":
                 assert 36.0 <= avg_latency <= 37.0, "Average latency should be ~36.5"
                 assert avg_quality >= 9.0
 

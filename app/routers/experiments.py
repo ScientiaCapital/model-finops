@@ -6,29 +6,28 @@ REST API endpoints for A/B testing experiments.
 
 import logging
 import os
+
 from fastapi import APIRouter, HTTPException, status
+
+from app.experiments.statistical_analyzer import StatisticalAnalyzer
+from app.experiments.tracker import ExperimentTracker
 from app.models.experiments import (
-    ExperimentCreate,
-    ExperimentResponse,
-    ExperimentListResponse,
+    ExperimentAnalysisResponse,
     ExperimentComplete,
     ExperimentCompleteResponse,
-    UserAssignmentResponse,
+    ExperimentCreate,
+    ExperimentListResponse,
+    ExperimentProgressResponse,
+    ExperimentResponse,
     ExperimentResult,
     ExperimentResultResponse,
     ExperimentSummaryResponse,
-    ExperimentProgressResponse,
-    ExperimentAnalysisResponse
+    UserAssignmentResponse,
 )
-from app.experiments.tracker import ExperimentTracker
-from app.experiments.statistical_analyzer import StatisticalAnalyzer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/experiments",
-    tags=["experiments"]
-)
+router = APIRouter(prefix="/experiments", tags=["experiments"])
 
 # Initialize tracker and analyzer (use production database)
 tracker = ExperimentTracker(db_path=os.getenv("DATABASE_PATH", "optimizer.db"))
@@ -36,7 +35,7 @@ analyzer = StatisticalAnalyzer()
 
 
 @router.post("", response_model=ExperimentResponse, status_code=status.HTTP_201_CREATED)
-def create_experiment(experiment: ExperimentCreate):
+def create_experiment(experiment: ExperimentCreate) -> ExperimentResponse:
     """
     Create a new A/B test experiment.
 
@@ -53,7 +52,10 @@ def create_experiment(experiment: ExperimentCreate):
     if experiment.control_strategy == experiment.test_strategy:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Control and test strategies must be different (both are '{experiment.control_strategy}')"
+            detail=(
+                "Control and test strategies must be different "
+                f"(both are '{experiment.control_strategy}')"
+            ),
         )
 
     try:
@@ -62,7 +64,7 @@ def create_experiment(experiment: ExperimentCreate):
             control_strategy=experiment.control_strategy,
             test_strategy=experiment.test_strategy,
             sample_size=experiment.sample_size,
-            status='active'
+            status="active",
         )
 
         return ExperimentResponse(
@@ -71,17 +73,14 @@ def create_experiment(experiment: ExperimentCreate):
             control_strategy=experiment.control_strategy,
             test_strategy=experiment.test_strategy,
             sample_size=experiment.sample_size,
-            status='active'
+            status="active",
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/active", response_model=ExperimentListResponse)
-def get_active_experiments():
+def get_active_experiments() -> ExperimentListResponse:
     """
     List all active experiments.
 
@@ -93,7 +92,9 @@ def get_active_experiments():
 
 
 @router.post("/{experiment_id}/complete", response_model=ExperimentCompleteResponse)
-def complete_experiment(experiment_id: int, completion: ExperimentComplete):
+def complete_experiment(
+    experiment_id: int, completion: ExperimentComplete
+) -> ExperimentCompleteResponse:
     """
     Mark experiment as completed.
 
@@ -109,35 +110,29 @@ def complete_experiment(experiment_id: int, completion: ExperimentComplete):
     """
     # Verify experiment exists first
     progress = tracker.get_experiment_progress(experiment_id)
-    if progress['sample_size'] == 0:  # Experiment doesn't exist
+    if progress["sample_size"] == 0:  # Experiment doesn't exist
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Experiment {experiment_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Experiment {experiment_id} not found"
         )
 
     try:
         tracker.complete_experiment(experiment_id, winner=completion.winner)
 
         return ExperimentCompleteResponse(
-            experiment_id=experiment_id,
-            status='completed',
-            winner=completion.winner
+            experiment_id=experiment_id, status="completed", winner=completion.winner
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to complete experiment {experiment_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to complete experiment"
-        )
+            detail="Failed to complete experiment",
+        ) from e
 
 
 @router.get("/{experiment_id}/assign/{user_id}", response_model=UserAssignmentResponse)
-def assign_user(experiment_id: int, user_id: str):
+def assign_user(experiment_id: int, user_id: str) -> UserAssignmentResponse:
     """
     Assign user to control or test group.
 
@@ -157,19 +152,18 @@ def assign_user(experiment_id: int, user_id: str):
         strategy = tracker.assign_user(experiment_id, user_id)
 
         return UserAssignmentResponse(
-            experiment_id=experiment_id,
-            user_id=user_id,
-            strategy=strategy
+            experiment_id=experiment_id, user_id=user_id, strategy=strategy
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
-@router.post("/{experiment_id}/results", response_model=ExperimentResultResponse, status_code=status.HTTP_201_CREATED)
-def record_result(experiment_id: int, result: ExperimentResult):
+@router.post(
+    "/{experiment_id}/results",
+    response_model=ExperimentResultResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def record_result(experiment_id: int, result: ExperimentResult) -> ExperimentResultResponse:
     """
     Record an experiment result (routing decision outcome).
 
@@ -192,28 +186,22 @@ def record_result(experiment_id: int, result: ExperimentResult):
             cost_usd=result.cost_usd,
             quality_score=result.quality_score,
             provider=result.provider,
-            model=result.model
+            model=result.model,
         )
 
-        return ExperimentResultResponse(
-            result_id=result_id,
-            experiment_id=experiment_id
-        )
+        return ExperimentResultResponse(result_id=result_id, experiment_id=experiment_id)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Failed to record result for experiment {experiment_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to record experiment result"
-        )
+            detail="Failed to record experiment result",
+        ) from e
 
 
 @router.get("/{experiment_id}/summary", response_model=ExperimentSummaryResponse)
-def get_summary(experiment_id: int):
+def get_summary(experiment_id: int) -> ExperimentSummaryResponse:
     """
     Get aggregated statistics by strategy.
 
@@ -228,7 +216,7 @@ def get_summary(experiment_id: int):
 
 
 @router.get("/{experiment_id}/progress", response_model=ExperimentProgressResponse)
-def get_progress(experiment_id: int):
+def get_progress(experiment_id: int) -> ExperimentProgressResponse:
     """
     Get progress toward sample size goal.
 
@@ -243,7 +231,7 @@ def get_progress(experiment_id: int):
 
 
 @router.post("/{experiment_id}/analyze", response_model=ExperimentAnalysisResponse)
-def analyze_experiment(experiment_id: int):
+def analyze_experiment(experiment_id: int) -> ExperimentAnalysisResponse:
     """
     Run statistical analysis on experiment results.
 
@@ -263,13 +251,16 @@ def analyze_experiment(experiment_id: int):
     summary = tracker.get_experiment_summary(experiment_id)
 
     # Check minimum sample size (30 per group)
-    control_count = summary['control']['count']
-    test_count = summary['test']['count']
+    control_count = summary["control"]["count"]
+    test_count = summary["test"]["count"]
 
     if control_count < 30 or test_count < 30:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient data for analysis (need 30 samples per group, got control={control_count}, test={test_count})"
+            detail=(
+                "Insufficient data for analysis (need 30 samples per group, "
+                f"got control={control_count}, test={test_count})"
+            ),
         )
 
     # Prepare data for analysis (we don't have raw values, only aggregates)
@@ -279,11 +270,11 @@ def analyze_experiment(experiment_id: int):
     # Build response
     return ExperimentAnalysisResponse(
         valid=True,
-        overall_winner=winner_result.get('winner'),
-        confidence_level=winner_result.get('confidence'),
+        overall_winner=winner_result.get("winner"),
+        confidence_level=winner_result.get("confidence"),
         recommendation=(
             f"Winner: {winner_result.get('winner')} (confidence: {winner_result.get('confidence')})"
-            if winner_result.get('winner')
+            if winner_result.get("winner")
             else "No clear winner detected"
-        )
+        ),
     )

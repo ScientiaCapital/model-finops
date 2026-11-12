@@ -100,8 +100,8 @@ export default function PricingPage() {
             Optimize your AI costs
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the plan that fits your needs. Save up to 60% on AI API costs with intelligent
-            routing and semantic caching.
+            Choose the plan that fits your needs. Every plan includes provider routing and
+            semantic caching.
           </p>
         </div>
 

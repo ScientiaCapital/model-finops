@@ -3,20 +3,19 @@ Arbitrage Service - Business logic for cost optimization through model switching
 
 Provides methods to analyze prompts, find cheaper alternatives, and track savings.
 """
+
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
 from uuid import uuid4
 
+from app.arbitrage.capability_registry import CAPABILITY_LEVEL_ORDER, CapabilityRegistry
+from app.database.supabase_client import SupabaseClient
 from app.models.arbitrage import (
-    ModelCapability,
-    CapabilityLevel,
-    ModelProfile,
-    ArbitrageOpportunity,
-    ArbitrageAnalysisRequest,
     ArbitrageAnalysisResponse,
+    ArbitrageOpportunity,
+    ModelCapability,
+    ModelProfile,
 )
-from app.arbitrage.capability_registry import CapabilityRegistry, CAPABILITY_LEVEL_ORDER
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class ArbitrageService:
     equivalent capabilities.
     """
 
-    def __init__(self, supabase_client=None):
+    def __init__(self, supabase_client: SupabaseClient | None = None) -> None:
         """
         Initialize arbitrage service.
 
@@ -44,7 +43,7 @@ class ArbitrageService:
         self,
         prompt: str,
         current_model: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         input_tokens: int = 0,
         output_tokens: int = 0,
     ) -> ArbitrageAnalysisResponse:
@@ -96,8 +95,9 @@ class ArbitrageService:
         opportunities = []
         for alt in alternatives:
             alt_cost = alt.calculate_cost(input_tokens, output_tokens)
-            savings_percent = ((current_cost - alt_cost) / current_cost * 100
-                               if current_cost > 0 else 0)
+            savings_percent = (
+                (current_cost - alt_cost) / current_cost * 100 if current_cost > 0 else 0
+            )
 
             # Get capability match quality
             quality_score = self._calculate_quality_match(
@@ -143,7 +143,7 @@ class ArbitrageService:
 
         return response
 
-    def _detect_capabilities(self, prompt: str) -> List[ModelCapability]:
+    def _detect_capabilities(self, prompt: str) -> list[ModelCapability]:
         """
         Detect required capabilities from prompt content.
 
@@ -154,9 +154,21 @@ class ArbitrageService:
 
         # Code-related keywords
         code_keywords = [
-            "code", "function", "class", "implement", "program",
-            "debug", "fix bug", "refactor", "syntax", "compile",
-            "python", "javascript", "typescript", "java", "rust",
+            "code",
+            "function",
+            "class",
+            "implement",
+            "program",
+            "debug",
+            "fix bug",
+            "refactor",
+            "syntax",
+            "compile",
+            "python",
+            "javascript",
+            "typescript",
+            "java",
+            "rust",
         ]
         if any(kw in prompt_lower for kw in code_keywords):
             capabilities.append(ModelCapability.CODE_GEN)
@@ -168,40 +180,71 @@ class ArbitrageService:
 
         # Reasoning keywords
         reasoning_keywords = [
-            "explain", "why", "analyze", "reason", "think",
-            "consider", "evaluate", "compare", "contrast",
+            "explain",
+            "why",
+            "analyze",
+            "reason",
+            "think",
+            "consider",
+            "evaluate",
+            "compare",
+            "contrast",
         ]
         if any(kw in prompt_lower for kw in reasoning_keywords):
             capabilities.append(ModelCapability.REASONING)
 
         # Math keywords
         math_keywords = [
-            "calculate", "math", "equation", "formula", "number",
-            "algebra", "calculus", "statistics", "probability",
+            "calculate",
+            "math",
+            "equation",
+            "formula",
+            "number",
+            "algebra",
+            "calculus",
+            "statistics",
+            "probability",
         ]
         if any(kw in prompt_lower for kw in math_keywords):
             capabilities.append(ModelCapability.MATH)
 
         # Creative keywords
         creative_keywords = [
-            "write", "story", "creative", "imagine", "poem",
-            "narrative", "fiction", "generate text",
+            "write",
+            "story",
+            "creative",
+            "imagine",
+            "poem",
+            "narrative",
+            "fiction",
+            "generate text",
         ]
         if any(kw in prompt_lower for kw in creative_keywords):
             capabilities.append(ModelCapability.CREATIVE)
 
         # Analysis keywords
         analysis_keywords = [
-            "analyze", "summarize", "extract", "insight",
-            "data", "pattern", "trend",
+            "analyze",
+            "summarize",
+            "extract",
+            "insight",
+            "data",
+            "pattern",
+            "trend",
         ]
         if any(kw in prompt_lower for kw in analysis_keywords):
             capabilities.append(ModelCapability.ANALYSIS)
 
         # Translation keywords
         translation_keywords = [
-            "translate", "translation", "language", "spanish",
-            "french", "german", "chinese", "japanese",
+            "translate",
+            "translation",
+            "language",
+            "spanish",
+            "french",
+            "german",
+            "chinese",
+            "japanese",
         ]
         if any(kw in prompt_lower for kw in translation_keywords):
             capabilities.append(ModelCapability.TRANSLATION)
@@ -226,7 +269,7 @@ class ArbitrageService:
         self,
         current: ModelProfile,
         alternative: ModelProfile,
-        required_capabilities: List[ModelCapability],
+        required_capabilities: list[ModelCapability],
     ) -> float:
         """
         Calculate quality match between current and alternative model.
@@ -263,24 +306,30 @@ class ArbitrageService:
         self,
         user_id: str,
         response: ArbitrageAnalysisResponse,
-    ):
+    ) -> None:
         """Log arbitrage opportunity to database."""
         if not self.supabase or not response.opportunities:
             return
 
         try:
             best = response.recommendation or response.opportunities[0]
-            await self.supabase.table("arbitrage_opportunities").insert({
-                "user_id": user_id,
-                "request_id": response.request_id,
-                "current_model": response.current_model,
-                "alternative_model": best.alternative_model,
-                "current_cost": response.current_cost,
-                "alternative_cost": best.alternative_cost,
-                "savings_percent": best.savings_percent,
-                "required_capabilities": [c.value for c in best.required_capabilities],
-                "was_applied": False,
-            }).execute()
+            await (
+                self.supabase.table("arbitrage_opportunities")
+                .insert(
+                    {
+                        "user_id": user_id,
+                        "request_id": response.request_id,
+                        "current_model": response.current_model,
+                        "alternative_model": best.alternative_model,
+                        "current_cost": response.current_cost,
+                        "alternative_cost": best.alternative_cost,
+                        "savings_percent": best.savings_percent,
+                        "required_capabilities": [c.value for c in best.required_capabilities],
+                        "was_applied": False,
+                    }
+                )
+                .execute()
+            )
         except Exception as e:
             logger.error(f"Failed to log arbitrage opportunity: {e}")
 
@@ -288,24 +337,26 @@ class ArbitrageService:
         self,
         user_id: str,
         limit: int = 20,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Get recent arbitrage opportunities for a user."""
         if not self.supabase:
             return []
 
         try:
-            result = await self.supabase.table("arbitrage_opportunities") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .order("created_at", desc=True) \
-                .limit(limit) \
+            result = (
+                await self.supabase.table("arbitrage_opportunities")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(limit)
                 .execute()
+            )
             return result.data or []
         except Exception as e:
             logger.error(f"Failed to get opportunities: {e}")
             return []
 
-    async def get_savings_report(self, user_id: str, days: int = 30) -> Dict:
+    async def get_savings_report(self, user_id: str, days: int = 30) -> dict:
         """
         Generate savings report for a user.
 
@@ -320,20 +371,20 @@ class ArbitrageService:
             }
 
         try:
-            result = await self.supabase.table("arbitrage_opportunities") \
-                .select("*") \
-                .eq("user_id", user_id) \
+            result = (
+                await self.supabase.table("arbitrage_opportunities")
+                .select("*")
+                .eq("user_id", user_id)
                 .execute()
+            )
 
             opportunities = result.data or []
             total_potential = sum(
-                o.get("current_cost", 0) - o.get("alternative_cost", 0)
-                for o in opportunities
+                o.get("current_cost", 0) - o.get("alternative_cost", 0) for o in opportunities
             )
             applied = [o for o in opportunities if o.get("was_applied")]
             actual_savings = sum(
-                o.get("current_cost", 0) - o.get("alternative_cost", 0)
-                for o in applied
+                o.get("current_cost", 0) - o.get("alternative_cost", 0) for o in applied
             )
 
             return {
@@ -341,8 +392,9 @@ class ArbitrageService:
                 "actual_savings": actual_savings,
                 "opportunities_found": len(opportunities),
                 "opportunities_applied": len(applied),
-                "savings_rate": (actual_savings / total_potential * 100
-                                 if total_potential > 0 else 0),
+                "savings_rate": (
+                    actual_savings / total_potential * 100 if total_potential > 0 else 0
+                ),
             }
         except Exception as e:
             logger.error(f"Failed to generate savings report: {e}")
@@ -356,8 +408,8 @@ class ArbitrageService:
     def get_alternatives_for_model(
         self,
         model_id: str,
-        capabilities: Optional[List[ModelCapability]] = None,
-    ) -> List[ModelProfile]:
+        capabilities: list[ModelCapability] | None = None,
+    ) -> list[ModelProfile]:
         """
         Get cheaper alternatives for a specific model.
 
@@ -371,10 +423,7 @@ class ArbitrageService:
         if capabilities is None:
             # Get all capabilities from current model
             profile = self.registry.get_model_profile(model_id)
-            if profile:
-                capabilities = list(profile.capabilities.keys())
-            else:
-                capabilities = []
+            capabilities = list(profile.capabilities.keys()) if profile else []
 
         return self.registry.get_cheaper_alternatives(
             model_id=model_id,

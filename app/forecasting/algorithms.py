@@ -7,9 +7,10 @@ Implements a hierarchy of forecasters based on available data:
 - LinearRegression: 2 data points (low confidence)
 - Naive: 1 data point (very low confidence)
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+
 import numpy as np
 from scipy import stats
 
@@ -17,11 +18,12 @@ from scipy import stats
 @dataclass
 class ForecastResult:
     """Result of a forecasting operation."""
+
     predictions: np.ndarray
     lower_bounds: np.ndarray
     upper_bounds: np.ndarray
     method: str
-    quality_score: Optional[float] = None  # MAPE as fraction (0-1)
+    quality_score: float | None = None  # MAPE as fraction (0-1)
 
 
 class BaseForecaster(ABC):
@@ -34,12 +36,7 @@ class BaseForecaster(ABC):
         pass
 
     @abstractmethod
-    def forecast(
-        self,
-        data: np.ndarray,
-        horizon: int,
-        confidence: float = 0.95
-    ) -> ForecastResult:
+    def forecast(self, data: np.ndarray, horizon: int, confidence: float = 0.95) -> ForecastResult:
         """
         Generate forecast with confidence intervals.
 
@@ -53,7 +50,7 @@ class BaseForecaster(ABC):
         """
         pass
 
-    def _validate_inputs(self, data: np.ndarray, horizon: int):
+    def _validate_inputs(self, data: np.ndarray, horizon: int) -> None:
         """Validate forecast inputs."""
         if len(data) == 0:
             raise ValueError("Data cannot be empty")
@@ -85,17 +82,12 @@ class ExponentialSmoothingForecaster(BaseForecaster):
     def min_data_points(self) -> int:
         return 7
 
-    def forecast(
-        self,
-        data: np.ndarray,
-        horizon: int,
-        confidence: float = 0.95
-    ) -> ForecastResult:
+    def forecast(self, data: np.ndarray, horizon: int, confidence: float = 0.95) -> ForecastResult:
         self._validate_inputs(data, horizon)
 
         # Simple exponential smoothing with trend (Holt's method)
         alpha = 0.3  # Level smoothing
-        beta = 0.1   # Trend smoothing
+        beta = 0.1  # Trend smoothing
 
         # Initialize
         level = data[0]
@@ -138,7 +130,7 @@ class ExponentialSmoothingForecaster(BaseForecaster):
             lower_bounds=lower_bounds,
             upper_bounds=upper_bounds,
             method="exp_smoothing",
-            quality_score=quality_score
+            quality_score=quality_score,
         )
 
 
@@ -149,19 +141,14 @@ class MovingAverageForecaster(BaseForecaster):
     Good for 3-6 data points. Simple and robust.
     """
 
-    def __init__(self, window: int = 3):
+    def __init__(self, window: int = 3) -> None:
         self.window = window
 
     @property
     def min_data_points(self) -> int:
         return 3
 
-    def forecast(
-        self,
-        data: np.ndarray,
-        horizon: int,
-        confidence: float = 0.95
-    ) -> ForecastResult:
+    def forecast(self, data: np.ndarray, horizon: int, confidence: float = 0.95) -> ForecastResult:
         self._validate_inputs(data, horizon)
 
         # Use available window size
@@ -194,7 +181,7 @@ class MovingAverageForecaster(BaseForecaster):
             lower_bounds=lower_bounds,
             upper_bounds=upper_bounds,
             method="moving_avg",
-            quality_score=None  # No in-sample fit to evaluate
+            quality_score=None,  # No in-sample fit to evaluate
         )
 
 
@@ -209,12 +196,7 @@ class LinearRegressionForecaster(BaseForecaster):
     def min_data_points(self) -> int:
         return 2
 
-    def forecast(
-        self,
-        data: np.ndarray,
-        horizon: int,
-        confidence: float = 0.95
-    ) -> ForecastResult:
+    def forecast(self, data: np.ndarray, horizon: int, confidence: float = 0.95) -> ForecastResult:
         self._validate_inputs(data, horizon)
 
         # Fit linear regression
@@ -230,7 +212,7 @@ class LinearRegressionForecaster(BaseForecaster):
         # Residual standard error
         fitted = intercept + slope * x
         residuals = data - fitted
-        mse = np.mean(residuals ** 2) if n > 2 else (std_err ** 2)
+        mse = np.mean(residuals**2) if n > 2 else (std_err**2)
         rmse = np.sqrt(mse) if mse > 0 else np.std(data)
 
         # Prediction intervals
@@ -239,7 +221,7 @@ class LinearRegressionForecaster(BaseForecaster):
         x_var = np.var(x) if n > 1 else 1
 
         # Standard error of prediction
-        se_pred = rmse * np.sqrt(1 + 1/n + (future_x - x_mean)**2 / (n * x_var + 0.001))
+        se_pred = rmse * np.sqrt(1 + 1 / n + (future_x - x_mean) ** 2 / (n * x_var + 0.001))
         margin = z * se_pred
 
         lower_bounds = self._ensure_non_negative(predictions - margin)
@@ -250,7 +232,7 @@ class LinearRegressionForecaster(BaseForecaster):
             lower_bounds=lower_bounds,
             upper_bounds=upper_bounds,
             method="linear",
-            quality_score=None
+            quality_score=None,
         )
 
 
@@ -265,12 +247,7 @@ class NaiveForecaster(BaseForecaster):
     def min_data_points(self) -> int:
         return 1
 
-    def forecast(
-        self,
-        data: np.ndarray,
-        horizon: int,
-        confidence: float = 0.95
-    ) -> ForecastResult:
+    def forecast(self, data: np.ndarray, horizon: int, confidence: float = 0.95) -> ForecastResult:
         self._validate_inputs(data, horizon)
 
         # Last value as prediction
@@ -290,7 +267,7 @@ class NaiveForecaster(BaseForecaster):
             lower_bounds=lower_bounds,
             upper_bounds=upper_bounds,
             method="naive",
-            quality_score=None
+            quality_score=None,
         )
 
 

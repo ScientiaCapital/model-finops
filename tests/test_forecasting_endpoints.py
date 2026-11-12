@@ -3,9 +3,6 @@ Tests for Forecasting API Endpoints.
 
 Tests REST API functionality for cost forecasting and anomaly detection.
 """
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 
 class TestForecastEndpoint:

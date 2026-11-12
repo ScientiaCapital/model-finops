@@ -3,18 +3,18 @@ Forecasting REST API Router.
 
 Provides endpoints for cost forecasting, anomaly detection, and budget projections.
 """
+
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.auth import get_current_user_id
 from app.models.forecasting import (
-    ForecastRequest,
-    ForecastResponse,
     AnomalyDetectionRequest,
     AnomalyListResponse,
     BudgetExhaustionResponse,
+    ForecastRequest,
+    ForecastResponse,
     ForecastSummaryResponse,
 )
 from app.services.forecasting_service import ForecastingService
@@ -37,7 +37,7 @@ def get_forecasting_service(request: Request) -> ForecastingService:
 @router.get("/predict", response_model=ForecastResponse)
 async def get_forecast(
     horizon_days: int = Query(7, ge=1, le=90, description="Forecast horizon in days"),
-    provider: Optional[str] = Query(None, description="Filter by provider"),
+    provider: str | None = Query(None, description="Filter by provider"),
     include_confidence: bool = Query(True, description="Include confidence intervals"),
     user_id: str = Depends(get_current_user_id),
     service: ForecastingService = Depends(get_forecasting_service),
@@ -64,7 +64,7 @@ async def get_forecast(
         return response
     except Exception as e:
         logger.error(f"Error generating forecast: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate forecast")
+        raise HTTPException(status_code=500, detail="Failed to generate forecast") from e
 
 
 @router.get("/summary", response_model=ForecastSummaryResponse)
@@ -90,7 +90,7 @@ async def get_forecast_summary(
         return response
     except Exception as e:
         logger.error(f"Error getting summary: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get forecast summary")
+        raise HTTPException(status_code=500, detail="Failed to get forecast summary") from e
 
 
 @router.get("/anomalies", response_model=AnomalyListResponse)
@@ -120,13 +120,13 @@ async def get_anomalies(
         return response
     except Exception as e:
         logger.error(f"Error detecting anomalies: {e}")
-        raise HTTPException(status_code=500, detail="Failed to detect anomalies")
+        raise HTTPException(status_code=500, detail="Failed to detect anomalies") from e
 
 
 @router.post("/anomalies/{anomaly_id}/acknowledge")
 async def acknowledge_anomaly(
     anomaly_id: str,
-    notes: Optional[str] = None,
+    notes: str | None = None,
     user_id: str = Depends(get_current_user_id),
     service: ForecastingService = Depends(get_forecasting_service),
 ) -> dict:
@@ -152,7 +152,7 @@ async def acknowledge_anomaly(
         raise
     except Exception as e:
         logger.error(f"Error acknowledging anomaly: {e}")
-        raise HTTPException(status_code=500, detail="Failed to acknowledge anomaly")
+        raise HTTPException(status_code=500, detail="Failed to acknowledge anomaly") from e
 
 
 @router.get("/budget-exhaustion", response_model=BudgetExhaustionResponse)
@@ -178,7 +178,7 @@ async def get_budget_exhaustion(
         return response
     except Exception as e:
         logger.error(f"Error projecting budget: {e}")
-        raise HTTPException(status_code=500, detail="Failed to project budget")
+        raise HTTPException(status_code=500, detail="Failed to project budget") from e
 
 
 @router.get("/health")

@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
-    domain TEXT UNIQUE,                          -- "coperniq.io" for SSO matching
+    domain TEXT UNIQUE,                          -- "example.com" for SSO matching
     plan TEXT DEFAULT 'starter',                 -- starter, growth, enterprise
     settings JSONB DEFAULT '{}',                 -- AI policy settings (see below)
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -53,6 +53,6 @@ CREATE TRIGGER update_organizations_updated_at
 -- =============================================================================
 
 COMMENT ON TABLE organizations IS 'Multi-tenant companies using AI Cost Optimizer';
-COMMENT ON COLUMN organizations.domain IS 'Company domain for SSO matching (e.g., coperniq.io)';
+COMMENT ON COLUMN organizations.domain IS 'Company domain for SSO matching (e.g., example.com)';
 COMMENT ON COLUMN organizations.plan IS 'Subscription plan: starter, growth, enterprise';
 COMMENT ON COLUMN organizations.settings IS 'AI policy settings JSON (blocked providers, budgets, etc.)';

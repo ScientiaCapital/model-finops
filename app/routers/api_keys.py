@@ -17,14 +17,17 @@ Endpoints:
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
 from app.auth import get_current_user_id
+from app.database.supabase_client import SupabaseClient
 from app.models.api_keys import (
+    APIKeyInfo,
+    APIKeyUsageStats,
     CreateAPIKeyRequest,
     CreateAPIKeyResponse,
-    APIKeyInfo,
     ListAPIKeysResponse,
-    APIKeyUsageStats,
     RevokeAPIKeyRequest,
     RevokeAPIKeyResponse,
     RotateAPIKeyRequest,
@@ -33,7 +36,6 @@ from app.models.api_keys import (
     UpdateAPIKeyResponse,
 )
 from app.services.api_key_service import APIKeyService
-from app.database.supabase_client import SupabaseClient
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +75,7 @@ def init_api_key_service(supabase: SupabaseClient) -> None:
 # Create API Key
 # =============================================================================
 
+
 @router.post(
     "",
     response_model=CreateAPIKeyResponse,
@@ -102,7 +105,7 @@ async def create_api_key(
     request: CreateAPIKeyRequest,
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> CreateAPIKeyResponse:
     """
     Create a new API key for the authenticated user.
 
@@ -120,12 +123,13 @@ async def create_api_key(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create API key",
-        )
+        ) from e
 
 
 # =============================================================================
 # List API Keys
 # =============================================================================
+
 
 @router.get(
     "",
@@ -135,7 +139,7 @@ async def create_api_key(
 async def list_api_keys(
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> ListAPIKeysResponse:
     """
     List all API keys for the authenticated user.
 
@@ -148,12 +152,13 @@ async def list_api_keys(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list API keys",
-        )
+        ) from e
 
 
 # =============================================================================
 # Get API Key Details
 # =============================================================================
+
 
 @router.get(
     "/{key_id}",
@@ -167,7 +172,7 @@ async def get_api_key(
     key_id: str,
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> APIKeyInfo:
     """
     Get details for a specific API key.
 
@@ -186,6 +191,7 @@ async def get_api_key(
 # Update API Key
 # =============================================================================
 
+
 @router.patch(
     "/{key_id}",
     response_model=UpdateAPIKeyResponse,
@@ -199,7 +205,7 @@ async def update_api_key(
     request: UpdateAPIKeyRequest,
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> UpdateAPIKeyResponse:
     """
     Update an API key's settings (name, permissions, rate limits).
 
@@ -218,6 +224,7 @@ async def update_api_key(
 # Get Usage Statistics
 # =============================================================================
 
+
 @router.get(
     "/{key_id}/usage",
     response_model=APIKeyUsageStats,
@@ -231,7 +238,7 @@ async def get_api_key_usage(
     days: int = Query(default=30, ge=1, le=365, description="Number of days of history"),
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> APIKeyUsageStats:
     """
     Get usage statistics for an API key.
 
@@ -250,6 +257,7 @@ async def get_api_key_usage(
 # Revoke API Key
 # =============================================================================
 
+
 @router.post(
     "/{key_id}/revoke",
     response_model=RevokeAPIKeyResponse,
@@ -260,16 +268,17 @@ async def get_api_key_usage(
 )
 async def revoke_api_key(
     key_id: str,
-    request: RevokeAPIKeyRequest = RevokeAPIKeyRequest(),
+    request: RevokeAPIKeyRequest | None = None,
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> RevokeAPIKeyResponse:
     """
     Revoke an API key immediately.
 
     The key will no longer be usable for authentication.
     This action cannot be undone - create a new key if needed.
     """
+    request = request or RevokeAPIKeyRequest()
     result = await service.revoke_key(user_id, key_id, request.reason)
     if not result:
         raise HTTPException(
@@ -285,6 +294,7 @@ async def revoke_api_key(
 # Rotate API Key
 # =============================================================================
 
+
 @router.post(
     "/{key_id}/rotate",
     response_model=RotateAPIKeyResponse,
@@ -295,10 +305,10 @@ async def revoke_api_key(
 )
 async def rotate_api_key(
     key_id: str,
-    request: RotateAPIKeyRequest = RotateAPIKeyRequest(),
+    request: RotateAPIKeyRequest | None = None,
     user_id: str = Depends(get_current_user_id),
     service: APIKeyService = Depends(get_api_key_service),
-):
+) -> RotateAPIKeyResponse:
     """
     Rotate an API key (revoke old key and create new one).
 
@@ -307,6 +317,7 @@ async def rotate_api_key(
 
     By default, the new key inherits permissions and rate limits from the old key.
     """
+    request = request or RotateAPIKeyRequest()
     result = await service.rotate_key(
         user_id,
         key_id,

@@ -20,10 +20,10 @@ Usage in FastAPI:
 """
 
 import logging
-from typing import Optional, Dict, Any, TYPE_CHECKING
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from pydantic import BaseModel
 
 from app.billing.stripe_client import StripeClient, StripeWebhookEvent
@@ -39,8 +39,10 @@ logger = logging.getLogger(__name__)
 # Models
 # =============================================================================
 
+
 class WebhookResult(BaseModel):
     """Result of webhook processing."""
+
     success: bool
     event_id: str
     event_type: str
@@ -51,6 +53,7 @@ class WebhookResult(BaseModel):
 # =============================================================================
 # Webhook Handler
 # =============================================================================
+
 
 class WebhookHandler:
     """
@@ -65,8 +68,8 @@ class WebhookHandler:
         stripe_client: StripeClient,
         billing_service: "BillingService",
         supabase_client: SupabaseClient,
-        webhook_secret: Optional[str] = None,
-    ):
+        webhook_secret: str | None = None,
+    ) -> None:
         """
         Initialize webhook handler.
 
@@ -115,7 +118,7 @@ class WebhookHandler:
             )
         except Exception as e:
             logger.error(f"Webhook signature verification failed: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail="invalid webhook signature") from e
 
         # Check for duplicate event (idempotency)
         if await self._is_event_processed(event.id):
@@ -125,7 +128,7 @@ class WebhookHandler:
                 event_id=event.id,
                 event_type=event.type,
                 message="Event already processed",
-                processed_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(UTC),
             )
 
         # Log event before processing
@@ -144,7 +147,7 @@ class WebhookHandler:
                 event_id=event.id,
                 event_type=event.type,
                 message="Event processed successfully",
-                processed_at=datetime.now(timezone.utc),
+                processed_at=datetime.now(UTC),
             )
 
         except Exception as e:
@@ -152,8 +155,8 @@ class WebhookHandler:
             await self._record_event_error(event.id, str(e))
             raise HTTPException(
                 status_code=500,
-                detail=f"Error processing event: {str(e)}",
-            )
+                detail="error processing event",
+            ) from e
 
     async def _process_event(self, event: StripeWebhookEvent) -> None:
         """
@@ -196,7 +199,7 @@ class WebhookHandler:
             logger.debug("Ignoring non-subscription checkout")
             return
 
-        customer_id = session.get("customer")
+        session.get("customer")
         subscription_id = session.get("subscription")
         user_id = session.get("metadata", {}).get("supabase_user_id")
 
@@ -285,7 +288,7 @@ class WebhookHandler:
             "update",
             data={
                 "status": "canceled",
-                "canceled_at": datetime.now(timezone.utc).isoformat(),
+                "canceled_at": datetime.now(UTC).isoformat(),
             },
             filters={"stripe_subscription_id": stripe_subscription_id},
         )
@@ -377,12 +380,16 @@ class WebhookHandler:
                 "amount_due_cents": 0,
                 "currency": invoice.get("currency", "usd"),
                 "period_start": datetime.fromtimestamp(
-                    invoice.get("period_start", 0), tz=timezone.utc
-                ).isoformat() if invoice.get("period_start") else None,
+                    invoice.get("period_start", 0), tz=UTC
+                ).isoformat()
+                if invoice.get("period_start")
+                else None,
                 "period_end": datetime.fromtimestamp(
-                    invoice.get("period_end", 0), tz=timezone.utc
-                ).isoformat() if invoice.get("period_end") else None,
-                "paid_at": datetime.now(timezone.utc).isoformat(),
+                    invoice.get("period_end", 0), tz=UTC
+                ).isoformat()
+                if invoice.get("period_end")
+                else None,
+                "paid_at": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -438,12 +445,21 @@ class WebhookHandler:
         event_type = event.type
         if event_type not in [
             "checkout.session.completed",
-            "customer.created", "customer.updated", "customer.deleted",
-            "customer.subscription.created", "customer.subscription.updated",
+            "customer.created",
+            "customer.updated",
+            "customer.deleted",
+            "customer.subscription.created",
+            "customer.subscription.updated",
             "customer.subscription.deleted",
-            "invoice.created", "invoice.paid", "invoice.payment_failed", "invoice.finalized",
-            "payment_intent.succeeded", "payment_intent.payment_failed",
-            "charge.succeeded", "charge.failed", "charge.refunded",
+            "invoice.created",
+            "invoice.paid",
+            "invoice.payment_failed",
+            "invoice.finalized",
+            "payment_intent.succeeded",
+            "payment_intent.payment_failed",
+            "charge.succeeded",
+            "charge.failed",
+            "charge.refunded",
         ]:
             # Store as generic type for unrecognized events
             logger.debug(f"Unknown event type: {event_type}")
@@ -459,12 +475,16 @@ class WebhookHandler:
                 data={
                     "stripe_event_id": event.id,
                     "event_type": event_type,
-                    "stripe_customer_id": obj.get("customer") if isinstance(obj.get("customer"), str) else None,
-                    "stripe_subscription_id": obj.get("subscription") if isinstance(obj.get("subscription"), str) else None,
+                    "stripe_customer_id": obj.get("customer")
+                    if isinstance(obj.get("customer"), str)
+                    else None,
+                    "stripe_subscription_id": obj.get("subscription")
+                    if isinstance(obj.get("subscription"), str)
+                    else None,
                     "stripe_invoice_id": obj.get("id") if "invoice" in event_type else None,
                     "payload": event.data,
                     "processed": processed,
-                    "processed_at": datetime.now(timezone.utc).isoformat() if processed else None,
+                    "processed_at": datetime.now(UTC).isoformat() if processed else None,
                 },
             )
         except Exception as e:
@@ -477,7 +497,7 @@ class WebhookHandler:
             "update",
             data={
                 "processed": True,
-                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "processed_at": datetime.now(UTC).isoformat(),
             },
             filters={"stripe_event_id": event_id},
         )

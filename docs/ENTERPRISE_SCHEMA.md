@@ -18,8 +18,8 @@
 ```sql
 CREATE TABLE organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,                    -- "Coperniq"
-    domain TEXT UNIQUE,                    -- "coperniq.io"
+    name TEXT NOT NULL,                    -- "Example Co"
+    domain TEXT UNIQUE,                    -- "example.com"
     plan TEXT DEFAULT 'starter',           -- starter, growth, enterprise
     settings JSONB DEFAULT '{}',           -- AI policy settings
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -57,7 +57,7 @@ CREATE TABLE employees (
     dept_id UUID REFERENCES departments(id),
 
     -- Identity
-    email TEXT NOT NULL,                   -- tim@coperniq.io (work)
+    email TEXT NOT NULL,                   -- tim@example.com (work)
     name TEXT,
     role TEXT DEFAULT 'employee',          -- employee, manager, admin, hr_admin
 
@@ -328,7 +328,7 @@ GET  /api/org/employees     - Employee AI usage summary
 
 Start with:
 
-1. ✅ Your work APIs (tim@coperniq.io)
+1. ✅ Your work APIs (tim@example.com)
 2. ✅ Your personal APIs (tkipper@gmail.com)
 3. ✅ Track both in one dashboard
 4. 🔜 Add compliance flags for each provider

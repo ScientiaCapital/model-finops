@@ -1,6 +1,9 @@
 """Tests for RoutingEngine - the main orchestrator for routing decisions."""
-import pytest
+
 from unittest.mock import patch
+
+import pytest
+
 from app.routing.engine import RoutingEngine
 from app.routing.models import RoutingContext, RoutingDecision
 
@@ -13,10 +16,7 @@ def engine():
 
 def test_route_with_auto_route_false_uses_complexity(engine):
     """Test routing with auto_route=False uses complexity strategy."""
-    decision = engine.route(
-        prompt="What is Python?",
-        auto_route=False
-    )
+    decision = engine.route(prompt="What is Python?", auto_route=False)
 
     # Should use complexity strategy
     assert decision.strategy_used == "complexity"
@@ -34,10 +34,7 @@ def test_route_with_auto_route_false_uses_complexity(engine):
 
 def test_route_with_auto_route_true_uses_hybrid(engine):
     """Test routing with auto_route=True uses hybrid strategy."""
-    decision = engine.route(
-        prompt="What is Python?",
-        auto_route=True
-    )
+    decision = engine.route(prompt="What is Python?", auto_route=True)
 
     # Should use hybrid strategy
     assert decision.strategy_used == "hybrid"
@@ -67,14 +64,14 @@ def test_default_auto_route_is_false(engine):
 def test_validation_with_invalid_decision(engine):
     """Test that invalid decisions trigger fallback."""
     # Mock hybrid strategy to return invalid decision
-    with patch.object(engine.strategies['hybrid'], 'route') as mock_route:
+    with patch.object(engine.strategies["hybrid"], "route") as mock_route:
         mock_route.return_value = RoutingDecision(
             provider="invalid_provider",  # Invalid!
             model="test-model",
             confidence="high",
             strategy_used="hybrid",
             reasoning="Test",
-            fallback_used=False
+            fallback_used=False,
         )
 
         # Should fallback to complexity
@@ -90,17 +87,9 @@ def test_route_with_context():
     engine = RoutingEngine(db_path="test.db")
 
     # Create context with user preferences
-    context = RoutingContext(
-        prompt="What is AI?",
-        user_id="test_user_123",
-        max_cost=0.01
-    )
+    context = RoutingContext(prompt="What is AI?", user_id="test_user_123", max_cost=0.01)
 
-    decision = engine.route(
-        prompt="What is AI?",
-        auto_route=False,
-        context=context
-    )
+    decision = engine.route(prompt="What is AI?", auto_route=False, context=context)
 
     # Should use provided context
     assert decision.provider in ["gemini", "claude", "openrouter"]
@@ -121,6 +110,7 @@ def test_route_creates_default_context_when_none_provided(engine):
 # =============================================================================
 # New providers must be valid routing targets (Ollama/DeepSeek/GLM/Qwen)
 # =============================================================================
+
 
 @pytest.mark.parametrize("provider", ["ollama", "deepseek", "glm", "qwen"])
 def test_new_providers_are_valid(provider):

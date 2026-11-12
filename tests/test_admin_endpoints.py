@@ -1,12 +1,22 @@
 """Tests for admin monitoring endpoints."""
+
 import pytest
 from fastapi.testclient import TestClient
+
 from app.main import app
 
+ADMIN_KEY = "admin-key-for-tests-only-0123456789"
+ADMIN_HEADERS = {"X-Admin-Key": ADMIN_KEY}
 
-def test_feedback_summary_endpoint(authenticated_client, auth_headers):
+
+@pytest.fixture(autouse=True)
+def admin_key(monkeypatch):
+    monkeypatch.setenv("ADMIN_API_KEY", ADMIN_KEY)
+
+
+def test_feedback_summary_endpoint(authenticated_client):
     """Test /admin/feedback/summary returns stats."""
-    response = authenticated_client.get("/admin/feedback/summary", headers=auth_headers)
+    response = authenticated_client.get("/admin/feedback/summary", headers=ADMIN_HEADERS)
 
     assert response.status_code == 200
     data = response.json()
@@ -17,9 +27,9 @@ def test_feedback_summary_endpoint(authenticated_client, auth_headers):
     assert isinstance(data["models"], list)
 
 
-def test_learning_status_endpoint(authenticated_client, auth_headers):
+def test_learning_status_endpoint(authenticated_client):
     """Test /admin/learning/status returns status."""
-    response = authenticated_client.get("/admin/learning/status", headers=auth_headers)
+    response = authenticated_client.get("/admin/learning/status", headers=ADMIN_HEADERS)
 
     assert response.status_code == 200
     data = response.json()
@@ -31,9 +41,11 @@ def test_learning_status_endpoint(authenticated_client, auth_headers):
     assert "low" in data["confidence_distribution"]
 
 
-def test_retrain_dry_run_endpoint(authenticated_client, auth_headers):
+def test_retrain_dry_run_endpoint(authenticated_client):
     """Test /admin/learning/retrain?dry_run=true."""
-    response = authenticated_client.post("/admin/learning/retrain?dry_run=true", headers=auth_headers)
+    response = authenticated_client.post(
+        "/admin/learning/retrain?dry_run=true", headers=ADMIN_HEADERS
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -43,9 +55,11 @@ def test_retrain_dry_run_endpoint(authenticated_client, auth_headers):
     assert data["dry_run"] is True
 
 
-def test_retrain_actual_endpoint(authenticated_client, auth_headers):
+def test_retrain_actual_endpoint(authenticated_client):
     """Test /admin/learning/retrain without dry_run."""
-    response = authenticated_client.post("/admin/learning/retrain?dry_run=false", headers=auth_headers)
+    response = authenticated_client.post(
+        "/admin/learning/retrain?dry_run=false", headers=ADMIN_HEADERS
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -54,9 +68,11 @@ def test_retrain_actual_endpoint(authenticated_client, auth_headers):
     assert data["dry_run"] is False
 
 
-def test_performance_trends_endpoint(authenticated_client, auth_headers):
+def test_performance_trends_endpoint(authenticated_client):
     """Test /admin/performance/trends."""
-    response = authenticated_client.get("/admin/performance/trends?pattern=code", headers=auth_headers)
+    response = authenticated_client.get(
+        "/admin/performance/trends?pattern=code", headers=ADMIN_HEADERS
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -66,14 +82,17 @@ def test_performance_trends_endpoint(authenticated_client, auth_headers):
     assert isinstance(data["trends"], list)
 
 
-def test_admin_endpoints_require_auth():
-    """Test that admin endpoints allow optional authentication (public access for monitoring)."""
+def test_admin_endpoints_require_the_admin_key(auth_headers):
+    """No key, a wrong key, or an ordinary user token never reaches the admin handlers."""
     client = TestClient(app)
-
-    # Admin endpoints now use OptionalAuth() - they allow unauthenticated access
-    # This enables integration tests and public monitoring without compromising security
-    # (RLS policies still enforce data isolation when user_id is provided)
-    assert client.get("/admin/feedback/summary").status_code == 200
-    assert client.get("/admin/learning/status").status_code == 200
-    assert client.post("/admin/learning/retrain").status_code == 200
-    assert client.get("/admin/performance/trends?pattern=code").status_code == 200
+    routes = [
+        ("get", "/admin/feedback/summary"),
+        ("get", "/admin/learning/status"),
+        ("post", "/admin/learning/retrain"),
+        ("get", "/admin/performance/trends?pattern=code"),
+    ]
+    for method, path in routes:
+        assert getattr(client, method)(path).status_code == 401, path
+        assert getattr(client, method)(path, headers=auth_headers).status_code == 401, path
+        wrong = {"X-Admin-Key": "wrong"}
+        assert getattr(client, method)(path, headers=wrong).status_code == 401, path

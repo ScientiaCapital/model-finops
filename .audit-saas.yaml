@@ -3,7 +3,7 @@
 business:
   name: 'AI Cost Optimizer'
   type: 'product' # product | service | hybrid
-  value_proposition: 'Reduce AI API costs by 60% with smart model routing - Gemini, Claude, OpenRouter'
+  value_proposition: 'Route LLM prompts across providers and record per-request token cost'
   target_customer: 'AI developers, startups with high LLM usage'
   price_point: '$49/month + usage savings'
 

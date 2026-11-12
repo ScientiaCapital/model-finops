@@ -3,9 +3,6 @@ Tests for Arbitrage API Endpoints.
 
 Tests REST API functionality for cost arbitrage and model switching.
 """
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 
 class TestAnalyzeEndpoint:
@@ -13,10 +10,13 @@ class TestAnalyzeEndpoint:
 
     def test_analyze_requires_auth(self, client):
         """Analyze endpoint requires authentication."""
-        response = client.post("/arbitrage/analyze", json={
-            "prompt": "Test prompt",
-            "current_model": "claude-3-opus",
-        })
+        response = client.post(
+            "/arbitrage/analyze",
+            json={
+                "prompt": "Test prompt",
+                "current_model": "claude-3-opus",
+            },
+        )
         assert response.status_code == 401
 
     def test_analyze_with_auth(self, authenticated_client, auth_headers):

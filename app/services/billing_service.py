@@ -26,17 +26,17 @@ Usage:
 """
 
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from app.billing.stripe_client import (
-    StripeClient,
-    StripeCustomer,
-    StripeSubscription,
-    StripeCheckoutSession,
     StripeBillingPortalSession,
+    StripeCheckoutSession,
+    StripeClient,
     StripeInvoice,
+    StripeSubscription,
 )
 from app.database.supabase_client import SupabaseClient
 
@@ -47,18 +47,21 @@ logger = logging.getLogger(__name__)
 # Pydantic Models
 # =============================================================================
 
+
 class CustomerInfo(BaseModel):
     """Customer information combining Supabase and Stripe data."""
+
     id: str
     user_id: str
     stripe_customer_id: str
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     created_at: datetime
 
 
 class SubscriptionInfo(BaseModel):
     """Subscription information for a user."""
+
     id: str
     user_id: str
     stripe_subscription_id: str
@@ -67,11 +70,12 @@ class SubscriptionInfo(BaseModel):
     current_period_start: datetime
     current_period_end: datetime
     cancel_at_period_end: bool = False
-    features: Dict[str, Any] = Field(default_factory=dict)
+    features: dict[str, Any] = Field(default_factory=dict)
 
 
 class UsageInfo(BaseModel):
     """Current period usage information."""
+
     user_id: str
     period_start: datetime
     period_end: datetime
@@ -80,7 +84,7 @@ class UsageInfo(BaseModel):
     tokens_remaining: int
     usage_percentage: float
     requests_count: int
-    requests_limit: Optional[int] = None
+    requests_limit: int | None = None
     estimated_cost_cents: int
     cache_hits: int
     cache_misses: int
@@ -88,6 +92,7 @@ class UsageInfo(BaseModel):
 
 class QuotaStatus(BaseModel):
     """Quota check result."""
+
     has_quota: bool
     tokens_used: int
     tokens_limit: int
@@ -95,36 +100,39 @@ class QuotaStatus(BaseModel):
     usage_percentage: float
     tier: str
     period_ends_at: datetime
-    upgrade_url: Optional[str] = None
+    upgrade_url: str | None = None
 
 
 class BillingSummary(BaseModel):
     """Comprehensive billing summary for dashboard display."""
-    customer_id: Optional[str] = None
-    stripe_customer_id: Optional[str] = None
-    subscription: Optional[SubscriptionInfo] = None
+
+    customer_id: str | None = None
+    stripe_customer_id: str | None = None
+    subscription: SubscriptionInfo | None = None
     usage: UsageInfo
     tier: str
-    features: Dict[str, Any] = Field(default_factory=dict)
-    next_invoice_date: Optional[datetime] = None
-    amount_due_cents: Optional[int] = None
+    features: dict[str, Any] = Field(default_factory=dict)
+    next_invoice_date: datetime | None = None
+    amount_due_cents: int | None = None
 
 
 class TierInfo(BaseModel):
     """Subscription tier information."""
+
     tier: str
     monthly_token_limit: int
-    monthly_request_limit: Optional[int] = None
+    monthly_request_limit: int | None = None
     rate_limit_per_minute: int
     rate_limit_per_day: int
-    features: Dict[str, Any] = Field(default_factory=dict)
-    price_usd_monthly: Optional[float] = None
-    stripe_price_id: Optional[str] = None
+    features: dict[str, Any] = Field(default_factory=dict)
+    price_usd_monthly: float | None = None
+    stripe_price_id: str | None = None
 
 
 # =============================================================================
 # Billing Service
 # =============================================================================
+
 
 class BillingService:
     """
@@ -137,7 +145,7 @@ class BillingService:
         self,
         stripe_client: StripeClient,
         supabase_client: SupabaseClient,
-    ):
+    ) -> None:
         """
         Initialize billing service.
 
@@ -157,7 +165,7 @@ class BillingService:
         self,
         user_id: str,
         email: str,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> CustomerInfo:
         """
         Get or create a customer record linked to Supabase user.
@@ -217,7 +225,7 @@ class BillingService:
             created_at=datetime.fromisoformat(result[0]["created_at"].replace("Z", "+00:00")),
         )
 
-    async def get_customer(self, user_id: str) -> Optional[CustomerInfo]:
+    async def get_customer(self, user_id: str) -> CustomerInfo | None:
         """
         Get customer record by user ID.
 
@@ -256,7 +264,7 @@ class BillingService:
         price_id: str,
         success_url: str,
         cancel_url: str,
-        trial_days: Optional[int] = None,
+        trial_days: int | None = None,
     ) -> StripeCheckoutSession:
         """
         Create a Stripe Checkout session for subscription purchase.
@@ -322,7 +330,7 @@ class BillingService:
     # Subscription Management
     # =========================================================================
 
-    async def get_subscription(self, user_id: str) -> Optional[SubscriptionInfo]:
+    async def get_subscription(self, user_id: str) -> SubscriptionInfo | None:
         """
         Get user's active subscription.
 
@@ -356,8 +364,12 @@ class BillingService:
             stripe_subscription_id=sub["stripe_subscription_id"],
             tier=sub["tier"],
             status=sub["status"],
-            current_period_start=datetime.fromisoformat(sub["current_period_start"].replace("Z", "+00:00")),
-            current_period_end=datetime.fromisoformat(sub["current_period_end"].replace("Z", "+00:00")),
+            current_period_start=datetime.fromisoformat(
+                sub["current_period_start"].replace("Z", "+00:00")
+            ),
+            current_period_end=datetime.fromisoformat(
+                sub["current_period_end"].replace("Z", "+00:00")
+            ),
             cancel_at_period_end=sub.get("cancel_at_period_end", False),
             features=tier_info.features if tier_info else {},
         )
@@ -390,21 +402,25 @@ class BillingService:
             "tier": tier,
             "status": stripe_subscription.status,
             "current_period_start": datetime.fromtimestamp(
-                stripe_subscription.current_period_start, tz=timezone.utc
+                stripe_subscription.current_period_start, tz=UTC
             ).isoformat(),
             "current_period_end": datetime.fromtimestamp(
-                stripe_subscription.current_period_end, tz=timezone.utc
+                stripe_subscription.current_period_end, tz=UTC
             ).isoformat(),
             "cancel_at_period_end": stripe_subscription.cancel_at_period_end,
             "canceled_at": datetime.fromtimestamp(
-                stripe_subscription.canceled_at, tz=timezone.utc
-            ).isoformat() if stripe_subscription.canceled_at else None,
+                stripe_subscription.canceled_at, tz=UTC
+            ).isoformat()
+            if stripe_subscription.canceled_at
+            else None,
             "trial_start": datetime.fromtimestamp(
-                stripe_subscription.trial_start, tz=timezone.utc
-            ).isoformat() if stripe_subscription.trial_start else None,
-            "trial_end": datetime.fromtimestamp(
-                stripe_subscription.trial_end, tz=timezone.utc
-            ).isoformat() if stripe_subscription.trial_end else None,
+                stripe_subscription.trial_start, tz=UTC
+            ).isoformat()
+            if stripe_subscription.trial_start
+            else None,
+            "trial_end": datetime.fromtimestamp(stripe_subscription.trial_end, tz=UTC).isoformat()
+            if stripe_subscription.trial_end
+            else None,
         }
 
         # Check if subscription exists
@@ -438,10 +454,10 @@ class BillingService:
             tier=tier,
             status=stripe_subscription.status,
             current_period_start=datetime.fromtimestamp(
-                stripe_subscription.current_period_start, tz=timezone.utc
+                stripe_subscription.current_period_start, tz=UTC
             ),
             current_period_end=datetime.fromtimestamp(
-                stripe_subscription.current_period_end, tz=timezone.utc
+                stripe_subscription.current_period_end, tz=UTC
             ),
             cancel_at_period_end=stripe_subscription.cancel_at_period_end,
             features=tier_info.features if tier_info else {},
@@ -484,10 +500,14 @@ class BillingService:
 
         if not result.data:
             # Return default usage for new users
-            period_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            period_end = (period_start.replace(month=period_start.month + 1)
-                         if period_start.month < 12
-                         else period_start.replace(year=period_start.year + 1, month=1))
+            period_start = datetime.now(UTC).replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            period_end = (
+                period_start.replace(month=period_start.month + 1)
+                if period_start.month < 12
+                else period_start.replace(year=period_start.year + 1, month=1)
+            )
 
             return UsageInfo(
                 user_id=user_id,
@@ -515,7 +535,9 @@ class BillingService:
             tokens_used=tokens_used,
             tokens_limit=tokens_limit,
             tokens_remaining=max(0, tokens_limit - tokens_used),
-            usage_percentage=round((tokens_used / tokens_limit) * 100, 2) if tokens_limit > 0 else 0,
+            usage_percentage=round((tokens_used / tokens_limit) * 100, 2)
+            if tokens_limit > 0
+            else 0,
             requests_count=usage.get("requests_count", 0),
             requests_limit=usage.get("requests_limit"),
             estimated_cost_cents=usage.get("estimated_cost_cents", 0),
@@ -528,8 +550,8 @@ class BillingService:
         user_id: str,
         tokens: int,
         cost_cents: int = 0,
-        provider: Optional[str] = None,
-        model: Optional[str] = None,
+        provider: str | None = None,
+        model: str | None = None,
         is_cache_hit: bool = False,
     ) -> QuotaStatus:
         """
@@ -576,7 +598,7 @@ class BillingService:
                 (data.get("tokens_used", 0) / data.get("tokens_limit", 10000)) * 100, 2
             ),
             tier=subscription.tier if subscription else "free",
-            period_ends_at=subscription.current_period_end if subscription else datetime.now(timezone.utc),
+            period_ends_at=subscription.current_period_end if subscription else datetime.now(UTC),
         )
 
     async def check_quota(self, user_id: str) -> QuotaStatus:
@@ -604,7 +626,7 @@ class BillingService:
                 tokens_remaining=10000,
                 usage_percentage=0.0,
                 tier="free",
-                period_ends_at=datetime.now(timezone.utc),
+                period_ends_at=datetime.now(UTC),
             )
 
         data = result.data[0] if isinstance(result.data, list) else result.data
@@ -616,9 +638,9 @@ class BillingService:
             tokens_remaining=data.get("tokens_remaining", 10000),
             usage_percentage=data.get("usage_percentage", 0.0),
             tier=data.get("tier", "free"),
-            period_ends_at=datetime.fromisoformat(
-                data["period_ends_at"].replace("Z", "+00:00")
-            ) if data.get("period_ends_at") else datetime.now(timezone.utc),
+            period_ends_at=datetime.fromisoformat(data["period_ends_at"].replace("Z", "+00:00"))
+            if data.get("period_ends_at")
+            else datetime.now(UTC),
         )
 
         # Add upgrade URL if quota exceeded
@@ -631,7 +653,7 @@ class BillingService:
     # Tier Information
     # =========================================================================
 
-    async def get_tier_info(self, tier: str) -> Optional[TierInfo]:
+    async def get_tier_info(self, tier: str) -> TierInfo | None:
         """
         Get tier limits and features.
 
@@ -658,11 +680,13 @@ class BillingService:
             rate_limit_per_minute=data["rate_limit_per_minute"],
             rate_limit_per_day=data["rate_limit_per_day"],
             features=data.get("features", {}),
-            price_usd_monthly=float(data["price_usd_monthly"]) if data.get("price_usd_monthly") else None,
+            price_usd_monthly=float(data["price_usd_monthly"])
+            if data.get("price_usd_monthly")
+            else None,
             stripe_price_id=data.get("stripe_price_id"),
         )
 
-    async def list_tiers(self) -> List[TierInfo]:
+    async def list_tiers(self) -> list[TierInfo]:
         """
         List all available subscription tiers.
 
@@ -682,7 +706,9 @@ class BillingService:
                 rate_limit_per_minute=data["rate_limit_per_minute"],
                 rate_limit_per_day=data["rate_limit_per_day"],
                 features=data.get("features", {}),
-                price_usd_monthly=float(data["price_usd_monthly"]) if data.get("price_usd_monthly") else None,
+                price_usd_monthly=float(data["price_usd_monthly"])
+                if data.get("price_usd_monthly")
+                else None,
                 stripe_price_id=data.get("stripe_price_id"),
             )
             for data in result
@@ -740,7 +766,7 @@ class BillingService:
         self,
         user_id: str,
         limit: int = 10,
-    ) -> List[StripeInvoice]:
+    ) -> list[StripeInvoice]:
         """
         List invoices for a user.
 

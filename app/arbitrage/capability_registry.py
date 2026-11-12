@@ -4,9 +4,8 @@ Capability Registry for Model Arbitrage.
 Maps AI models to their capabilities, pricing, and specifications.
 Enables finding cheaper alternatives with equivalent capabilities.
 """
-from typing import Dict, List, Optional
-from app.models.arbitrage import ModelProfile, ModelCapability, CapabilityLevel
 
+from app.models.arbitrage import CapabilityLevel, ModelCapability, ModelProfile
 
 # Capability level ordering for comparisons
 CAPABILITY_LEVEL_ORDER = {
@@ -25,12 +24,12 @@ class CapabilityRegistry:
     and discover cheaper alternatives.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize registry with predefined model profiles."""
-        self._models: Dict[str, ModelProfile] = {}
+        self._models: dict[str, ModelProfile] = {}
         self._load_default_models()
 
-    def _load_default_models(self):
+    def _load_default_models(self) -> None:
         """Load predefined model profiles with current pricing."""
         models = [
             # Gemini Models
@@ -70,7 +69,6 @@ class CapabilityRegistry:
                 context_window=2_000_000,
                 avg_latency_ms=600,
             ),
-
             # Anthropic Models
             ModelProfile(
                 provider="anthropic",
@@ -109,7 +107,6 @@ class CapabilityRegistry:
                 context_window=200_000,
                 avg_latency_ms=300,
             ),
-
             # Groq Models (fast inference)
             ModelProfile(
                 provider="groq",
@@ -158,7 +155,6 @@ class CapabilityRegistry:
                 context_window=32_768,
                 avg_latency_ms=120,
             ),
-
             # Cerebras Models (ultra-fast)
             ModelProfile(
                 provider="cerebras",
@@ -188,7 +184,6 @@ class CapabilityRegistry:
                 context_window=128_000,
                 avg_latency_ms=50,
             ),
-
             # OpenRouter Models
             ModelProfile(
                 provider="openrouter",
@@ -219,7 +214,6 @@ class CapabilityRegistry:
                 context_window=32_768,
                 avg_latency_ms=200,
             ),
-
             # DeepSeek Models
             ModelProfile(
                 provider="deepseek",
@@ -254,19 +248,17 @@ class CapabilityRegistry:
         for model in models:
             self._models[model.model_id] = model
 
-    def get_all_models(self) -> List[ModelProfile]:
+    def get_all_models(self) -> list[ModelProfile]:
         """Get all registered model profiles."""
         return list(self._models.values())
 
-    def get_model_profile(self, model_id: str) -> Optional[ModelProfile]:
+    def get_model_profile(self, model_id: str) -> ModelProfile | None:
         """Get profile for a specific model by ID."""
         return self._models.get(model_id)
 
     def get_models_with_capability(
-        self,
-        capability: ModelCapability,
-        min_level: Optional[CapabilityLevel] = None
-    ) -> List[ModelProfile]:
+        self, capability: ModelCapability, min_level: CapabilityLevel | None = None
+    ) -> list[ModelProfile]:
         """
         Get models that have a specific capability.
 
@@ -281,22 +273,23 @@ class CapabilityRegistry:
         for model in self._models.values():
             if capability in model.capabilities:
                 model_level = model.capabilities[capability]
-                if min_level is None:
-                    result.append(model)
-                elif CAPABILITY_LEVEL_ORDER[model_level] >= CAPABILITY_LEVEL_ORDER[min_level]:
+                if (
+                    min_level is None
+                    or CAPABILITY_LEVEL_ORDER[model_level] >= CAPABILITY_LEVEL_ORDER[min_level]
+                ):
                     result.append(model)
         return result
 
-    def get_models_by_provider(self, provider: str) -> List[ModelProfile]:
+    def get_models_by_provider(self, provider: str) -> list[ModelProfile]:
         """Get all models from a specific provider."""
         return [m for m in self._models.values() if m.provider == provider]
 
     def get_cheaper_alternatives(
         self,
         model_id: str,
-        required_capabilities: List[ModelCapability],
-        min_level: Optional[CapabilityLevel] = None
-    ) -> List[ModelProfile]:
+        required_capabilities: list[ModelCapability],
+        min_level: CapabilityLevel | None = None,
+    ) -> list[ModelProfile]:
         """
         Find cheaper alternatives to a model with required capabilities.
 
@@ -328,7 +321,11 @@ class CapabilityRegistry:
                 if cap not in model.capabilities:
                     has_all = False
                     break
-                if min_level and CAPABILITY_LEVEL_ORDER[model.capabilities[cap]] < CAPABILITY_LEVEL_ORDER[min_level]:
+                if (
+                    min_level
+                    and CAPABILITY_LEVEL_ORDER[model.capabilities[cap]]
+                    < CAPABILITY_LEVEL_ORDER[min_level]
+                ):
                     has_all = False
                     break
 
@@ -340,10 +337,8 @@ class CapabilityRegistry:
         return alternatives
 
     def get_cheapest_model(
-        self,
-        capability: ModelCapability,
-        min_level: Optional[CapabilityLevel] = None
-    ) -> Optional[ModelProfile]:
+        self, capability: ModelCapability, min_level: CapabilityLevel | None = None
+    ) -> ModelProfile | None:
         """
         Find the cheapest model with a specific capability.
 

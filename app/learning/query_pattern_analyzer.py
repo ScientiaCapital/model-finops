@@ -1,7 +1,6 @@
 """Intelligent routing based on historical performance data."""
-import re
+
 import sqlite3
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
 
@@ -15,10 +14,10 @@ class QueryPatternAnalyzer:
         "creative": ["write", "create", "generate", "story", "poem", "email", "draft"],
         "explanation": ["explain", "what is", "how does", "why", "describe", "teach"],
         "factual": ["who", "when", "where", "list", "define", "facts", "history"],
-        "reasoning": ["solve", "calculate", "prove", "deduce", "logic", "math", "problem"]
+        "reasoning": ["solve", "calculate", "prove", "deduce", "logic", "math", "problem"],
     }
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str) -> None:
         """Initialize analyzer with database connection.
 
         Args:
@@ -57,11 +56,8 @@ class QueryPatternAnalyzer:
         return "general"
 
     def get_provider_performance(
-        self,
-        complexity: str,
-        pattern: Optional[str] = None,
-        days: int = 30
-    ) -> List[Dict]:
+        self, complexity: str, pattern: str | None = None, days: int = 30
+    ) -> list[dict]:
         """Get historical provider performance for a complexity level.
 
         Args:
@@ -95,7 +91,7 @@ class QueryPatternAnalyzer:
                 AND created_at >= ?
         """
 
-        params: List[object] = [complexity, date_threshold]
+        params: list[object] = [complexity, date_threshold]
 
         # Apply keyword-based filter on prompt_normalized when a pattern is provided
         if pattern and pattern in self.QUERY_PATTERNS:
@@ -124,7 +120,7 @@ class QueryPatternAnalyzer:
                 "total_upvotes": row["total_upvotes"],
                 "total_downvotes": row["total_downvotes"],
                 "validity_rate": round(row["validity_rate"], 3),
-                "confidence": self._calculate_confidence(row["request_count"], row["rated_count"])
+                "confidence": self._calculate_confidence(row["request_count"], row["rated_count"]),
             }
 
             # Calculate composite score
@@ -154,7 +150,7 @@ class QueryPatternAnalyzer:
         else:
             return "low"
 
-    def _calculate_composite_score(self, performance: Dict) -> float:
+    def _calculate_composite_score(self, performance: dict) -> float:
         """Calculate composite score for provider ranking.
 
         Balances quality, cost, and reliability.
@@ -166,34 +162,28 @@ class QueryPatternAnalyzer:
             Composite score (higher is better)
         """
         # Default weights
-        QUALITY_WEIGHT = 0.5
-        COST_WEIGHT = 0.3
-        VALIDITY_WEIGHT = 0.2
+        quality_weight = 0.5
+        cost_weight = 0.3
+        validity_weight = 0.2
 
         # Quality score (normalize from [-1, 1] to [0, 1])
         quality = performance["avg_quality"]
-        if quality is None:
-            quality_score = 0.5  # Neutral if no ratings
-        else:
-            quality_score = (quality + 1) / 2  # Map [-1, 1] to [0, 1]
+        # Neutral 0.5 with no ratings; otherwise map [-1, 1] to [0, 1]
+        quality_score = 0.5 if quality is None else (quality + 1) / 2
 
         # Cost score (inverse - lower cost is better)
         # Normalize assuming typical range $0.0001 to $0.01 per request
         cost = performance["avg_cost"]
-        if cost <= 0:
-            cost_score = 1.0
-        else:
-            # Lower cost = higher score
-            cost_score = max(0, 1 - (cost / 0.01))
+        cost_score = 1.0 if cost <= 0 else max(0, 1 - (cost / 0.01))  # lower cost, higher score
 
         # Validity score (already 0-1)
         validity_score = performance["validity_rate"]
 
         # Calculate weighted score
         composite = (
-            quality_score * QUALITY_WEIGHT +
-            cost_score * COST_WEIGHT +
-            validity_score * VALIDITY_WEIGHT
+            quality_score * quality_weight
+            + cost_score * cost_weight
+            + validity_score * validity_weight
         )
 
         # Apply confidence penalty for low data
@@ -206,11 +196,8 @@ class QueryPatternAnalyzer:
         return round(composite, 3)
 
     def recommend_provider(
-        self,
-        prompt: str,
-        complexity: str,
-        available_providers: List[str]
-    ) -> Optional[Dict]:
+        self, prompt: str, complexity: str, available_providers: list[str]
+    ) -> dict | None:
         """Recommend a provider based on historical performance.
 
         Args:
@@ -229,10 +216,7 @@ class QueryPatternAnalyzer:
         performances = self.get_provider_performance(complexity, pattern)
 
         # Filter to available providers
-        available_performances = [
-            p for p in performances
-            if p["provider"] in available_providers
-        ]
+        available_performances = [p for p in performances if p["provider"] in available_providers]
 
         if not available_performances:
             return None
@@ -268,7 +252,7 @@ class QueryPatternAnalyzer:
             "avg_quality": top["avg_quality"],
             "pattern": pattern,
             "reasoning": " | ".join(reasoning_parts),
-            "alternatives": available_performances[1:3] if len(available_performances) > 1 else []
+            "alternatives": available_performances[1:3] if len(available_performances) > 1 else [],
         }
 
     def _quality_label(self, quality_score: float) -> str:
@@ -289,7 +273,7 @@ class QueryPatternAnalyzer:
         else:
             return "Poor"
 
-    def get_insights(self) -> Dict:
+    def get_insights(self) -> dict:
         """Get learning insights and statistics.
 
         Returns:
@@ -349,10 +333,10 @@ class QueryPatternAnalyzer:
             "overall": overall,
             "by_provider": providers,
             "by_complexity": complexities,
-            "learning_active": overall["rated_responses"] >= 5
+            "learning_active": overall["rated_responses"] >= 5,
         }
 
-    def get_pattern_confidence_levels(self) -> Dict[str, Dict]:
+    def get_pattern_confidence_levels(self) -> dict[str, dict]:
         """Get confidence levels for each query pattern.
 
         Returns:
@@ -364,7 +348,7 @@ class QueryPatternAnalyzer:
         """
         results = {}
 
-        for pattern in self.QUERY_PATTERNS.keys():
+        for pattern in self.QUERY_PATTERNS:
             conn = self._get_connection()
             cursor = conn.cursor()
 
@@ -385,7 +369,7 @@ class QueryPatternAnalyzer:
                 GROUP BY model
                 ORDER BY quality DESC, count DESC
                 LIMIT 1
-            """
+            """  # nosec B608 # constant "LIKE ?" clauses; values are bound
 
             cursor.execute(query, params)
 
@@ -404,10 +388,10 @@ class QueryPatternAnalyzer:
                 confidence = "low"
 
             results[pattern] = {
-                'sample_count': count,
-                'confidence': confidence,
-                'best_model': best_model,
-                'samples_needed': max(0, 20 - count)
+                "sample_count": count,
+                "confidence": confidence,
+                "best_model": best_model,
+                "samples_needed": max(0, 20 - count),
             }
 
         return results

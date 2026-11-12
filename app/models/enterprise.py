@@ -10,41 +10,46 @@ Security Notes:
 - Personal email linking requires explicit GDPR consent
 """
 
-from pydantic import BaseModel, Field, field_validator, computed_field
-from typing import Optional, List, Dict, Any
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
+from typing import Any
 
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 # =============================================================================
 # Enums
 # =============================================================================
 
-class AccountType(str, Enum):
+
+class AccountType(StrEnum):
     """Account type for API key ownership."""
+
     WORK = "work"
     PERSONAL = "personal"
     DEFAULT = "default"
 
 
-class EmployeeRole(str, Enum):
+class EmployeeRole(StrEnum):
     """Employee role for access control."""
+
     EMPLOYEE = "employee"
     MANAGER = "manager"
     ADMIN = "admin"
     HR_ADMIN = "hr_admin"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Provider risk level for compliance."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     BLOCKED = "blocked"
 
 
-class AlertType(str, Enum):
+class AlertType(StrEnum):
     """Types of compliance alerts."""
+
     BLOCKED_PROVIDER = "blocked_provider"
     CHINESE_PROVIDER = "chinese_provider"
     UNAPPROVED_MODEL = "unapproved_model"
@@ -55,8 +60,9 @@ class AlertType(str, Enum):
     NEW_API_KEY = "new_api_key"
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Alert severity levels."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -66,17 +72,19 @@ class AlertSeverity(str, Enum):
 # Organization Models
 # =============================================================================
 
+
 class OrganizationCreate(BaseModel):
     """Request model for creating an organization."""
-    name: str = Field(..., min_length=1, max_length=200)
-    domain: Optional[str] = Field(None, max_length=200)
-    plan: str = Field(default="starter")
-    settings: Dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator('plan')
+    name: str = Field(..., min_length=1, max_length=200)
+    domain: str | None = Field(None, max_length=200)
+    plan: str = Field(default="starter")
+    settings: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("plan")
     @classmethod
-    def validate_plan(cls, v):
-        valid_plans = ['starter', 'growth', 'enterprise']
+    def validate_plan(cls, v: str) -> str:
+        valid_plans = ["starter", "growth", "enterprise"]
         if v not in valid_plans:
             raise ValueError(f"Plan must be one of: {valid_plans}")
         return v
@@ -84,52 +92,58 @@ class OrganizationCreate(BaseModel):
 
 class OrganizationResponse(BaseModel):
     """Response model for organization."""
+
     id: str
     name: str
-    domain: Optional[str] = None
+    domain: str | None = None
     plan: str
-    settings: Dict[str, Any] = Field(default_factory=dict)
+    settings: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class OrganizationUpdate(BaseModel):
     """Request model for updating organization settings."""
-    name: Optional[str] = None
-    settings: Optional[Dict[str, Any]] = None
-    plan: Optional[str] = None
+
+    name: str | None = None
+    settings: dict[str, Any] | None = None
+    plan: str | None = None
 
 
 # =============================================================================
 # Department Models
 # =============================================================================
 
+
 class DepartmentCreate(BaseModel):
     """Request model for creating a department."""
+
     name: str = Field(..., min_length=1, max_length=200)
-    budget_usd: Optional[float] = Field(None, ge=0)
-    manager_id: Optional[str] = None
+    budget_usd: float | None = Field(None, ge=0)
+    manager_id: str | None = None
 
 
 class DepartmentResponse(BaseModel):
     """Response model for department."""
+
     id: str
     org_id: str
     name: str
-    budget_usd: Optional[float] = None
-    manager_id: Optional[str] = None
+    budget_usd: float | None = None
+    manager_id: str | None = None
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class DepartmentSpendSummary(BaseModel):
     """Summary of department AI spend."""
+
     department_name: str
     total_spend_usd: float = 0.0
-    budget_usd: Optional[float] = None
+    budget_usd: float | None = None
     budget_percent: float = 0.0
     employee_count: int = 0
-    top_provider: Optional[str] = None
+    top_provider: str | None = None
 
     def is_over_threshold(self, threshold_percent: float) -> bool:
         """Check if spend is over a percentage threshold."""
@@ -140,18 +154,20 @@ class DepartmentSpendSummary(BaseModel):
 # Employee Models
 # =============================================================================
 
+
 class EmployeeCreate(BaseModel):
     """Request model for creating/inviting an employee."""
+
     email: str = Field(..., min_length=1, max_length=200)
-    name: Optional[str] = Field(None, max_length=200)
+    name: str | None = Field(None, max_length=200)
     role: str = Field(default="employee")
-    dept_id: Optional[str] = None
-    personal_email: Optional[str] = Field(None, max_length=200)
+    dept_id: str | None = None
+    personal_email: str | None = Field(None, max_length=200)
     personal_consent: bool = Field(default=False)
 
-    @field_validator('role')
+    @field_validator("role")
     @classmethod
-    def validate_role(cls, v):
+    def validate_role(cls, v: str) -> str:
         if isinstance(v, EmployeeRole):
             return v.value
         valid_roles = [r.value for r in EmployeeRole]
@@ -162,23 +178,25 @@ class EmployeeCreate(BaseModel):
 
 class EmployeeResponse(BaseModel):
     """Response model for employee."""
+
     id: str
     org_id: str
-    dept_id: Optional[str] = None
+    dept_id: str | None = None
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     role: str
-    personal_email: Optional[str] = None
-    personal_linked_at: Optional[datetime] = None
+    personal_email: str | None = None
+    personal_linked_at: datetime | None = None
     personal_consent: bool = False
     is_active: bool = True
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class EmployeeSpendSummary(BaseModel):
     """Summary of employee AI spend."""
-    employee_name: Optional[str] = None
+
+    employee_name: str | None = None
     email: str = ""
     work_spend_usd: float = 0.0
     personal_spend_usd: float = 0.0
@@ -192,12 +210,13 @@ class EmployeeSpendSummary(BaseModel):
 
 class LinkPersonalAccountRequest(BaseModel):
     """Request to link personal email for expense tracking."""
+
     personal_email: str = Field(..., min_length=1, max_length=200)
     consent_given: bool = Field(...)
 
-    @field_validator('consent_given')
+    @field_validator("consent_given")
     @classmethod
-    def validate_consent(cls, v):
+    def validate_consent(cls, v: bool) -> bool:
         if v is not True:
             raise ValueError("GDPR consent must be explicitly given (consent_given=true)")
         return v
@@ -207,17 +226,19 @@ class LinkPersonalAccountRequest(BaseModel):
 # Employee API Key Models
 # =============================================================================
 
+
 class EmployeeAPIKeyCreate(BaseModel):
     """Request model for adding an API key."""
+
     provider: str = Field(..., min_length=1, max_length=50)
     account_type: str = Field(...)
     api_key: str = Field(..., min_length=1)
-    data_residency: Optional[str] = None
-    compliance_notes: Optional[str] = None
+    data_residency: str | None = None
+    compliance_notes: str | None = None
 
-    @field_validator('account_type')
+    @field_validator("account_type")
     @classmethod
-    def validate_account_type(cls, v):
+    def validate_account_type(cls, v: str) -> str:
         if isinstance(v, AccountType):
             return v.value
         valid_types = [t.value for t in AccountType]
@@ -228,46 +249,50 @@ class EmployeeAPIKeyCreate(BaseModel):
 
 class EmployeeAPIKeyResponse(BaseModel):
     """Response model for API key (never exposes full key)."""
+
     id: str
     employee_id: str
     provider: str
     account_type: str
     key_last_four: str
     is_approved: bool = False
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    data_residency: Optional[str] = None
-    compliance_notes: Optional[str] = None
-    last_used_at: Optional[datetime] = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    data_residency: str | None = None
+    compliance_notes: str | None = None
+    last_used_at: datetime | None = None
     total_requests: int = 0
     total_spend_usd: float = 0.0
     is_active: bool = True
     created_at: datetime
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 class EmployeeAPIKeyApproval(BaseModel):
     """Request to approve/reject an API key."""
+
     is_approved: bool
-    compliance_notes: Optional[str] = None
+    compliance_notes: str | None = None
 
 
 # =============================================================================
 # AI Provider Models
 # =============================================================================
 
+
 class AIProviderInfo(BaseModel):
     """AI provider with compliance metadata."""
+
     id: str
     display_name: str = ""
-    headquarters_country: Optional[str] = None
-    data_residency: List[str] = Field(default_factory=list)
+    headquarters_country: str | None = None
+    data_residency: list[str] = Field(default_factory=list)
     soc2_certified: bool = False
     hipaa_compliant: bool = False
     gdpr_compliant: bool = False
     risk_level: str = "medium"
-    risk_notes: Optional[str] = None
-    pricing_url: Optional[str] = None
+    risk_notes: str | None = None
+    pricing_url: str | None = None
 
     @computed_field
     @property
@@ -288,27 +313,29 @@ class AIProviderInfo(BaseModel):
 # Compliance Alert Models
 # =============================================================================
 
+
 class ComplianceAlert(BaseModel):
     """Compliance alert for HR/Admin review."""
+
     org_id: str
-    employee_id: Optional[str] = None
-    dept_id: Optional[str] = None
+    employee_id: str | None = None
+    dept_id: str | None = None
     alert_type: str
     severity: str = "warning"
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: str | None = None
+    model: str | None = None
     title: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
     resolved: bool = False
-    resolved_by: Optional[str] = None
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = None
-    created_at: Optional[datetime] = None
+    resolved_by: str | None = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = None
+    created_at: datetime | None = None
 
-    @field_validator('alert_type')
+    @field_validator("alert_type")
     @classmethod
-    def validate_alert_type(cls, v):
+    def validate_alert_type(cls, v: str) -> str:
         if isinstance(v, AlertType):
             return v.value
         valid_types = [t.value for t in AlertType]
@@ -316,9 +343,9 @@ class ComplianceAlert(BaseModel):
             raise ValueError(f"Alert type must be one of: {valid_types}")
         return v
 
-    @field_validator('severity')
+    @field_validator("severity")
     @classmethod
-    def validate_severity(cls, v):
+    def validate_severity(cls, v: str) -> str:
         if isinstance(v, AlertSeverity):
             return v.value
         valid = [s.value for s in AlertSeverity]
@@ -329,49 +356,53 @@ class ComplianceAlert(BaseModel):
 
 class ComplianceAlertResponse(BaseModel):
     """Response model for compliance alert."""
+
     id: str
     org_id: str
-    employee_id: Optional[str] = None
-    dept_id: Optional[str] = None
+    employee_id: str | None = None
+    dept_id: str | None = None
     alert_type: str
     severity: str
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: str | None = None
+    model: str | None = None
     title: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
     resolved: bool = False
-    resolved_by: Optional[str] = None
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = None
+    resolved_by: str | None = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = None
     created_at: datetime
 
 
 class ResolveAlertRequest(BaseModel):
     """Request to resolve a compliance alert."""
-    resolution_notes: Optional[str] = Field(None, max_length=1000)
+
+    resolution_notes: str | None = Field(None, max_length=1000)
 
 
 # =============================================================================
 # Usage Log Models
 # =============================================================================
 
+
 class UsageLogEntry(BaseModel):
     """AI usage log entry."""
+
     employee_id: str
-    api_key_id: Optional[str] = None
+    api_key_id: str | None = None
     provider: str
-    model: Optional[str] = None
+    model: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
-    latency_ms: Optional[int] = None
-    account_type: Optional[str] = None
-    endpoint: Optional[str] = None
-    request_metadata: Dict[str, Any] = Field(default_factory=dict)
+    latency_ms: int | None = None
+    account_type: str | None = None
+    endpoint: str | None = None
+    request_metadata: dict[str, Any] = Field(default_factory=dict)
     flagged_for_review: bool = False
-    flag_reason: Optional[str] = None
-    created_at: Optional[datetime] = None
+    flag_reason: str | None = None
+    created_at: datetime | None = None
 
     @computed_field
     @property
@@ -382,19 +413,20 @@ class UsageLogEntry(BaseModel):
 
 class UsageLogResponse(BaseModel):
     """Response model for usage log entry."""
+
     id: str
     employee_id: str
-    api_key_id: Optional[str] = None
+    api_key_id: str | None = None
     provider: str
-    model: Optional[str] = None
+    model: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
     cost_usd: float = 0.0
-    latency_ms: Optional[int] = None
-    account_type: Optional[str] = None
+    latency_ms: int | None = None
+    account_type: str | None = None
     flagged_for_review: bool = False
-    flag_reason: Optional[str] = None
+    flag_reason: str | None = None
     created_at: datetime
 
 
@@ -402,8 +434,10 @@ class UsageLogResponse(BaseModel):
 # Analytics Models
 # =============================================================================
 
+
 class ProviderUsageSummary(BaseModel):
     """Usage summary by provider."""
+
     provider: str
     display_name: str = ""
     total_requests: int = 0
@@ -415,8 +449,9 @@ class ProviderUsageSummary(BaseModel):
 
 class ComplianceSummary(BaseModel):
     """Organization-wide compliance summary."""
+
     total_alerts: int = 0
     critical_unresolved: int = 0
     chinese_usage_count: int = 0
     budget_warnings: int = 0
-    last_updated: Optional[datetime] = None
+    last_updated: datetime | None = None

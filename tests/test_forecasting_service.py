@@ -3,18 +3,18 @@ Tests for ForecastingService business logic.
 
 Tests service layer functionality for cost forecasting and anomaly detection.
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
 
-from app.services.forecasting_service import ForecastingService
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from app.models.forecasting import (
-    ForecastRequest,
-    ForecastResponse,
     AnomalyDetectionRequest,
     AnomalySeverity,
-    ForecastMethod,
+    ForecastRequest,
+    ForecastResponse,
 )
+from app.services.forecasting_service import ForecastingService
 
 
 class TestForecastingServiceInit:
@@ -195,8 +195,8 @@ class TestDetectAnomalies:
         response = await service.detect_anomalies("user-123", request)
 
         # Service returns mock data when no Supabase
-        assert hasattr(response, 'anomalies')
-        assert hasattr(response, 'total_count')
+        assert hasattr(response, "anomalies")
+        assert hasattr(response, "total_count")
 
 
 class TestAcknowledgeAnomaly:
@@ -234,8 +234,8 @@ class TestForecastSummary:
         response = await service.get_forecast_summary("user-123", 1000.0)
 
         # ForecastSummaryResponse has: aggregate, by_provider, budget_projection, recent_anomalies
-        assert hasattr(response, 'aggregate')
-        assert hasattr(response, 'budget_projection')
+        assert hasattr(response, "aggregate")
+        assert hasattr(response, "budget_projection")
         # Aggregate forecast should be present
         assert response.aggregate is not None
 
@@ -246,7 +246,7 @@ class TestForecastSummary:
         response = await service.get_forecast_summary("user-123", 1000.0)
 
         # Without Supabase, mock providers are returned: gemini, claude, openrouter
-        assert hasattr(response, 'by_provider')
+        assert hasattr(response, "by_provider")
         assert isinstance(response.by_provider, list)
         assert len(response.by_provider) == 3  # Mock returns 3 providers
 

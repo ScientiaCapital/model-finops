@@ -2,8 +2,8 @@
 Test suite for arbitrage Pydantic models.
 TDD: Tests written first, implementation follows.
 """
+
 import pytest
-from datetime import datetime
 from pydantic import ValidationError
 
 
@@ -15,9 +15,18 @@ class TestModelCapability:
         from app.models.arbitrage import ModelCapability
 
         expected = [
-            "code_gen", "code_review", "reasoning", "math",
-            "creative", "analysis", "translation", "summarization",
-            "vision", "audio", "function_calling", "json_mode"
+            "code_gen",
+            "code_review",
+            "reasoning",
+            "math",
+            "creative",
+            "analysis",
+            "translation",
+            "summarization",
+            "vision",
+            "audio",
+            "function_calling",
+            "json_mode",
         ]
         for cap in expected:
             assert hasattr(ModelCapability, cap.upper()), f"Missing capability: {cap}"
@@ -41,7 +50,7 @@ class TestCapabilityLevel:
             CapabilityLevel.BASIC,
             CapabilityLevel.INTERMEDIATE,
             CapabilityLevel.ADVANCED,
-            CapabilityLevel.EXPERT
+            CapabilityLevel.EXPERT,
         ]
         # Just verify all exist
         assert len(levels) == 4
@@ -59,7 +68,7 @@ class TestModelProfile:
 
     def test_valid_profile_creation(self):
         """Should create valid profile with all required fields."""
-        from app.models.arbitrage import ModelProfile, ModelCapability, CapabilityLevel
+        from app.models.arbitrage import CapabilityLevel, ModelCapability, ModelProfile
 
         profile = ModelProfile(
             provider="gemini",
@@ -71,7 +80,7 @@ class TestModelProfile:
             input_price_per_million=0.075,
             output_price_per_million=0.30,
             context_window=1_000_000,
-            avg_latency_ms=500
+            avg_latency_ms=500,
         )
 
         assert profile.provider == "gemini"
@@ -80,7 +89,7 @@ class TestModelProfile:
 
     def test_profile_pricing_validation(self):
         """Prices must be non-negative."""
-        from app.models.arbitrage import ModelProfile, ModelCapability, CapabilityLevel
+        from app.models.arbitrage import ModelProfile
 
         with pytest.raises(ValidationError):
             ModelProfile(
@@ -89,7 +98,7 @@ class TestModelProfile:
                 capabilities={},
                 input_price_per_million=-0.10,  # Invalid
                 output_price_per_million=0.10,
-                context_window=1000
+                context_window=1000,
             )
 
     def test_profile_context_window_validation(self):
@@ -103,7 +112,7 @@ class TestModelProfile:
                 capabilities={},
                 input_price_per_million=0.10,
                 output_price_per_million=0.10,
-                context_window=0  # Invalid
+                context_window=0,  # Invalid
             )
 
     def test_profile_cost_calculation(self):
@@ -116,7 +125,7 @@ class TestModelProfile:
             capabilities={},
             input_price_per_million=1.0,
             output_price_per_million=2.0,
-            context_window=10000
+            context_window=10000,
         )
 
         cost = profile.calculate_cost(input_tokens=1000, output_tokens=500)
@@ -134,7 +143,7 @@ class TestEquivalencyGroup:
         group = EquivalencyGroup(
             capability=ModelCapability.CODE_GEN,
             quality_tier="intermediate",
-            models=["gemini-1.5-flash", "claude-3-haiku", "deepseek-chat"]
+            models=["gemini-1.5-flash", "claude-3-haiku", "deepseek-chat"],
         )
 
         assert group.capability == ModelCapability.CODE_GEN
@@ -148,7 +157,7 @@ class TestEquivalencyGroup:
             EquivalencyGroup(
                 capability=ModelCapability.CODE_GEN,
                 quality_tier="basic",
-                models=[]  # Invalid - empty list
+                models=[],  # Invalid - empty list
             )
 
 
@@ -168,7 +177,7 @@ class TestArbitrageOpportunity:
             alternative_cost=0.001,
             savings_percent=93.3,
             quality_score=0.92,
-            required_capabilities=[ModelCapability.CODE_GEN]
+            required_capabilities=[ModelCapability.CODE_GEN],
         )
 
         assert opportunity.savings_percent == 93.3
@@ -187,7 +196,7 @@ class TestArbitrageOpportunity:
             alternative_cost=0.3,
             savings_percent=70.0,
             quality_score=0.85,
-            required_capabilities=[ModelCapability.REASONING]
+            required_capabilities=[ModelCapability.REASONING],
         )
 
         # Verify calculated savings matches
@@ -208,7 +217,7 @@ class TestArbitrageOpportunity:
                 alternative_cost=0.5,
                 savings_percent=50.0,
                 quality_score=1.5,  # Invalid - > 1
-                required_capabilities=[]
+                required_capabilities=[],
             )
 
     def test_opportunity_savings_bounds(self):
@@ -225,7 +234,7 @@ class TestArbitrageOpportunity:
                 alternative_cost=0.5,
                 savings_percent=150.0,  # Invalid - > 100
                 quality_score=0.9,
-                required_capabilities=[]
+                required_capabilities=[],
             )
 
 
@@ -234,7 +243,11 @@ class TestArbitrageRecommendation:
 
     def test_valid_recommendation(self):
         """Should create valid recommendation with opportunities."""
-        from app.models.arbitrage import ArbitrageRecommendation, ArbitrageOpportunity, ModelCapability
+        from app.models.arbitrage import (
+            ArbitrageOpportunity,
+            ArbitrageRecommendation,
+            ModelCapability,
+        )
 
         opp = ArbitrageOpportunity(
             current_model="claude-sonnet",
@@ -245,7 +258,7 @@ class TestArbitrageRecommendation:
             alternative_cost=0.002,
             savings_percent=80.0,
             quality_score=0.88,
-            required_capabilities=[ModelCapability.REASONING]
+            required_capabilities=[ModelCapability.REASONING],
         )
 
         recommendation = ArbitrageRecommendation(
@@ -254,7 +267,9 @@ class TestArbitrageRecommendation:
             opportunities=[opp],
             best_opportunity=opp,
             total_savings_potential=80.0,
-            recommendation_reasoning="Llama-70b provides equivalent reasoning capability at 80% lower cost."
+            recommendation_reasoning=(
+                "Llama-70b provides equivalent reasoning capability at 80% lower cost."
+            ),
         )
 
         assert len(recommendation.opportunities) == 1
@@ -270,7 +285,7 @@ class TestArbitrageRecommendation:
             opportunities=[],
             best_opportunity=None,
             total_savings_potential=0.0,
-            recommendation_reasoning="Current model is already optimal for this task type."
+            recommendation_reasoning="Current model is already optimal for this task type.",
         )
 
         assert len(recommendation.opportunities) == 0
@@ -290,7 +305,7 @@ class TestArbitrageAnalysisRequest:
             current_model="claude-3-5-sonnet",
             input_tokens=500,
             output_tokens=500,
-            min_quality_threshold=0.85
+            min_quality_threshold=0.85,
         )
 
         assert request.prompt is not None
@@ -300,10 +315,7 @@ class TestArbitrageAnalysisRequest:
         """Should have sensible default quality threshold."""
         from app.models.arbitrage import ArbitrageAnalysisRequest
 
-        request = ArbitrageAnalysisRequest(
-            prompt="Hello world",
-            current_model="gemini-1.5-flash"
-        )
+        request = ArbitrageAnalysisRequest(prompt="Hello world", current_model="gemini-1.5-flash")
 
         # Default should be around 0.85
         assert 0.80 <= request.min_quality_threshold <= 0.90
@@ -334,7 +346,7 @@ class TestSavingsReport:
             potential_savings=105.0,
             savings_percentage=70.0,
             opportunities_detected=250,
-            opportunities_applied=100
+            opportunities_applied=100,
         )
 
         assert report.savings_percentage == 70.0
@@ -352,7 +364,7 @@ class TestSavingsReport:
             potential_savings=50.0,
             savings_percentage=50.0,
             opportunities_detected=200,
-            opportunities_applied=150
+            opportunities_applied=150,
         )
 
         # 150/200 = 75% application rate
@@ -375,7 +387,7 @@ class TestModelAlternative:
             quality_score=0.88,
             supported_capabilities=["code_gen", "reasoning", "analysis"],
             context_window=32000,
-            avg_latency_ms=150
+            avg_latency_ms=150,
         )
 
         assert alt.savings_vs_current == 70.0

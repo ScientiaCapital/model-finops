@@ -1,0 +1,6 @@
+# gitleaks: every default rule, no exemptions. Reviewed history false positives
+# are listed by fingerprint in .gitleaksignore.
+title = "model-finops"
+
+[extend]
+useDefault = true

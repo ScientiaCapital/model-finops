@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class RedisCacheError(Exception):
     """Redis cache error (deprecated)."""
+
     pass
 
 
@@ -23,7 +24,14 @@ class RedisCache:
     while the codebase is being migrated to Supabase semantic caching.
     """
 
-    def __init__(self, host='localhost', port=6379, db=0, max_connections=50, socket_timeout=5):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 6379,
+        db: int = 0,
+        max_connections: int = 50,
+        socket_timeout: float = 5,
+    ) -> None:
         """Initialize stub Redis cache."""
         logger.warning("RedisCache is deprecated. Use Supabase semantic caching instead.")
         self._available = False
@@ -32,15 +40,15 @@ class RedisCache:
         """Check if Redis is available (always returns False)."""
         return False
 
-    def get(self, key: str):
+    def get(self, key: str) -> None:
         """Get value from cache (always returns None)."""
         return None
 
-    def set(self, key: str, value, ttl: int = 300):
+    def set(self, key: str, value: object, ttl: int = 300) -> None:
         """Set value in cache (no-op)."""
         pass
 
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         """Delete key from cache (no-op)."""
         pass
 
@@ -60,4 +68,4 @@ def create_redis_cache() -> RedisCache:
     return RedisCache()
 
 
-__all__ = ['RedisCache', 'RedisCacheError', 'create_redis_cache']
+__all__ = ["RedisCache", "RedisCacheError", "create_redis_cache"]

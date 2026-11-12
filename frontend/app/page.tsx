@@ -29,11 +29,11 @@ export default function LandingPage() {
         <section className="py-20 md:py-32">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Cut Your AI Costs by <span className="text-primary">60%+</span>
+              Track and Route Your <span className="text-primary">LLM Spend</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Intelligent routing and semantic caching for your LLM workloads. Same quality,
-              dramatically lower costs.
+              Provider routing, semantic caching and per-request cost tracking for your LLM
+              workloads.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
@@ -63,10 +63,10 @@ export default function LandingPage() {
                   <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-4">
                     <DollarSign className="h-6 w-6 text-green-500" />
                   </div>
-                  <CardTitle>60%+ Cost Reduction</CardTitle>
+                  <CardTitle>Cost-Aware Routing</CardTitle>
                   <CardDescription>
-                    Our intelligent routing automatically selects the most cost-effective model for
-                    each prompt, without sacrificing quality.
+                    The router scores each prompt and picks a provider and model, then records the
+                    token cost of the call.
                   </CardDescription>
                 </CardHeader>
               </Card>

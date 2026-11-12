@@ -1,7 +1,12 @@
 """Scheduled retraining with APScheduler."""
+
 import logging
+from typing import Any
+
+from apscheduler.job import Job
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+
 from app.learning.feedback_trainer import FeedbackTrainer
 
 logger = logging.getLogger(__name__)
@@ -13,7 +18,7 @@ class RetrainingScheduler:
     Default schedule: Every Sunday at 2:00 AM
     """
 
-    def __init__(self, cron_schedule: str = "0 2 * * 0"):
+    def __init__(self, cron_schedule: str = "0 2 * * 0") -> None:
         """Initialize scheduler.
 
         Args:
@@ -28,18 +33,18 @@ class RetrainingScheduler:
         self.scheduler.add_job(
             func=self._run_retraining,
             trigger=CronTrigger.from_crontab(cron_schedule),
-            id='weekly_retraining',
-            name='Weekly Feedback Retraining',
-            replace_existing=True
+            id="weekly_retraining",
+            name="Weekly Feedback Retraining",
+            replace_existing=True,
         )
 
-    def start(self):
+    def start(self) -> None:
         """Start scheduler."""
         if not self.scheduler.running:
             self.scheduler.start()
             logger.info(f"Retraining scheduler started: {self.cron_schedule}")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop scheduler."""
         if self.scheduler.running:
             self.scheduler.shutdown()
@@ -53,7 +58,7 @@ class RetrainingScheduler:
         """
         return self.scheduler.running
 
-    def get_jobs(self):
+    def get_jobs(self) -> list[Job]:
         """Get scheduled jobs.
 
         Returns:
@@ -61,7 +66,7 @@ class RetrainingScheduler:
         """
         return self.scheduler.get_jobs()
 
-    def trigger_immediate_retraining(self, dry_run: bool = False):
+    def trigger_immediate_retraining(self, dry_run: bool = False) -> dict[str, Any]:
         """Manually trigger retraining immediately.
 
         Args:
@@ -73,7 +78,7 @@ class RetrainingScheduler:
         logger.info(f"Manual retraining triggered (dry_run={dry_run})")
         return self._run_retraining(dry_run=dry_run)
 
-    def _run_retraining(self, dry_run: bool = False):
+    def _run_retraining(self, dry_run: bool = False) -> dict[str, Any]:
         """Run retraining job.
 
         Args:
