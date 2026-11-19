@@ -1,7 +1,7 @@
 # AI Cost Optimizer - Production Dockerfile (Supabase Edition)
 # Optimized for linux/amd64 deployment (RunPod, AWS, GCP, etc.)
 
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 WORKDIR /app
 
